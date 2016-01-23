@@ -1,30 +1,31 @@
-# sweepython
-*This text will be italic*
-_This will also be italic_
+# What is in this repository?
+**A set of open-source computational tools developed in Python to perform *multi-scale* analysis of *structure-function* relationship in mitochondrial networks.**
 
-**This text will be bold**
-__This will also be bold__
+##Segmentation of mitochondrial networks from live yeast cells 3D images taken with a *spinning disk confocal* microscope.
+This segmentation utilizes [MitoGraph](https://github.com/vianamp/MitoGraph.git), a C++ skeletonization and segmentation program developed by Matheus Viana. It has been fully validated in yeast cells. [*Viana, Lim et al*] (http://www.ncbi.nlm.nih.gov/pubmed/25640425). 
 
-_You **can** combine them_
+##Data Munging in Pandas for data exploration and visualization
 
-#Lists
+###Modulation of mitochondrial function by altering carbon source growth conditions.
 
-Unordered
+###Investigating tubule scale heterogeneity of mitochondrial membrane potential (Δψ).
 
-* Item 1
-* Item 2
-  * Item 2a
-  * Item 2b
-Ordered
+###Analysis of mitochondrial functional asymmetry in mother and daughter yeast cells.
 
-1. Item 1
-2. Item 2
-3. Item 3
-   * Item 3a
-   * Item 3b
+####Requirements
+* Pandas
+* Mayavi
+* Numpy
+* Seaborn
+* Scipy
+* VTK
+
+The best way to ensure all dependencies are fulfilled is by installing the [Anaconda](https://www.continuum.io/downloads) Python package.
+
+
 Images
 
-![GitHub Logo](images/logo.png)
+![GitHub Logo](images/lags3.png)
 Format: ![Alt Text](url)
 Links
 

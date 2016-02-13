@@ -11,7 +11,7 @@ This segmentation utilizes [MitoGraph](https://github.com/vianamp/MitoGraph.git)
 ###Investigating tubule scale heterogeneity of mitochondrial membrane potential (Δψ).
 
 ###Analysis of mitochondrial functional asymmetry in mother and daughter yeast cells.
-A [set of tools](https://github.com/moosekaka/sweepython/tree/master/vtk_viz) to interactively visualize the 3D mitochondrial skeleton and pick points to classify the cell as a mother or daughter region. This [Ipython notebook](https://github.com/moosekaka/sweepython/blob/master/vtk_viz/mother%20bud%20analysis.ipynb) demonstrates an application of these tools to study how mitochondrial membrane potential (Δψ) is distributed differently between the mother and daughter cell.  
+A [set of tools](https://github.com/moosekaka/sweepython/tree/master/vtk_viz) to interactively visualize the 3D mitochondrial skeleton and pick points to classify the cell as a mother or daughter region. This [Ipython notebook](https://github.com/moosekaka/sweepython/blob/master/mother%20bud%20analysis.ipynb) demonstrates an application of these tools to study how mitochondrial membrane potential (Δψ) is distributed differently between the mother and daughter cell.  
 
 <p align="center">
 <img src="https://github.com/moosekaka/sweepython/blob/master/images/coors.png" width="300" />

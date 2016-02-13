@@ -11,22 +11,29 @@ This segmentation utilizes [MitoGraph](https://github.com/vianamp/MitoGraph.git)
 ###Investigating tubule scale heterogeneity of mitochondrial membrane potential (Δψ).
 
 ###Analysis of mitochondrial functional asymmetry in mother and daughter yeast cells.
+A [set of tools](https://github.com/moosekaka/sweepython/tree/master/vtk_viz) to interactively visualize the 3D mitochondrial skeleton and pick points to classify the cell as a mother or daughter region.
+![GitHub Logo](images/coors.png)
+Format: ![Alt Text](url)
 
 ####Requirements
 * Pandas
-* Mayavi
+* Matplotlib
+* Mayavi\**
+* NetworkX
 * Numpy
 * Seaborn
 * Scipy
 * VTK
+
+_\** MayaVi has a known conflict when run under IPython and Python 2.7, specifically incompatible API versions. To fix, set QT_API=pyqt under your enviroment variables, either in BASH or Windows advanced settings._
+
 
 The best way to ensure all dependencies are fulfilled is by installing the [Anaconda](https://www.continuum.io/downloads) Python package.
 
 
 Images
 
-![GitHub Logo](images/lags3.png)
-Format: ![Alt Text](url)
+
 Links
 
 http://github.com - automatic!

@@ -2,7 +2,7 @@
 **A set of open-source computational tools developed in Python to perform *multi-scale* analysis of *structure-function* relationship in mitochondrial networks.**
 
 ##Segmentation of mitochondrial networks from live yeast cells 3D images taken with a *spinning disk confocal* microscope.
-This segmentation utilizes [MitoGraph](https://github.com/vianamp/MitoGraph.git), a C++ skeletonization and segmentation program developed by Matheus Viana. It has been fully validated in yeast cells. [*Viana, Lim et al*] (http://www.ncbi.nlm.nih.gov/pubmed/25640425). 
+This segmentation utilizes [MitoGraph](https://github.com/vianamp/MitoGraph.git), a C++ skeletonization and segmentation program developed by Matheus Viana. It has been fully validated in yeast cells \([*Viana, Lim et al*](http://www.ncbi.nlm.nih.gov/pubmed/25640425)\). 
 
 ##Data Munging in Pandas for data exploration and visualization
 
@@ -12,8 +12,10 @@ This segmentation utilizes [MitoGraph](https://github.com/vianamp/MitoGraph.git)
 
 ###Analysis of mitochondrial functional asymmetry in mother and daughter yeast cells.
 A [set of tools](https://github.com/moosekaka/sweepython/tree/master/vtk_viz) to interactively visualize the 3D mitochondrial skeleton and pick points to classify the cell as a mother or daughter region.
-![GitHub Logo](images/coors.png)
-Format: ![Alt Text](url)
+
+<p align="center">
+<img src="https://github.com/moosekaka/sweepython/blob/master/images/coors.png" width="300" />
+</p>
 
 ####Requirements
 * Pandas
@@ -30,21 +32,3 @@ _\** MayaVi has a known conflict when run under IPython and Python 2.7, specific
 
 The best way to ensure all dependencies are fulfilled is by installing the [Anaconda](https://www.continuum.io/downloads) Python package.
 
-
-Images
-
-
-Links
-
-http://github.com - automatic!
-[GitHub](http://github.com)
-Blockquotes
-
-As Kanye West said:
-
-> We're living the future so
-> the present is our past.
-Inline code
-
-I think you should use an
-`<addr>` element here instead.

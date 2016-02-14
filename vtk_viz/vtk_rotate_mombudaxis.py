@@ -2,11 +2,12 @@
 """
 Created on Mon Sep 28 00:51:20 2015
 	module to transform raw vtk to rotated vtk along mom bud axis
-		
+
 @author: sweel
 """
 
 import os
+import os.path as op
 import numpy as np
 from mayavi import mlab
 import fnmatch
@@ -19,37 +20,37 @@ import cPickle as pickle
 # pylint:disable=E1101
 vtkF = defaultdict(dict)
 mombud = defaultdict(dict)
-
+datadir = op.join(os.getcwd(),'data')
 
 # =============================================================================
 # filelist and graph list
 # =============================================================================
-for root, dirs, files in os.walk(os.getcwd()):
+for root, dirs, files in os.walk(datadir):
     for i in files:
         if fnmatch.fnmatch(i, '*skeleton.vtk'):
-            media = root.rsplit('\\', 1)[1]
-            vtkF[media][i[5:-13]] = os.path.join(root, i)
+            media = root.rsplit(os.sep, 1)[1]
+            vtkF[media][i[5:-13]] = op.join(root, i)
         if fnmatch.fnmatch(i, 'YP*csv'):
-            mombud[i[:-4]] = os.path.join(root, i)
+            mombud[i[:-4]] = op.join(root, i)
 
 filekeys = {item: vtkF[media][item] for media
             in sorted(vtkF.keys()) for item
             in sorted(vtkF[media].keys())}
 
-DataSize = pd.read_table('Results.txt')
+DataSize = pd.read_table(op.join(datadir, 'Results.txt'))
 df = DataSize.ix[:, 1:]
 df['cell'] = df.ix[:, 'Label'].apply(lambda x: x.partition(':')[2])
-df['vol'] = 4/3 * np.pi * (df.Major*.055/2) * (df.Minor*.055/2) ** 2
+df['vol'] = 4 / 3 * np.pi * (df.Major * .055 / 2) * (df.Minor * .055 / 2) ** 2
 
 # =============================================================================
 # Draw cell using cellplot and edgeplot
 # =============================================================================
 
 if __name__ == "__main__":
-    dfmb = pd.DataFrame(columns=['base','neck','tip','media'])
+    dfmb = pd.DataFrame(columns=['base', 'neck', 'tip', 'media'])
     mlab.close(all=True)
-    for _, key in enumerate(sorted(mombud.keys())[-5:-4]):
-        df1 = pd.read_csv('%s.csv' % key,
+    for _, key in enumerate(sorted(mombud.keys())[-5:-1]):
+        df1 = pd.read_csv(op.join(datadir, '%s.csv' % key),
                           header=0,
                           names=['x', 'y', 'z'],
                           index_col=0)
@@ -59,10 +60,10 @@ if __name__ == "__main__":
 
         filekey = key
         df2 = vz.getelipspar(filekey, df)
-        df2 = df2.sort('vol')
+        df2 = df2.sort_values('vol')
         df2.reset_index(drop=True, inplace=True)
         df2.index = ['bud', 'mom']
-        df2['center'] = zip((df2.X - 25)*.055, (225 - df2.Y)*.055)
+        df2['center'] = zip((df2.X - 25) * .055, (225 - df2.Y) * .055)
         figone = mlab.figure(figure=filekey,
                              size=(800, 600),
                              bgcolor=(0., 0., 0.))
@@ -76,7 +77,7 @@ if __name__ == "__main__":
         try:
             zp = df1.ix['centerpt'][0]
         except KeyError:
-            zp = (zmax-zmin)/2
+            zp = (zmax - zmin) / 2
 
         vz.adjustlut(tubeout)
         vz.drawelips('mom', df2, zpos=zp)
@@ -105,7 +106,7 @@ if __name__ == "__main__":
         ccw90[1, 0] = 1
         trans1 = tvtk.Transform()
         trans1.set_matrix(ccw90.flatten())
-        trans1.scale(1/3., 1/3., 1/3.)
+        trans1.scale(1 / 3., 1 / 3., 1 / 3.)
         trans1.post_multiply()
         trans1.concatenate(tr)
 
@@ -125,7 +126,7 @@ if __name__ == "__main__":
 
         # transform for second arrow (rotates 90ccw) at origin
         trans4 = tvtk.Transform()
-        trans4.scale(scale1/3, scale1/3, scale1/3)
+        trans4.scale(scale1 / 3, scale1 / 3, scale1 / 3)
         trans4.post_multiply()
         trans4.concatenate(ccw90.flatten())
         trans4.translate([-1, 0, 0])
@@ -190,13 +191,13 @@ if __name__ == "__main__":
         neck_t.actor.actor.user_transform = trans2
         base_t.actor.actor.user_transform = trans2
         tip_t.actor.actor.user_transform = trans2
-        dftemp=pd.Series({'base':base_t.actor.actor.center,
-                          'neck':neck_t.actor.actor.center,
-                          'tip':tip_t.actor.actor.center,
-                          'media':key[:3],
-                          'bud': df2.ix['bud','vol'],
-                          'mom': df2.ix['mom','vol']},
-                          name=key)
+        dftemp = pd.Series({'base': base_t.actor.actor.center,
+                            'neck': neck_t.actor.actor.center,
+                            'tip': tip_t.actor.actor.center,
+                            'media': key[:3],
+                            'bud': df2.ix['bud', 'vol'],
+                            'mom': df2.ix['mom', 'vol']},
+                           name=key)
 #        mlab.close(all=True)
         dfmb = dfmb.append(dftemp)
 
@@ -210,5 +211,5 @@ if __name__ == "__main__":
         mlab.view(distance='auto')
 #        w = tvtk.PolyDataWriter(input=cell_t, file_name='%s.vtk' % key)
 #        w.write()
-    with open('mombudtrans.pkl','wb') as output:
-        pickle.dump(dfmb, output)
+#    with open(op.join(datadir, 'mombudtrans.pkl','wb')) as output:
+#        pickle.dump(dfmb, output)

@@ -25,11 +25,13 @@ datadir = op.join(os.getcwd(),'data')
 # =============================================================================
 # filelist and graph list
 # =============================================================================
-for root, dirs, files in os.walk(datadir):
+for root, dirs, files in os.walk(op.join(datadir, 'normSkel')):
     for i in files:
         if fnmatch.fnmatch(i, '*skeleton.vtk'):
             media = root.rsplit(os.sep, 1)[1]
             vtkF[media][i[5:-13]] = op.join(root, i)
+for root, dirs, files in os.walk(op.join(datadir, 'csv')):
+    for i in files:
         if fnmatch.fnmatch(i, 'YP*csv'):
             mombud[i[:-4]] = op.join(root, i)
 
@@ -37,7 +39,7 @@ filekeys = {item: vtkF[media][item] for media
             in sorted(vtkF.keys()) for item
             in sorted(vtkF[media].keys())}
 
-DataSize = pd.read_table(op.join(datadir, 'Results.txt'))
+DataSize = pd.read_table(op.join(datadir, 'csv', 'Results.txt'))
 df = DataSize.ix[:, 1:]
 df['cell'] = df.ix[:, 'Label'].apply(lambda x: x.partition(':')[2])
 df['vol'] = 4 / 3 * np.pi * (df.Major * .055 / 2) * (df.Minor * .055 / 2) ** 2
@@ -49,8 +51,8 @@ df['vol'] = 4 / 3 * np.pi * (df.Major * .055 / 2) * (df.Minor * .055 / 2) ** 2
 if __name__ == "__main__":
     dfmb = pd.DataFrame(columns=['base', 'neck', 'tip', 'media'])
     mlab.close(all=True)
-    for _, key in enumerate(sorted(mombud.keys())[-5:-1]):
-        df1 = pd.read_csv(op.join(datadir, '%s.csv' % key),
+    for _, key in enumerate(sorted(mombud.keys())[:]):
+        df1 = pd.read_csv(op.join(datadir, 'csv', '%s.csv' % key),
                           header=0,
                           names=['x', 'y', 'z'],
                           index_col=0)
@@ -198,18 +200,20 @@ if __name__ == "__main__":
                             'bud': df2.ix['bud', 'vol'],
                             'mom': df2.ix['mom', 'vol']},
                            name=key)
-#        mlab.close(all=True)
+        mlab.close(all=True)
         dfmb = dfmb.append(dftemp)
 
         # THIS IS THE TRANSFORMED CELL VTK POLYDATA THAT WE WANT!!
-        cell_t2 = mlab.pipeline.surface(cell_t, figure=figone)
-        cell_t2.actor.mapper.scalar_visibility = True
-        cell_t2.module_manager.lut_data_mode = 'point data'
-        vz.adjustlut(cell_t2)
-        figone.scene.disable_render = False
-        mlab.view(0, 0, 180)
-        mlab.view(distance='auto')
+#        cell_t2 = mlab.pipeline.surface(cell_t, figure=figone)
+#        cell_t2.actor.mapper.scalar_visibility = True
+#        cell_t2.module_manager.lut_data_mode = 'point data'
+#        vz.adjustlut(cell_t2)
+#        figone.scene.disable_render = False
+#        mlab.view(0, 0, 180)
+#        mlab.view(distance='auto')
 #        w = tvtk.PolyDataWriter(input=cell_t, file_name='%s.vtk' % key)
 #        w.write()
-#    with open(op.join(datadir, 'mombudtrans.pkl','wb')) as output:
-#        pickle.dump(dfmb, output)
+    with open(op.join(datadir,
+                      'transformedData',
+                      'mombudtrans.pkl'), 'wb') as output:
+        pickle.dump(dfmb, output)

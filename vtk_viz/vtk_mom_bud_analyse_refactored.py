@@ -4,6 +4,7 @@
 """
 
 import os
+import os.path as op
 import cPickle as pickle
 import fnmatch
 from collections import defaultdict
@@ -20,17 +21,17 @@ plt.close('all')
 mlab.close(all=True)
 vtkF = defaultdict(dict)
 mombud = defaultdict(dict)
-
+datadir = op.join(os.getcwd(), 'data', 'transformedData')
 # =============================================================================
 # filelist and graph list
 # =============================================================================
-with open('mombudtrans.pkl', 'rb') as inpt:
+with open(op.join(datadir, 'mombudtrans.pkl'), 'rb') as inpt:
     dfmb = pickle.load(inpt)  # has columns base, neck, tip, media, bud, mom
 
-for root, dirs, files in os.walk(os.getcwd()):
+for root, dirs, files in os.walk(datadir):
     for i in files:
         if fnmatch.fnmatch(i, '*.vtk'):
-            media = root.rsplit('\\', 1)[1]
+            media = root.rsplit(os.sep, 1)[1]
             vtkF[media][i[:-4]] = os.path.join(root, i)
 
 filekeys = {item: vtkF[media][item] for media
@@ -118,10 +119,6 @@ BIG = pd.melt(cellall,
               id_vars=['type'],
               value_vars=['frac'])
 groups = BIG.groupby('type')
-#G = groups.apply(lambda x: x[x['value'] > 1])
-#a1 = G.groupby('type').value.count()
-#a2 = cellall.groupby('type').frac.count()
-#a1 / a2 * 1.
 
 BIG2 = pd.melt(cellall,
                id_vars=['type'],
@@ -179,9 +176,9 @@ with sns.plotting_context('talk', font_scale=1.1):
     m.set_xlabels("bud axis position")
     m.set(ylim=(0, 1.))
 
-## =============================================================================
-## frac Δψ as function of budratio
-## =============================================================================
+# =============================================================================
+# frac Δψ as function of budratio
+# =============================================================================
 with sns.plotting_context('talk'):
     _, ax2 = plt.subplots(1, 1)
     h = sns.pointplot(x='bin_budprog',
@@ -191,7 +188,6 @@ with sns.plotting_context('talk'):
                       ax=ax2)
     h.get_legend().set_visible(False)
     h.set_ylim(0, 3.)
-
 
     h.set_title(u"Δψ vs bud progression\n ")
     h.set_xlabel("bud progression")
@@ -224,103 +220,103 @@ with sns.plotting_context('talk', font_scale=1.4):
 #  ============================================================================
 #  frac Δψ violinplots by media
 #  ============================================================================
-with sns.plotting_context('talk'):
-    _, ax1 = plt.subplots(1, 1)
-    g = sns.violinplot(x='type',
-                       y='value',
-                       hue='type',
-                       data=BIG,
-                       ax=ax1)
-    g.set_ylim(0, 3)
-    g.get_legend().set_visible(False)
-    g = sns.stripplot(x='type',
-                      split=True,
-                      y='value',
-                      hue='type',
-                      data=BIG,
-                      jitter=.15,
-                      ax=ax1)
-#    g.set_ylim(0.4, 2.0)
-    g.get_legend().set_visible(False)
+#with sns.plotting_context('talk'):
+#    _, ax1 = plt.subplots(1, 1)
+#    g = sns.violinplot(x='type',
+#                       y='value',
+#                       hue='type',
+#                       data=BIG,
+#                       ax=ax1)
+#    g.set_ylim(0, 3)
+#    g.get_legend().set_visible(False)
+#    g = sns.stripplot(x='type',
+#                      split=True,
+#                      y='value',
+#                      hue='type',
+#                      data=BIG,
+#                      jitter=.15,
+#                      ax=ax1)
+##    g.set_ylim(0.4, 2.0)
+#    g.get_legend().set_visible(False)
 # =============================================================================
 # violinplot mom vs bud Δψ scaled
 # =============================================================================
-#with sns.plotting_context('talk', font_scale=1.4):
-#    _, ax3 = plt.subplots(1, 1)
-#    h = sns.violinplot(x='type',
-#                       y='value',
-#                       hue='variable',
-#                       data=BIG2,
-#                       ax=ax3)
-#    sns.stripplot(x='type',
-#                  y='value',
-#                  hue='variable',
-#                  jitter=.15,
-#                  size=4,
-#                  data=BIG2,
-#                  ax=ax3)
-#    h.set_ylim(0, 1.)
-#    h.get_legend().set_visible(False)
+with sns.plotting_context('talk', font_scale=1.4):
+    _, ax3 = plt.subplots(1, 1)
+    h = sns.violinplot(x='type',
+                       y='value',
+                       hue='variable',
+                       data=BIG2,
+                       ax=ax3)
+    sns.stripplot(x='type',
+                  y='value',
+                  hue='variable',
+                  jitter=.15,
+                  size=4,
+                  data=BIG2,
+                  ax=ax3)
+    h.set_ylim(0, 1.)
+    h.get_legend().set_visible(False)
 #
-## =============================================================================
-## frac Δψ as function of budvol
-## =============================================================================
-##with sns.plotting_context('talk', font_scale=1.4):
+# =============================================================================
+# frac Δψ as function of budvol
+# =============================================================================
+# with sns.plotting_context('talk', font_scale=1.4):
 ##    _, ax10 = plt.subplots(1, 1)
 ###    g = sns.FacetGrid(cellall.dropna(), col="type")
 ###    g = g.map(sns.regplot, "budvol", "frac")
 ##    datacell = cellall[cellall.bud <= bins2[-1]]
-##    h = sns.pointplot(x='binbudratio',
-##                      y='bud',
-##                      hue='type',
-##                      data=datacell.dropna(),
-##                      ax=ax10)
-##    h.get_legend().set_visible(False)
+# h = sns.pointplot(x='binbudratio',
+# y='bud',
+# hue='type',
+# data=datacell.dropna(),
+# ax=ax10)
+# h.get_legend().set_visible(False)
 ##
-##    for i in ['YPD', 'YPE', 'YPL', 'YPR']:
+# for i in ['YPD', 'YPE', 'YPL', 'YPR']:
 ##        data = cellall[(cellall.type == i) & (cellall.frac < 2)]
-##        slope, _, r, p, _ = sp.linregress(data['budvol'],
-##                                          data['frac'])
-##        print 'slope= %6.4f r=%6.4f p=%6.4f' % (slope, r, p)
+# slope, _, r, p, _ = sp.linregress(data['budvol'],
+# data['frac'])
+# print 'slope= %6.4f r=%6.4f p=%6.4f' % (slope, r, p)
 #
-## =============================================================================
-## Dy as budneckregion and budratio
-## =============================================================================
-##with sns.plotting_context('talk', font_scale=1.4):
+# =============================================================================
+# Dy as budneckregion and budratio
+# =============================================================================
+# with sns.plotting_context('talk', font_scale=1.4):
 ##    _, ax2 = plt.subplots(1, 1)
-##    h = sns.pointplot(x='bin_budprog',
-##                      y='DYneck',
-##                      hue='type',
-##                      data=cellall.dropna(),
-##                      ax=ax2)
-##    h.get_legend().set_visible(False)
+# h = sns.pointplot(x='bin_budprog',
+# y='DYneck',
+# hue='type',
+# data=cellall.dropna(),
+# ax=ax2)
+# h.get_legend().set_visible(False)
 #
 #
-## with sns.plotting_context('talk', font_scale=1.4):
+# with sns.plotting_context('talk', font_scale=1.4):
 ##    _, ax1 = plt.subplots(1, 1)
-##    h = sns.pointplot(x='posx',
-##                      y='DY',
-##                      ci=None,
-##                      markers='o',
-##                      join=False,
-##                      hue='type',
-##                      data=cell,
-##                      size=1,
-##                      ax=ax1)
-##    h.get_legend().set_visible(False)
+# h = sns.pointplot(x='posx',
+# y='DY',
+# ci=None,
+# markers='o',
+# join=False,
+# hue='type',
+# data=cell,
+# size=1,
+# ax=ax1)
+# h.get_legend().set_visible(False)
 ##    h.set_xticks(np.linspace(cell.pos.min(), cell.pos.max(),11))
 ##    h.set_xticklabels(np.arange(0, 1.1 ,.1))
 #
-##==============================================================================
-## budratio
-##==============================================================================
+# ==============================================================================
+# budratio
+# ==============================================================================
 ##c2 = cellall.drop(cellall.index[[5, 15, 63, 46]])
-##slope, _, r, p, std_err = sp.linregress(c2.ix[:, 'budratio'],
-##                                        c2.ix[:, 'neck'])
-## with sns.plotting_context('talk', font_scale=1.4):
+# slope, _, r, p, std_err = sp.linregress(c2.ix[:, 'budratio'],
+# c2.ix[:, 'neck'])
+# with sns.plotting_context('talk', font_scale=1.4):
 ##    _, ax5 = plt.subplots(1, 1)
-##    h = sns.regplot(x='budratio',
-##                      y='neck',
-##                      data=c2[c2.neck>0.505],
-##                      ax=ax5)
-##    h.get_legend().set_visible(False)
+# h = sns.regplot(x='budratio',
+# y='neck',
+# data=c2[c2.neck>0.505],
+# ax=ax5)
+# h.get_legend().set_visible(False)

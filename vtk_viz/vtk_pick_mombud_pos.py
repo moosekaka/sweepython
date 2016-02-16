@@ -4,6 +4,7 @@ Created on Fri Sep 18 17:54:10 2015
        module to pick mom, bud ,neck positions
 """
 import os
+import os.path as op
 import numpy as np
 from mayavi import mlab
 import fnmatch
@@ -14,6 +15,7 @@ from vtk_viz import vtkvizfuncs as vz
 # pylint: disable=C0103
 # pylint:disable=E1101
 vtkF = defaultdict(dict)
+datadir = op.join(os.getcwd(), 'data')
 
 
 def picker_callback(picker_obj):
@@ -110,7 +112,8 @@ def callback(obj, event):
                                   name='mombudaxis')
 
         if key == 'x':
-            f = open('%s.csv' % filekey, 'w')
+            output = op.join(datadir, '%s.csv' % filekey)
+            f = open(output, 'w')
             f.write('%s\n' % filekey)
             f.write('neck,%6.4f,%6.4f,%6.4f\n' % (xn, yn, zn))
             f.write('base,%6.4f,%6.4f,%6.4f\n' % (xb, yb, zb))
@@ -123,7 +126,7 @@ def callback(obj, event):
 # =============================================================================
 # filelist and graph list
 # =============================================================================
-for root, dirs, files in os.walk(os.getcwd()):
+for root, dirs, files in os.walk(op.join(datadir, 'normSkel')):
     for i in files:
         if fnmatch.fnmatch(i, '*skeleton.vtk'):
             media = root.rsplit('\\', 1)[1]
@@ -133,7 +136,7 @@ filekeys = {item: vtkF[media][item] for media
             in sorted(vtkF.keys()) for item
             in sorted(vtkF[media].keys())}
 
-DataSize = pd.read_table('Results.txt')
+DataSize = pd.read_table(op.join(datadir, 'transformedData', 'Results.txt'))
 df = DataSize.ix[:, 1:]
 df['cell'] = df.ix[:, 'Label'].apply(lambda x: x.partition(':')[2])
 df['vol'] = 4/3 * np.pi * (df.Major*.055/2) * (df.Minor*.055/2) ** 2
@@ -153,7 +156,7 @@ if __name__ == "__main__":
     figone = mlab.figure(figure=filekey,
                          size=(800, 600),
                          bgcolor=(0.1, 0.1, 0.1))
-    _, vtkobj, tubeout = vz.cellplot(figone, filekeys, filekey)
+    vtkobj, tubeout = vz.cellplot(figone, filekeys[filekey], rad=.07)
     figone.scene.disable_render = True
 
     xmin, xmax, ymin, ymax, zmin, zmax = vtkobj.outputs[0].bounds

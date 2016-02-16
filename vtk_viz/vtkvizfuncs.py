@@ -3,16 +3,12 @@
 Created on Fri Sep 18 17:54:10 2015
        functions to render vtk output from pipeline
 """
-import os
 import numpy as np
 from mayavi import mlab
 from mayavi.sources.api import ParametricSurface
 from tvtk.api import tvtk
-import random
-from collections import defaultdict
 import config
 # pylint: disable=C0103
-vtkF = defaultdict(dict)
 
 
 def countFuncCall():
@@ -20,18 +16,6 @@ def countFuncCall():
     """
     config.counter += 1
     return config.counter
-
-
-def cellplot(fig, filelist, filename):
-    """draw vtk one whole cell
-    """
-    src = mlab.pipeline.open(filelist[filename])
-    tube = mlab.pipeline.tube(src, figure=fig)
-    tube.filter.radius = .07
-    src.point_scalars_name = 'DY_raw'
-    surfTube = mlab.pipeline.surface(tube)
-    surfTube.actor.mapper.scalar_visibility = True
-    return fig, src, surfTube
 
 
 def adjustlut(vtksurface):
@@ -48,19 +32,114 @@ def adjustlut(vtksurface):
     mmgr.scalar_bar_representation.position2 = [.1, .4]
 
 
-def rendsurf(vtksrc):
+def cellplot(fig, filename, scalartype='DY_raw', **kwargs):
+    """
+    Draw vtk one whole cell
+
+    Parameters
+    ----------
+    fig : str
+        Name of cell
+
+    filelist : list
+        list of vtk files to iterate over and draw
+
+    filename : str
+        filename
+
+    scalartype : str
+        point data type to plot on skeleton, can be of type:
+        DY_minmax,
+        WidthEq,
+        DY_raw,
+        rRFP,
+        rGFP,
+        bkstRFP,
+        bkstGFP,
+
+    Returns
+    -------
+    src : vtk object
+        mayavi handle to the vtk obj
+    surfTube : mayavi surface object
+        mayavi pipeline surface
+    """
+    rad = kwargs.pop('rad', .05)
+
+    src = mlab.pipeline.open(filename)
+    tube = mlab.pipeline.tube(src, figure=fig)
+    tube.filter.radius = rad
+    surfTube = mlab.pipeline.surface(tube)
+    surfTube.actor.mapper.scalar_visibility = True
+    mod_mngr = tube.children[0]
+    mmgr = mod_mngr.scalar_lut_manager
+    mmgr.scalar_bar.title = scalartype
+    mmgr.data_name = scalartype
+    src.point_scalars_name = scalartype
+    # mmgr.show_legend = True
+    mmgr.reverse_lut = True
+    mmgr.lut_mode = 'RdBu'
+    mmgr.number_of_labels = 5
+    mmgr.scalar_bar.label_format = '%4.f'
+    mmgr.label_text_property.font_size = 12
+    mmgr.scalar_bar_representation.position = [.85, .25]
+    mmgr.scalar_bar_representation.position2 = [.1, .4]
+    tube.filter.number_of_sides = 32
+    mlab.view(0, 0, 180)
+    mlab.view(distance='auto')
+    return src, surfTube
+
+
+
+def rendsurf(vtksrc, **kwargs):
     """   add surface.vtk file to pipeline"""
-    surfpath = vtksrc.base_file_name.partition('NormFiles')
-    path2 = surfpath[2].partition('Norm_')
-    surfpath2 = os.path.join(surfpath[0],
-                             'surfaceFiles',
-                             path2[2][:3],
-                             '%s_surface.vtk' % path2[2][4:-13])
-    src2 = mlab.pipeline.open(surfpath2)
+
+    color = kwargs.pop('color', (0.9, .8, .1))
+    alpha = kwargs.pop('alpha', .15)
+
+    src2 = mlab.pipeline.open(vtksrc)
     surface1 = mlab.pipeline.surface(src2)
-    surface1.actor.property.opacity = .8
+    surface1.actor.property.opacity = alpha
     surface1.actor.mapper.scalar_visibility = False
-    surface1.actor.property.color = (.4, .4, .9)
+    surface1.actor.property.color = color
+
+
+def labelbpoints(graph, **kwargs):
+    """  brnch points and end points
+    """
+    bcol = kwargs.pop('bcol', (1, .2, 1.0))
+    ecol = kwargs.pop('ecol', (.1, 1, 1.0))
+    size = kwargs.pop('size', .1)
+
+    Nodes = [nattr['coord'] for _, nattr
+             in graph.nodes(data=True)
+             if nattr['degree'] > 1]
+    Ends = [nattr['coord'] for _, nattr
+            in graph.nodes(data=True)
+            if nattr['degree'] == 1]
+
+    xyz = np.array(Nodes)
+    xyz2 = np.array(Ends)
+    points = mlab.pipeline.scalar_scatter(  # branchpoints
+        xyz[:, 0], xyz[:, 1], xyz[:, 2])
+    points2 = mlab.pipeline.scalar_scatter(  # end points
+        xyz2[:, 0], xyz2[:, 1], xyz2[:, 2])
+    bpts = mlab.pipeline.glyph(points)
+    bpts.glyph.glyph_source.glyph_source.radius = size
+    epts = mlab.pipeline.glyph(points2)
+    epts.glyph.glyph_source.glyph_source.radius = size
+
+    bpts.actor.property.color = bcol
+    bpts.actor.mapper.scalar_visibility = 0
+    bpts.actor.property.opacity = 0.8
+    bpts.glyph.glyph_source.glyph_source.phi_resolution = 16
+    bpts.glyph.glyph_source.glyph_source.theta_resolution = 16
+
+    epts.actor.property.color = ecol
+    epts.actor.mapper.scalar_visibility = 0
+    epts.actor.property.opacity = 0.1
+    epts.glyph.glyph_source.glyph_source.phi_resolution = 16
+    epts.glyph.glyph_source.glyph_source.theta_resolution = 16
 
 
 def getelipspar(filename, df):

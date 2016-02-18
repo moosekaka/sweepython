@@ -10,7 +10,7 @@ import scipy.stats as sp
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
-from mungedata import MungeDataFuncs as md
+from networkHet.mungedata import MungeDataFuncs as md
 sns.plotting_context('talk', font_scale=1.4)
 # pylint: disable=C0103
 plt.close('all')

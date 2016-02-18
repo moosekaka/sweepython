@@ -9,7 +9,7 @@ import os
 import cPickle as pickle
 import seaborn as sns
 import pandas as pd
-from autoCor.lagsfun import iterlagspd
+from tubuleHet.autoCor.lagsfun import iterlagspd
 sns.set_context("talk")
 plt.close('all')
 

@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import os
 import cPickle as pickle
 import seaborn as sns
-from autoCor.AutoPopFunc import psd
+from tubuleHet.autoCor.AutoPopFunc import psd
 from collections import defaultdict
 import pandas as pd
 import numpy as np

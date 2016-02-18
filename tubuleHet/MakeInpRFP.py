@@ -9,7 +9,7 @@ import glob
 import os
 import cPickle as pickle
 import seaborn as sns
-from autoCor.fitDistRFP import fitdrfp
+from tubuleHet.autoCor.fitDistRFP import fitdrfp
 sns.set_context("talk")
 sns.set(style="whitegrid")
 

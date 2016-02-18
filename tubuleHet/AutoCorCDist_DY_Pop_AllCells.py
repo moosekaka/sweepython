@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import os
 import cPickle as pickle
 import seaborn as sns
-from autoCor.AutoPopFunc import autocorout
+from tubuleHet.autoCor.AutoPopFunc import autocorout
 from collections import defaultdict
 from scipy.optimize import curve_fit
 import pandas as pd

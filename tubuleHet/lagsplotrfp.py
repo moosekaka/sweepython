@@ -9,8 +9,8 @@ import os
 import cPickle as pickle
 import seaborn as sns
 import pandas as pd
-from autoCor.lagsfun import iterlagspd
-from autoCor.vtkfuncs import sclminmax
+from tubuleHet.autoCor.lagsfun import iterlagspd
+from tubuleHet.autoCor.vtkfuncs import sclminmax
 sns.set_context("talk")
 plt.close('all')
 

@@ -11,7 +11,7 @@ import fnmatch
 import pandas as pd
 from tvtk.api import tvtk
 from collections import defaultdict
-from vtk_viz import vtkvizfuncs as vz
+from mombud.vtk_viz import vtkvizfuncs as vz
 # pylint: disable=C0103
 vtkF = defaultdict(dict)
 datadir = op.join(os.getcwd(), 'data')

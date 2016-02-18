@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import cPickle as pickle
 import seaborn as sns
 import numpy as np
-from autoCor.fitDistr import fitDist
+from tubuleHet.autoCor.fitDistr import fitDist
 sns.set_context("talk")
 sns.set(style="darkgrid")
 colors = ["medium green",

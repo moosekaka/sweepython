@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from mayavi import mlab
 from _make_networkx import makegraph as mg
 import vtk
-from vtk_viz import vtkvizfuncs as vf
+from mombud.vtk_viz import vtkvizfuncs as vf
 
 # pylint: disable=C0103
 vtkF = defaultdict(dict)

@@ -4,13 +4,15 @@ Created on Tue Jul 14 17:44:48 2015
 Script to create a distribution of lags for Intensities along edges of cells
 @author: sweel
 """
-import matplotlib.pyplot as plt
-import numpy as np
 import glob
 import os
+import os.path as op
 import cPickle as pickle
 import seaborn as sns
-from autoCor.fitDistr import fitDist as fitd
+import matplotlib.pyplot as plt
+import numpy as np
+from tubuleHet.autoCor.fitDistr import fitDist as fitd
+datadir = op.join(os.getcwd(), 'data')
 sns.set_context("talk")
 sns.set(style="dark")
 

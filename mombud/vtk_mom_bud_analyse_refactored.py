@@ -13,7 +13,7 @@ import numpy as np
 from mayavi import mlab
 import pandas as pd
 import seaborn as sns
-from vtk_viz import vtk_mbfuncs as vf
+from mombud.vtk_viz import vtk_mbfuncs as vf
 plt.rcParams['font.family'] = 'DejaVu Sans'
 # pylint: disable=C0103
 # pylint: disable=maybe-no-member

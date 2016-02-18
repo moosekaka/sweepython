@@ -10,7 +10,7 @@ import networkx as nx
 import scipy.stats as sp
 import matplotlib.pyplot as plt
 from collections import defaultdict
-from mungedata import MungeDataFuncs as md
+from networkHet.mungedata import MungeDataFuncs as md
 import pandas as pd
 import cPickle as pickle
 from numpy.random import choice as samp_no_rep

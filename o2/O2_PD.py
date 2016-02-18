@@ -10,7 +10,7 @@ import scipy.stats as sp
 import pandas as pd
 import fnmatch
 from collections import defaultdict
-from mungedata import MungeDataFuncs as md
+from networkHet.mungedata import MungeDataFuncs as md
 import seaborn as sns
 import math
 import cPickle as pickle

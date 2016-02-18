@@ -10,7 +10,7 @@ import glob
 import os
 import cPickle as pickle
 import seaborn as sns
-from autoCor.fitDistr import fitDist as fitd
+from tubuleHet.autoCor.fitDistr import fitDist as fitd
 import numpy as np
 import pandas as pd
 sns.set_context("talk")

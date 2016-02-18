@@ -7,7 +7,7 @@
 - The raw data from MitoGraph was 'munged' into a database using [`Pandas`](http://pandas.pydata.org/pandas-docs/stable/) before further calculations of various statistical and functional parameters.
 
 ###Modulation of mitochondrial function by altering carbon source growth conditions.
-- We grew cells in growth conditions utilizing different carbon sources in order to modulate their respiratory conditions [`O2 results`](https://github.com/moosekaka/sweepython/blob/master/O2_PD.py).
+- We grew cells in growth conditions utilizing different carbon sources in order to modulate their respiratory conditions [`O2 results`](https://github.com/moosekaka/sweepython/tree/master/o2).
 
 ###Investigating the link between structure of mitochondria and heterogeneity of mitochondrial membrane potential (Δψ).
 - We showed the non-random heterogenous distribution of Δψ within a single mitochondrial tubule [`example here`](https://github.com/moosekaka/sweepython/tree/master/tubuleHet).

@@ -6,7 +6,7 @@ Fit uniform, normal or shuffled distribution of cell DYs
 """
 from tvtk.api import tvtk
 from collections import defaultdict
-from vtkfuncs import vtkdata, vtkshuf, vtksamp
+from autoCor.vtkfuncs import vtkdata, vtkshuf, vtksamp
 # pylint: disable=C0103
 
 

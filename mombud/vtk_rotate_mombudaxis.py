@@ -71,7 +71,7 @@ if __name__ == "__main__":
                              bgcolor=(0., 0., 0.))
 
         figone.scene.disable_render = True
-        _, vtkobj, tubeout = vz.cellplot(figone, filekeys, filekey)
+        vtkobj, tubeout = vz.cellplot(figone, filekeys[filekey])
         xmin, xmax, ymin, ymax, zmin, zmax = vtkobj.outputs[0].bounds
 # ============================================================================
 # zposition of center slice
@@ -221,7 +221,7 @@ if __name__ == "__main__":
         # rotated vtk coordinate files
 #        w = tvtk.PolyDataWriter(input=cell_t, file_name='%s.vtk' % key)
 #        w.write()
-    with open(op.join(datadir,
-                      'transformedData',
-                      'mombudtrans.pkl'), 'wb') as output:
-        pickle.dump(dfmb, output)
+#    with open(op.join(datadir,
+#                      'transformedData',
+#                      'mombudtrans.pkl'), 'wb') as output:
+#        pickle.dump(dfmb, output)

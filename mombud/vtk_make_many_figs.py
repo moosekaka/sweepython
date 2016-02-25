@@ -85,7 +85,7 @@ def edgeplot(fig, vtksrc, cellid):
 if __name__ == '__main__':
     for root, dirs, files in os.walk(op.join(datadir, 'pipelineFigs')):
         for i in files:
-            if fnmatch.fnmatch(i, 'N*skeleton.vtk'):
+            if fnmatch.fnmatch(i, '*skeleton.vtk'):
                 media = root.rsplit('\\', 1)[1]
                 vtkF[media][i[5:-13]] = os.path.join(root, i)
 
@@ -99,27 +99,12 @@ if __name__ == '__main__':
                 in sorted(vtkF.keys()) for item
                 in sorted(vtkF[media].keys())}
 
-    filekey = 'YPE_042715_018_RFPstack_052'
-    data = callreader(filekeys[filekey])
-    node_data, edge_data, nxgrph = mg(data, files)
-
-    figone = mlab.figure(figure=filekey,
-                         size=(1200, 800),
-                         bgcolor=(.086, .086, .086))
-
-    dic = {'DY_minmax',
-           'WidthEq',
-           'DY_raw',
-           'rRFP',
-           'rGFP',
-           'bkstRFP',
-           'bkstGFP'}
-    for i in dic:
-        vtkobj, vtktube = vf.cellplot(figone,
-                                      filekeys[filekey],
-                                      scalartype=i,
-                                      rad=.08)
-        vtktube.actor.mapper.scalar_visibility = True  # False for no heatmap
-    #    vf.rendsurf(vtkS[filekey[:3]][filekey[4:]])
-    #    vf.labelbpoints(nxgrph, esize=.12)
-        mlab.savefig(op.join(datadir, 'pipelineFigs', i + '.png'))
+    for key in sorted(filekeys.keys())[400:403]:
+        data = callreader(vtkF[key[:3]][key])
+        node_data, edge_data, nxgrph = mg(data, files)
+        figone = mlab.figure(figure=key,
+                             size=(800, 600),
+                             bgcolor=(.15, .15, .15))
+        vtkobj, _ = vf.cellplot(figone, filekeys[key])
+        vf.rendsurf(vtkS[key[:3]][key[4:]])
+        vf.labelbpoints(nxgrph)

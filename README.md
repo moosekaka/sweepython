@@ -3,8 +3,8 @@
 
 ##Segmentation of mitochondrial networks from live yeast cells 3D images taken with a *spinning disk confocal* microscope.
 - This segmentation utilizes [`MitoGraph`](https://github.com/vianamp/MitoGraph.git), a C++ skeletonization and segmentation program developed by Matheus Viana. It has been fully validated in yeast cells \([Viana, Lim *et al.*](http://www.ncbi.nlm.nih.gov/pubmed/25640425)). 
-
-- The raw data from MitoGraph was 'munged' into a database using [`Pandas`](http://pandas.pydata.org/pandas-docs/stable/) before further calculations of various statistical and functional parameters.
+- A [`Python pipeline`](https://github.com/moosekaka/sweepython/tree/master/pipeline) to map functional values onto the segmented skeleton, with corrections for optical defects.
+- The output data from the pipeline was 'munged' into a database using [`Pandas`](http://pandas.pydata.org/pandas-docs/stable/) before further calculations of various statistical and functional parameters.
 
 ###Modulation of mitochondrial function by altering carbon source growth conditions.
 - We grew cells in growth conditions utilizing different carbon sources in order to modulate their respiratory conditions [`O2 results`](https://github.com/moosekaka/sweepython/blob/master/o2_vr_dy_panel.ipynb).

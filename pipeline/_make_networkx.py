@@ -92,7 +92,10 @@ def makegraph(vtkdata, graphname, scalartype='DY_raw'):
         pt_id_2 = last[i]
         inten1 = scalars[pt_id_1]
         inten2 = scalars[pt_id_2]
-        single_pt = fp[i] - lp[i]
+        single_pt = fp[i] - lp[i]  # test for a single pixel
+#    a, b, c and d are edges formed between end points from two different
+#    line segments, check each point for the edge pairs if they coincide -
+#    (same coordinates). Don't add a node if they do
         a = fp[i, np.newaxis]-lp[:i]
         b = fp[i, np.newaxis]-fp[:i]
         c = lp[i, np.newaxis]-fp[:i]

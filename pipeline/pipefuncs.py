@@ -108,9 +108,9 @@ def normSkel(polydata, backgrnd):
     rawGFP = np.ravel(temp.get_array('rGFP'))
     rawRFP = np.ravel(temp.get_array('rRFP'))
     if backgrnd[0] > min(rawRFP):  # background has higher min than skel rfp
-        min_rfp = min(rawRFP)-1  # minus one to ensure no zero divisions
+        min_rfp = min(rawRFP)-1.  # minus one to ensure no zero divisions
     else:
-        min_rfp = backgrnd[0]-1  # normally, min should be background RFP val
+        min_rfp = backgrnd[0]-1.  # normally, min should be background RFP val
 
     min_gfp = min(backgrnd[1], min(rawGFP))
     lines = []
@@ -124,7 +124,8 @@ def normSkel(polydata, backgrnd):
 #   background Substracted rfp and gfps
     rfp_bk = rawRFP-min_rfp
     gfp_bk = rawGFP-min_gfp
-    W = rfp_bk / min(rfp_bk)  # width equivalent
+#   width equivalent
+    W = rfp_bk / np.min(rfp_bk)
     DY = gfp_bk / W  # raw DY/W normalized values
 #   rescale DY to minmax
     minDY = min([DY[i] for i in pointIds])

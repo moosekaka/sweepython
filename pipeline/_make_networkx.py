@@ -24,26 +24,41 @@ def disteuc(pt1, pt2):
     return test
 
 
-def findedges(x, y, grph):
+def find_edges(X, Y, M):
     """
-    compares points `x, y` with every other node in grph to find connected
-    edges
-
-    Returns
-    -------
-    edge numbers `n1, n2` if `x, y` are connected
+    find connections between line segment endpoints in list X and Y
     """
-    for n, nat in grph.nodes(data=True):
-        d = disteuc(nat['coord'], x)  # faster than np.linalg.norm
-        if d == 0:
-            n1 = n
-        d = disteuc(nat['coord'], y)
-        if d == 0:
-            n2 = n
-    return n1, n2
+    n1 = X[:, np.newaxis]-M
+    n2 = Y[:, np.newaxis]-M
+    test1 = np.ravel([np.nonzero(np.all(n == 0, axis=1)) for n in n1])
+    test2 = np.ravel([np.nonzero(np.all(n == 0, axis=1)) for n in n2])
+    e_list = [tuple(sorted(i)) for i in zip(test1, test2)]
+    return e_list
 
 
-def checkexist(bounds, l1, l2, exdic):
+def make_ebunch(e_list, vtkdat, pnts, X, Y):
+    """
+    returns the edge attributes (edge length, etc.) from the edgelist e_list
+    returned by find_edges
+    """
+    ebunch = {}
+    for i, el in enumerate(e_list):
+        p = vtkdat.GetCell(i).GetPointIds()
+        pids = [p.GetId(k) for k in range(p.GetNumberOfIds())]
+
+        # calc length of line by shifting line by one pixel and taking diff.
+        # of every pixel of the pair of lines
+        length = np.sum(np.linalg.norm(pnts[np.r_[0, pids[:-1]]][1:] -
+                                       pnts[pids][1:],
+                                       axis=1))
+        ebunch[i] = (el[0], el[1],
+                     {'weight': length,
+                      'cellID': i,
+                      'midpoint': tuple((X[i]+Y[i])/2)})
+    return ebunch
+
+
+def check_exist(bounds, l1, l2, ex_dic=None):
     """
     Check for existence of a connection between nodes.
     `a, b, c` and `d` are all the possible connections between the endpoints
@@ -54,14 +69,16 @@ def checkexist(bounds, l1, l2, exdic):
     --------
     Dictionary of type (eg. 'a') as `True` if a connection exist for the type
     """
+    if ex_dic is None:
+        ex_dic = {}
     a = l1[bounds] - l2[:bounds]
     b = l1[bounds] - l1[:bounds]
     c = l2[bounds] - l1[:bounds]
     d = l2[bounds] - l2[:bounds]
     dics = {'a': a, 'b': b, 'c': c, 'd': d}
     for key in sorted(dics):
-        exdic[key] = np.any(np.all(dics[key] == 0, axis=1))
-    return exdic
+        ex_dic[key] = np.any(np.all(dics[key] == 0, axis=1))
+    return ex_dic
 
 
 def makegraph(vtkdata, graphname, scalartype='DY_raw'):
@@ -96,7 +113,6 @@ def makegraph(vtkdata, graphname, scalartype='DY_raw'):
     nnodes = 0
     first = {}
     last = {}
-    exist = {}
     scalars = tvtk.to_tvtk(
         vtkdata.GetPointData().GetScalars(scalartype)).to_array()
     points = tvtk.to_tvtk(vtkdata.GetPoints()).to_array()
@@ -112,9 +128,9 @@ def makegraph(vtkdata, graphname, scalartype='DY_raw'):
 
     # Create node list of graph
     for i in range(vtkdata.GetNumberOfLines()-1, -1, -1):
-        exist = checkexist(i, fp, lp, exist)
-        single_pt = fp[i] - lp[i]  # test for a single pixel
-        exist['single_pt'] = np.all(single_pt == 0)
+        exist = check_exist(i, fp, lp)
+        # test for a single pixel
+        exist['single_pt'] = np.all((fp[i] - lp[i]) == 0)
         inten1 = scalars[first[i]]
         inten2 = scalars[last[i]]
         if not (exist['a'] or exist['b'] or exist['single_pt']):
@@ -125,16 +141,10 @@ def makegraph(vtkdata, graphname, scalartype='DY_raw'):
             nnodes += 1
 
     # Create edgelist of graph
-    for i in range(vtkdata.GetNumberOfLines()):
-        r1 = points[first[i]]
-        r2 = points[last[i]]
-        n1, n2 = findedges(r1, r2, G)
-        #  Calc edge weight by Euc. distance between adjacent pixels
-        pids = tvtk.to_tvtk(vtkdata.GetCell(i).GetPointIds())
-        shift_pids = np.roll(pids, 1)
-        edw = np.sum(np.linalg.norm(points[shift_pids][1:] -
-                                    points[pids][1:], axis=1))
-        G.add_edge(n1, n2, weight=edw, cellID=i, midpoint=tuple((r1+r2)/2))
+    Ncoords = np.array([nat['coord'] for n, nat in G.nodes(data=True)])
+    edges = find_edges(fp, lp, Ncoords)
+    ebunch = make_ebunch(edges, vtkdata, points, fp, lp)
+    G.add_edges_from(ebunch.values())
 
     # Degree connectivity of nodes
     for n in G.nodes():

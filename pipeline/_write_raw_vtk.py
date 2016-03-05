@@ -8,6 +8,7 @@ import os.path as op
 import cPickle as pickle
 import wrappers as wr
 from pipeline import pipefuncs as pf
+from pipeline import _make_networkx as mn
 
 # pylint: disable=C0103
 datadir = op.join(os.getcwd())
@@ -39,6 +40,10 @@ if __name__ == '__main__':
             if exception.errno != errno.EEXIST:
                 raise
 
+        nlist = []
+        elist = []
+        glist = []
+
         for key in sorted(vtkSkel[lab].keys())[:]:
             print 'processing %s: %s ' % (lab, key)
             data = pf.add_scalars(vtkSkel[lab][key],
@@ -53,3 +58,8 @@ if __name__ == '__main__':
                     'bkstGFP': gb,
                     'WidthEq': wq}
             pf.writevtk(data, filename, **calc)
+
+            nl, el, nxgrph = mn.makegraph(data, "_".join((lab, key)))
+            nlist.append(nl)
+            elist.append(el)
+            glist.append(nxgrph)

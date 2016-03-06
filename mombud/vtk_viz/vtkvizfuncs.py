@@ -1,14 +1,74 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Sep 18 17:54:10 2015
-       functions to render vtk output from pipeline
+functions to render vtk output from pipeline
 """
+import math
+import vtk
 import numpy as np
 from mayavi import mlab
 from mayavi.sources.api import ParametricSurface
 from tvtk.api import tvtk
 import config
 # pylint: disable=C0103
+
+
+def callreader(filepath):
+    """
+    Convenience wrapper for vtk reader call
+    """
+    reader = vtk.vtkPolyDataReader()
+    reader.SetFileName(filepath)
+    reader.Update()
+    polydata = reader.GetOutput()
+    return polydata
+
+
+def labellines(vtksrc):
+    """ plot cell/line IDs"""
+    dataset = vtksrc.outputs[0]
+    for line in range(dataset.number_of_lines):
+        cellhand = dataset.get_cell(line)
+        if cellhand.length2 < 66.5 and cellhand.length2 > .5:
+            tL = int(math.ceil(cellhand.number_of_points / 2))
+            x = cellhand.points[tL][0]
+            y = cellhand.points[tL][1]
+            z = cellhand.points[tL][2]
+            print"Line %2d has length: %8.4f" % (line,
+                                                 cellhand.number_of_points)
+            mlab.text3d(x, y, z, '%s' % line, scale=0.15)
+
+
+def edgeplot(fig, vtksrc, cellid):
+    """draw one edge of the vtk cell
+    """
+    dataset = vtksrc.outputs[0]
+    line = dataset.get_cell(cellid)
+    vals = dataset.point_data
+    pts = line.points.to_array()
+    ptid = line.point_ids
+    scalvals = [vals.scalars[pid] for pid in ptid]
+    src = mlab.pipeline.line_source(pts[:, 0],
+                                    pts[:, 1],
+                                    pts[:, 2],
+                                    scalvals)
+    tube = mlab.pipeline.tube(src, figure=fig)
+    tube.filter.radius = .03
+    surfTube = mlab.pipeline.surface(tube)
+    surfTube.actor.mapper.scalar_visibility = True
+    mod_mngr = tube.children[0]
+    mmgr = mod_mngr.scalar_lut_manager
+    mmgr.show_legend = True
+    mmgr.reverse_lut = True
+    mmgr.use_default_range = False
+    mmgr.lut.set(range=[dataset.scalar_range[0],
+                        dataset.scalar_range[1]])
+    mmgr.lut_mode = 'RdBu'
+    mmgr.number_of_labels = 5
+    mmgr.scalar_bar.label_format = '%4.f'
+    mmgr.label_text_property.font_size = 12
+    mmgr.scalar_bar_representation.position = [.85, .25]
+    mmgr.scalar_bar_representation.position2 = [.1, .4]
+    tube.filter.number_of_sides = 32
 
 
 def countFuncCall():
@@ -55,7 +115,9 @@ def cellplot(fig, filename, scalartype='DY_raw', **kwargs):
         rRFP,
         rGFP,
         bkstRFP,
-        bkstGFP,
+        bkstGFP
+    rad : flt
+        tube radius
 
     Returns
     -------
@@ -90,9 +152,16 @@ def cellplot(fig, filename, scalartype='DY_raw', **kwargs):
     return src, surfTube
 
 
-
 def rendsurf(vtksrc, **kwargs):
-    """   add surface.vtk file to pipeline"""
+    """   add surface.vtk file to pipeline
+
+    Parameters
+    ----------
+    color: flt
+        color of surface
+    alpha : flt
+        opacity
+    """
 
     color = kwargs.pop('color', (0.9, .8, .1))
     alpha = kwargs.pop('alpha', .15)
@@ -106,10 +175,23 @@ def rendsurf(vtksrc, **kwargs):
 
 def labelbpoints(graph, **kwargs):
     """  brnch points and end points
+
+    Parameters
+    ----------
+    bsize : flt
+        size of branchpoint
+    esize : flt
+        size of endpoint
+    bcol: tuple
+        color of branchpoint
+    ecol : tuple
+        color of endpoint
+
     """
     bcol = kwargs.pop('bcol', (1, .2, 1.0))
     ecol = kwargs.pop('ecol', (.1, 1, 1.0))
-    size = kwargs.pop('size', .1)
+    bsize = kwargs.pop('bsize', .15)
+    esize = kwargs.pop('esize', .1)
 
     Nodes = [nattr['coord'] for _, nattr
              in graph.nodes(data=True)
@@ -125,9 +207,9 @@ def labelbpoints(graph, **kwargs):
     points2 = mlab.pipeline.scalar_scatter(  # end points
         xyz2[:, 0], xyz2[:, 1], xyz2[:, 2])
     bpts = mlab.pipeline.glyph(points)
-    bpts.glyph.glyph_source.glyph_source.radius = size
+    bpts.glyph.glyph_source.glyph_source.radius = bsize
     epts = mlab.pipeline.glyph(points2)
-    epts.glyph.glyph_source.glyph_source.radius = size
+    epts.glyph.glyph_source.glyph_source.radius = esize
 
     bpts.actor.property.color = bcol
     bpts.actor.mapper.scalar_visibility = 0
@@ -194,9 +276,9 @@ def arrowvect(B, A, C):
     x1, x2, x3 = normalizedX
     t1, t2, t3 = AP
     l3 = -t3/(t1+t2)
-    m3 = (t3*x1-x3*t1-x3*t2)/(x2*t1+t2*x2)
-    D = np.sqrt((t3/(t1 + t2))**2 +
-                ((t3*x1 - x3*t1 - x3*t2)/(x2*t1 + t2*x2))**2 + 1)
+    m3 = (t3*x1 - x3*t1 - x3*t2) / (x2*t1 + t2*x2)
+    D = np.sqrt((t3 / (t1 + t2))**2 +
+                ((t3*x1 - x3*t1 - x3*t2) / (x2*t1 + t2*x2))**2 + 1)
     z1 = l3/D
     z2 = m3/D
     z3 = 1/D

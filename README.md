@@ -3,7 +3,7 @@
 
 ##Segmentation of mitochondrial networks from live yeast cells 3D images taken with a *spinning disk confocal* microscope.
 - This segmentation utilizes [`MitoGraph`](https://github.com/vianamp/MitoGraph.git), a C++ skeletonization and segmentation program developed by Matheus Viana. It has been fully validated in yeast cells \([Viana, Lim *et al.*](http://www.ncbi.nlm.nih.gov/pubmed/25640425)). 
-- A [`Python pipeline`](https://github.com/moosekaka/sweepython/tree/master/pipeline) to map functional values onto the segmented skeleton, with corrections for optical defects.
+- This notebook shows a [`Python pipeline`](https://github.com/moosekaka/sweepython/blob/master/Pipeline.ipynb) to map functional values onto the segmented skeleton, with corrections for optical defects. This pipeline utilizes Mayavi's wrapped version of VTK to take advantage of Pythonic coding syntax when working with VTK data. 
 - The output data from the pipeline was 'munged' into a database using [`Pandas`](http://pandas.pydata.org/pandas-docs/stable/) before further calculations of various statistical and functional parameters.
 
 ###Modulation of mitochondrial function by altering carbon source growth conditions.
@@ -15,7 +15,7 @@
 - We also detail our investigation into the relationship beteen heterogeneity of mitochondrial function and network topology [`example here`](https://github.com/moosekaka/sweepython/tree/master/networkHet).
 
 ###Analysis of mitochondrial functional asymmetry in mother and daughter yeast cells.
-- A [`set of tools`](https://github.com/moosekaka/sweepython/tree/master/vtk_viz) to interactively visualize the 3D mitochondrial skeleton and pick points to classify the cell as a mother or daughter region. This [`Ipython notebook`](https://github.com/moosekaka/sweepython/blob/master/mother%20bud%20analysis.ipynb) demonstrates an application of these tools to study how mitochondrial membrane potential (Δψ) is distributed differently between the mother and daughter cell.  
+- A [`set of tools`](https://github.com/moosekaka/sweepython/tree/master/mombud/vtk_viz) to interactively visualize the 3D mitochondrial skeleton and pick points to classify the cell as a mother or daughter region. This [`Ipython notebook`](https://github.com/moosekaka/sweepython/blob/master/mother%20bud%20analysis.ipynb) demonstrates an application of these tools to study how mitochondrial membrane potential (Δψ) is distributed differently between the mother and daughter cell.  
 
 <p align="center">
 <img src="https://github.com/moosekaka/sweepython/blob/master/images/coors.png" width="300" />

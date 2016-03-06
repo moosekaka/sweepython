@@ -1,0 +1,2 @@
+##A set of tools used for a pipeline to map function (mito. membrane potential ΔΨ) to structure##
+- This notebook shows a [`Python pipeline`](https://github.com/moosekaka/sweepython/blob/master/pipeline/Pipeline.ipynb) to map functional values onto the segmented skeleton, with corrections for optical defects. This pipeline utilizes Mayavi's wrapped version of VTK to take advantage of Pythonic coding syntax when working with VTK data. 

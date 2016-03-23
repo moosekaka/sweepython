@@ -39,7 +39,7 @@ if __name__ == '__main__':
                          bgcolor=(.0, .0, .0))
     dic = {'DY_minmax',
            'WidthEq',
-           'DY_raw'
+           'DY_raw',
            'rRFP',
            'rGFP',
            'bkstRFP',

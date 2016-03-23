@@ -11,8 +11,6 @@ import vtk
 from tvtk.api import tvtk
 import wrappers as wr
 # pylint: disable=C0103
-datadir = op.join(os.getcwd(), 'data')
-rawdir = op.join(os.getcwd(), 'output')
 
 
 def find_edges(X, Y, M):
@@ -147,6 +145,8 @@ def makegraph(vtkdata, graphname, scalartype='DY_raw'):
 if __name__ == '__main__':
     # writes out a pickle file containing the graph list of every file for
     # for each mediatype
+    datadir = op.join(os.getcwd(), 'data')
+    rawdir = op.join(os.getcwd(), 'output')
     vtkF = wr.ddwalk(op.join(rawdir, 'normalizedVTK'),
                      '*skeleton.vtk', start=5, stop=-13)
 
@@ -166,6 +166,6 @@ if __name__ == '__main__':
             nlist.append(node_data)
             elist.append(edge_data)
             glist.append(nxgrph)
-        filename = op.join(datadir, '%s_grph.pkl' % mediatype)
-        with open(filename, 'wb') as output:
-            pickle.dump((nlist, elist, glist), output)
+#        filename = op.join(datadir, '%s_grph.pkl' % mediatype)
+#        with open(filename, 'wb') as output:
+#            pickle.dump((nlist, elist, glist), output)

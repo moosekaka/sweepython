@@ -1,62 +1,56 @@
 # -*- coding: utf-8 -*-
 """
-       module to analyze mom bud asymmetry
+module to analyze mom bud asymmetry
 """
-
+import sys
 import os
 import os.path as op
 import cPickle as pickle
-import fnmatch
-from collections import defaultdict
 import matplotlib.pyplot as plt
 import numpy as np
 from mayavi import mlab
 import pandas as pd
 import seaborn as sns
 from mombud.vtk_viz import vtk_mbfuncs as vf
-plt.rcParams['font.family'] = 'DejaVu Sans'
+import wrappers as wr
 # pylint: disable=C0103
 # pylint: disable=maybe-no-member
+plt.rcParams['font.family'] = 'DejaVu Sans'
 plt.close('all')
 mlab.close(all=True)
-vtkF = defaultdict(dict)
-mombud = defaultdict(dict)
 datadir = op.join(os.getcwd(), 'data', 'transformedData')
-# =============================================================================
+
 # filelist and graph list
-# =============================================================================
 with open(op.join(datadir, 'mombudtrans.pkl'), 'rb') as inpt:
     dfmb = pickle.load(inpt)  # has columns base, neck, tip, media, bud, mom
 
-for root, dirs, files in os.walk(datadir):
-    for i in files:
-        if fnmatch.fnmatch(i, '*.vtk'):
-            media = root.rsplit(os.sep, 1)[1]
-            vtkF[media][i[:-4]] = os.path.join(root, i)
+try:
+    filext = "*vtk"
+    vtkF = wr.ddwalk(datadir, filext, stop=-4)
+except:
+    Exception
+    sys.exit("error filetypes %s not found in %s" % (filext, datadir))
 
 filekeys = {item: vtkF[media][item] for media
             in sorted(vtkF.keys()) for item
             in sorted(vtkF[media].keys())}
 
-# =============================================================================
 # compute 'z' positions  dyRaw
-# =============================================================================
-
 cellall = pd.DataFrame(columns=['mom', 'bud'])
 cellposmom = pd.DataFrame()
 cellposbud = pd.DataFrame()
 neckregion = pd.DataFrame()
-binsbudprog = np.array([0., 0.1, 0.2, 0.3, 0.4, 0.5,
-                        0.6, 0.7, 0.8, 0.9, 1., 2.])
+binsbudprog = np.r_[np.arange(0, 1.1, .1), 2]
 binsaxis = np.linspace(0., 1., 6)
 binsaxisbig = np.linspace(0, 1., 11)
 binsvolbud = np.linspace(0, 40, 5)
 binsvolmom = np.array([0, 30, 40, 80.])
 
-
-for _, key in enumerate(sorted(filekeys.keys())[:]):
-    cell = vf.cellpos(filekeys[key], dfmb)
-
+for key in sorted(filekeys)[:]:
+    try:
+        cell = wr.safecall(key, filekeys, dfmb)
+    except Exception:
+        sys.exit("%s not in filekeys" % key)
     # pos along x-axis for inidivual mom or bud cell
     cell['binposx'] = vf.bincell(cell, 'posx', binsaxis)
     # scaled Δψ to min-max of the GRADIENT within mom/bud

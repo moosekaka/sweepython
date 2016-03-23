@@ -1,112 +1,41 @@
 # -*- coding: utf-8 -*-
 """
-       visualize the skel and surface vtk file
+Plot mitoskel network in with various scalar values
 """
-import math
+import sys
 import os
 import os.path as op
-from collections import defaultdict
-import fnmatch
 import matplotlib.pyplot as plt
 from mayavi import mlab
-from _make_networkx import makegraph as mg
-import vtk
+from pipeline.make_networkx import makegraph as mg
 from mombud.vtk_viz import vtkvizfuncs as vf
-
+import wrappers as wr
 # pylint: disable=C0103
-vtkF = defaultdict(dict)
-vtkS = defaultdict(dict)
 plt.close('all')
 mlab.close(all=True)
 datadir = op.join(os.getcwd(), 'data')
+inptdir = op.join(os.getcwd(), 'input')
 
-
-def callreader(filepath):
-    """
-    Convenience wrapper for vtk reader call
-    """
-    reader = vtk.vtkPolyDataReader()
-    reader.SetFileName(filepath)
-    reader.Update()
-    polydata = reader.GetOutput()
-    return polydata
-
-
-def labellines(vtksrc):
-    """ plot cell/line IDs"""
-    dataset = vtksrc.outputs[0]
-    for line in range(dataset.number_of_lines):
-        cellhand = dataset.get_cell(line)
-        if cellhand.length2 < 66.5 and cellhand.length2 > .5:
-            tL = int(math.ceil(cellhand.number_of_points / 2))
-            x = cellhand.points[tL][0]
-            y = cellhand.points[tL][1]
-            z = cellhand.points[tL][2]
-            print"Line %2d has length: %8.4f" % (line,
-                                                 cellhand.number_of_points)
-            mlab.text3d(x, y, z, '%s' % line, scale=0.15)
-
-
-def edgeplot(fig, vtksrc, cellid):
-    """draw one edge of the vtk cell
-    """
-    dataset = vtksrc.outputs[0]
-    line = dataset.get_cell(cellid)
-    vals = dataset.point_data
-    pts = line.points.to_array()
-    ptid = line.point_ids
-    scalvals = [vals.scalars[pid] for pid in ptid]
-    src = mlab.pipeline.line_source(pts[:, 0],
-                                    pts[:, 1],
-                                    pts[:, 2],
-                                    scalvals)
-    tube = mlab.pipeline.tube(src, figure=fig)
-    tube.filter.radius = .03
-    surfTube = mlab.pipeline.surface(tube)
-    surfTube.actor.mapper.scalar_visibility = True
-    mod_mngr = tube.children[0]
-    mmgr = mod_mngr.scalar_lut_manager
-    mmgr.show_legend = True
-    mmgr.reverse_lut = True
-    mmgr.use_default_range = False
-    mmgr.lut.set(range=[dataset.scalar_range[0],
-                        dataset.scalar_range[1]])
-    mmgr.lut_mode = 'RdBu'
-    mmgr.number_of_labels = 5
-    mmgr.scalar_bar.label_format = '%4.f'
-    mmgr.label_text_property.font_size = 12
-    mmgr.scalar_bar_representation.position = [.85, .25]
-    mmgr.scalar_bar_representation.position2 = [.1, .4]
-    tube.filter.number_of_sides = 32
-
-# =============================================================================
 # filelist and graph list
-# =============================================================================
 if __name__ == '__main__':
-    for root, dirs, files in os.walk(op.join(datadir, 'pipelineFigs')):
-        for i in files:
-            if fnmatch.fnmatch(i, 'N*skeleton.vtk'):
-                media = root.rsplit('\\', 1)[1]
-                vtkF[media][i[5:-13]] = os.path.join(root, i)
-
-    for root, dirs, files in os.walk(op.join(datadir, 'surfaceFiles')):
-        for i in files:
-            if fnmatch.fnmatch(i, '*surface.vtk'):
-                media = root.rsplit('\\', 1)[1]
-                vtkS[media][i[:-12]] = os.path.join(root, i)
-
-    filekeys = {item: vtkF[media][item] for media
-                in sorted(vtkF.keys()) for item
-                in sorted(vtkF[media].keys())}
 
     filekey = 'YPE_042715_018_RFPstack_052'
-    data = callreader(filekeys[filekey])
-    node_data, edge_data, nxgrph = mg(data, files)
+    try:
+        vtkF = wr.swalk(op.join(inptdir, 'pipelineFigs'),
+                        'N*Skeleton.vtk', start=5, stop=-13)
+        vtkS = wr.swalk(op.join(inptdir, 'surfaceFiles'),
+                        '*surface.vtk', stop=-12)
+
+    except Exception:
+        print ("Check your filepaths\nSearch directory is %s\n" % inptdir)
+        sys.exit()
+
+    data = vf.callreader(vtkF[filekey])
+    node_data, edge_data, nxgrph = mg(data, filekey)
 
     figone = mlab.figure(figure=filekey,
                          size=(1200, 800),
                          bgcolor=(.086, .086, .086))
-
     dic = {'DY_minmax',
            'WidthEq',
            'DY_raw',
@@ -116,10 +45,10 @@ if __name__ == '__main__':
            'bkstGFP'}
     for i in dic:
         vtkobj, vtktube = vf.cellplot(figone,
-                                      filekeys[filekey],
+                                      vtkF[filekey],
                                       scalartype=i,
                                       rad=.08)
         vtktube.actor.mapper.scalar_visibility = True  # False for no heatmap
-    #    vf.rendsurf(vtkS[filekey[:3]][filekey[4:]])
-    #    vf.labelbpoints(nxgrph, esize=.12)
+        #    vf.rendsurf(vtkS[filekey[:3]][filekey[4:]])
+        vf.labelbpoints(nxgrph, esize=.12)
         mlab.savefig(op.join(datadir, 'pipelineFigs', i + '.png'))

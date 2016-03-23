@@ -24,7 +24,8 @@ def callreader(filepath):
 
 
 def labellines(vtksrc):
-    """ plot cell/line IDs"""
+    """
+    Plot cell/line IDs"""
     dataset = vtksrc.outputs[0]
     for line in range(dataset.number_of_lines):
         cellhand = dataset.get_cell(line)
@@ -38,15 +39,18 @@ def labellines(vtksrc):
             mlab.text3d(x, y, z, '%s' % line, scale=0.15)
 
 
-def edgeplot(fig, vtksrc, cellid):
-    """draw one edge of the vtk cell
+def edgeplot(fig, vtksrc, cellid, scalartype='DY_raw'):
     """
-    dataset = vtksrc.outputs[0]
+    Draw one edge of the vtk cell. Uses tvtk functions, not VTK.
+
+    """
+    dataset = tvtk.to_tvtk(vtksrc)
     line = dataset.get_cell(cellid)
-    vals = dataset.point_data
+    vals = dataset.point_data.get_array(scalartype)
     pts = line.points.to_array()
     ptid = line.point_ids
-    scalvals = [vals.scalars[pid] for pid in ptid]
+    scalvals = [vals[int(pid)] for pid in ptid]
+
     src = mlab.pipeline.line_source(pts[:, 0],
                                     pts[:, 1],
                                     pts[:, 2],
@@ -62,6 +66,8 @@ def edgeplot(fig, vtksrc, cellid):
     mmgr.use_default_range = False
     mmgr.lut.set(range=[dataset.scalar_range[0],
                         dataset.scalar_range[1]])
+#    mmgr.lut.set(range=[min(scalvals),
+#                        max(scalvals)])
     mmgr.lut_mode = 'RdBu'
     mmgr.number_of_labels = 5
     mmgr.scalar_bar.label_format = '%4.f'

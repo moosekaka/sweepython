@@ -5,7 +5,7 @@ Created on Fri Aug 21 00:27:44 2015
 """
 import numpy as np
 from collections import defaultdict
-from autoCor.graphfuncs import getBptsEpts
+from tubuleHet.autoCor.graphfuncs import getBptsEpts
 from numpy.random import choice as samp_no_rep
 import scipy.stats as sp
 

@@ -7,14 +7,15 @@ import os
 import os.path as op
 import numpy as np
 from mayavi import mlab
-import fnmatch
 import pandas as pd
 from tvtk.api import tvtk
 from collections import defaultdict
 from mombud.vtk_viz import vtkvizfuncs as vz
+import wrappers as wr
 # pylint: disable=C0103
 vtkF = defaultdict(dict)
 datadir = op.join(os.getcwd(), 'data')
+rawdir = op.join(os.getcwd(), 'output')
 
 
 def picker_callback(picker_obj):
@@ -121,15 +122,9 @@ def callback(obj, event):
             f.close()
             print 'results recorded!'
 
-
-# =============================================================================
 # filelist and graph list
-# =============================================================================
-for root, dirs, files in os.walk(op.join(datadir, 'normSkel')):
-    for i in files:
-        if fnmatch.fnmatch(i, '*skeleton.vtk'):
-            media = root.rsplit('\\', 1)[1]
-            vtkF[media][i[5:-13]] = os.path.join(root, i)
+vtkF = wr.ddwalk(op.join(rawdir, 'normSkel'), '*skeleton.vtk',
+                 start=5, stop=-13)
 
 filekeys = {item: vtkF[media][item] for media
             in sorted(vtkF.keys()) for item
@@ -140,9 +135,7 @@ df = DataSize.ix[:, 1:]
 df['cell'] = df.ix[:, 'Label'].apply(lambda x: x.partition(':')[2])
 df['vol'] = 4/3 * np.pi * (df.Major*.055/2) * (df.Minor*.055/2) ** 2
 
-# =============================================================================
 # Draw cell using cellplot and edgeplot
-# =============================================================================
 if __name__ == "__main__":
     mlab.close(all=True)
     filekey = 'YPR_052315_029_RFPstack_033'

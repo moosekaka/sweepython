@@ -1,39 +1,28 @@
 # -*- coding: utf-8 -*-
 """
 Created on Mon Sep 28 00:51:20 2015
-	module to transform raw vtk to rotated vtk along mom bud axis
-
+module to transform raw vtk to rotated vtk along mom bud axis
 @author: sweel
 """
-
 import os
 import os.path as op
 import numpy as np
 from mayavi import mlab
-import fnmatch
 import pandas as pd
 from tvtk.api import tvtk
-from collections import defaultdict
 from mombud.vtk_viz import vtkvizfuncs as vz
-import cPickle as pickle
+import wrappers as wr
 # pylint: disable=C0103
 # pylint:disable=E1101
-vtkF = defaultdict(dict)
-mombud = defaultdict(dict)
 datadir = op.join(os.getcwd(), 'data')
+rawdir = op.join(os.getcwd(), 'output')
 
-# =============================================================================
 # filelist and graph list
-# =============================================================================
-for root, dirs, files in os.walk(op.join(datadir, 'normSkel')):
-    for i in files:
-        if fnmatch.fnmatch(i, '*skeleton.vtk'):
-            media = root.rsplit(os.sep, 1)[1]
-            vtkF[media][i[5:-13]] = op.join(root, i)
-for root, dirs, files in os.walk(op.join(datadir, 'csv')):
-    for i in files:
-        if fnmatch.fnmatch(i, 'YP*csv'):
-            mombud[i[:-4]] = op.join(root, i)
+vtkF = wr.ddwalk(op.join(rawdir, 'normSkel'),
+                 '*skeleton.vtk', start=5, stop=-13)
+
+mombud = wr.swalk(op.join(datadir, 'csv'),
+                  'YP*csv', stop=-4)
 
 filekeys = {item: vtkF[media][item] for media
             in sorted(vtkF.keys()) for item
@@ -44,14 +33,12 @@ df = DataSize.ix[:, 1:]
 df['cell'] = df.ix[:, 'Label'].apply(lambda x: x.partition(':')[2])
 df['vol'] = 4 / 3 * np.pi * (df.Major * .055 / 2) * (df.Minor * .055 / 2) ** 2
 
-# =============================================================================
 # Draw cell using cellplot and edgeplot
-# =============================================================================
 
 if __name__ == "__main__":
     dfmb = pd.DataFrame(columns=['base', 'neck', 'tip', 'media'])
     mlab.close(all=True)
-    for _, key in enumerate(sorted(mombud.keys())[-5:-3]):
+    for key in sorted(mombud.keys()[-5:-3]):
         df1 = pd.read_csv(op.join(datadir, 'csv', '%s.csv' % key),
                           header=0,
                           names=['x', 'y', 'z'],
@@ -73,9 +60,8 @@ if __name__ == "__main__":
         figone.scene.disable_render = True
         vtkobj, tubeout = vz.cellplot(figone, filekeys[filekey])
         xmin, xmax, ymin, ymax, zmin, zmax = vtkobj.outputs[0].bounds
-# ============================================================================
+
 # zposition of center slice
-# =============================================================================
         try:
             zp = df1.ix['centerpt'][0]
         except KeyError:
@@ -85,9 +71,7 @@ if __name__ == "__main__":
         vz.drawelips('mom', df2, zpos=zp)
         vz.drawelips('bud', df2, zpos=zp)
 
-# =============================================================================
 #       get orientation vector defining mom bud axis
-# ======================================================================.=======
         tr, rot, scale1 = vz.arrowvect(base, tip, neck)
         arrsource = tvtk.ArrowSource(shaft_radius=.01,
                                      shaft_resolution=18,
@@ -97,9 +81,8 @@ if __name__ == "__main__":
         transformPD = tvtk.TransformPolyDataFilter()
         transformPD = tvtk.TransformPolyDataFilter(input=arrsource.output,
                                                    transform=tr)
-# =============================================================================
+
 # All the transformations objects
-# =============================================================================
         # ccw 90 rotation and TR to mother bud coord system (for 2nd arrow)
         ccw90 = np.eye(4)
         ccw90[0, 0] = 0
@@ -133,9 +116,7 @@ if __name__ == "__main__":
         trans4.concatenate(ccw90.flatten())
         trans4.translate([-1, 0, 0])
 
-# =============================================================================
 #       Draw all the transformed data
-# =============================================================================
         # mother bud axis arrow in mother bud coord system
         arr_mombud = mlab.pipeline.surface(transformPD.output,
                                            figure=figone,

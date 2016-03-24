@@ -9,6 +9,8 @@ from collections import defaultdict
 import matplotlib.pyplot as plt
 from mayavi import mlab
 import pandas as pd
+from tvtk.api import tvtk
+import vtk
 plt.rcParams['font.family'] = 'DejaVu Sans'
 # pylint: disable=C0103
 # pylint: disable=maybe-no-member
@@ -16,6 +18,14 @@ plt.close('all')
 mlab.close(all=True)
 vtkF = defaultdict(dict)
 mombud = defaultdict(dict)
+
+
+def vtkopen(fpath):
+    reader = vtk.vtkPolyDataReader()
+    reader.SetFileName(fpath)
+    reader.Update()
+    data = reader.GetOutput()
+    return data
 
 
 def cellpos(cellname, df, **kwargs):
@@ -36,9 +46,8 @@ def cellpos(cellname, df, **kwargs):
         `binposxcell`
     """
     cellkey = cellname.rsplit('\\', 1)[1][:-4]
-    src = mlab.pipeline.open(cellname,
-                             figure=False)
-    data = src.outputs[0]
+    data = vtkopen(cellname)
+    data = tvtk.to_tvtk(data)
     # is a column vec of R^3 (coordinates in the skel)
     npx = data.points.to_array()
     # indices of npx that would sort npx according to the x-axis

@@ -16,14 +16,13 @@ import pandas as pd
 import seaborn as sns
 from mombud.vtk_viz import vtk_mbfuncs as vf
 import wrappers as wr
-
+from tvtk.api import tvtk
 # pylint: disable=C0103
 # pylint: disable=maybe-no-member
 plt.rcParams['font.family'] = 'DejaVu Sans'
 plt.close('all')
-#datadir = op.join( './data', 'transformedData')
-datadir = op.join(os.getcwd(), 'data', 'transformedData')
-#datadir = 'C:\\Users\\sweel_rafelski\\Documents\\GitHub\\sweepython\\WorkingData\\data\\transformedData'
+#datadir = op.join(os.getcwd(), 'data', 'transformedData')
+datadir = 'C:\\Users\\sweel_rafelski\\Documents\\GitHub\\sweepython\\WorkingData\\data\\transformedData'
 
 
 def boot(X, p,  N):
@@ -82,10 +81,7 @@ binsvolmom = np.array([0, 30, 40, 80.])
 
 
 for key in sorted(filekeys)[:]:
-    try:
-        cell = wr.safecall(key, filekeys, dfmb)
-    except Exception:
-        sys.exit("%s not in filekeys" % key)
+    cell = vf.cellpos(filekeys[key], dfmb)
     # pos along x-axis for inidivual mom or bud cell
     cell['binposx'] = vf.bincell(cell, 'posx', binsaxis)
     # scaled Δψ to min-max of the GRADIENT within mom/bud

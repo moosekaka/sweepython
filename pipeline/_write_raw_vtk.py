@@ -8,7 +8,7 @@ import os.path as op
 import cPickle as pickle
 import wrappers as wr
 from pipeline import pipefuncs as pf
-from pipeline import _make_networkx as mn
+from pipeline import make_networkx as mn
 
 # pylint: disable=C0103
 datadir = op.join(os.getcwd())

@@ -4,23 +4,20 @@ Created on Thu Feb 11 16:45:59 2016
 Functions for mom bud analysis in module vtk_mom_bud_analyse.py
 @author: sweel
 """
-
 from collections import defaultdict
-import matplotlib.pyplot as plt
-from mayavi import mlab
 import pandas as pd
 from tvtk.api import tvtk
 import vtk
-plt.rcParams['font.family'] = 'DejaVu Sans'
 # pylint: disable=C0103
 # pylint: disable=maybe-no-member
-plt.close('all')
-mlab.close(all=True)
 vtkF = defaultdict(dict)
 mombud = defaultdict(dict)
 
 
 def vtkopen(fpath):
+    """
+    wrapper to open polydata files
+    """
     reader = vtk.vtkPolyDataReader()
     reader.SetFileName(fpath)
     reader.Update()

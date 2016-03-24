@@ -11,7 +11,7 @@ import os.path as op
 import cPickle as pickle
 import matplotlib.pyplot as plt
 import numpy as np
-from mayavi import mlab
+#from mayavi import mlab
 import pandas as pd
 import seaborn as sns
 from mombud.vtk_viz import vtk_mbfuncs as vf
@@ -68,46 +68,34 @@ filekeys = {item: vtkF[media][item] for media
             in sorted(vtkF[media].keys())}
 
 
-# compute 'z' positions  dyRaw
-cellall = pd.DataFrame(columns=['mom', 'bud'])
-cellposmom = pd.DataFrame()
-cellposbud = pd.DataFrame()
-neckregion = pd.DataFrame()
-binsbudprog = np.r_[np.arange(0, 1.1, .1), 2]
-binsaxis = np.linspace(0., 1., 6)
-binsaxisbig = np.linspace(0, 1., 11)
-binsvolbud = np.linspace(0, 40, 5)
-binsvolmom = np.array([0, 30, 40, 80.])
-
-
 for key in sorted(filekeys)[:]:
     cell = vf.cellpos(filekeys[key], dfmb)
     # pos along x-axis for inidivual mom or bud cell
-    cell['binposx'] = vf.bincell(cell, 'posx', binsaxis)
-    # scaled Δψ to min-max of the GRADIENT within mom/bud
-    Xmom = cell.ix[cell['type'] == 'mom'].groupby('binposx').DY.mean()
-    Xbud = cell.ix[cell['type'] == 'bud'].groupby('binposx').DY.mean()
-
-    # pos along x-axis for the whole cell
-    cell['binposxcell'] = vf.bincell(cell, 'posxcell', binsaxisbig)
-    # scale Δψ to min-max of the GRADIENT within cell
-    DYcell = cell.groupby('binposxcell').DY.mean()
-
-    Xmom = vf.scaleminmax(Xmom, DYcell)
-    Xbud = vf.scaleminmax(Xbud, DYcell)
-    Xbud.name = key
-    Xmom.name = key
-    medianDY = cell.groupby('type').median().DY
-    medianDY.name = key
-    cellall = cellall.append(medianDY)
-    cellposbud = cellposbud.append(Xbud)
-    cellposmom = cellposmom.append(Xmom)
-    # temp dict of mean Δψ at +- range of dist from budneck
-    tempdic = {dist: vf.neckDY(cell, cell.neckpos, dist)
-               for dist in [.15, .3, .5]}
-    temp = pd.DataFrame({'bud': pd.Series({k: tempdic[k][0] for k in tempdic}),
-                         'mom': pd.Series({k: tempdic[k][1] for k in tempdic}),
-                         'cellname': key})
-    temp['dist'] = temp.index
-    temp.set_index('cellname', inplace=True)
-    neckregion = neckregion.append(temp, ignore_index=False)
+#    cell['binposx'] = vf.bincell(cell, 'posx', binsaxis)
+#    # scaled Δψ to min-max of the GRADIENT within mom/bud
+#    Xmom = cell.ix[cell['type'] == 'mom'].groupby('binposx').DY.mean()
+#    Xbud = cell.ix[cell['type'] == 'bud'].groupby('binposx').DY.mean()
+#
+#    # pos along x-axis for the whole cell
+#    cell['binposxcell'] = vf.bincell(cell, 'posxcell', binsaxisbig)
+#    # scale Δψ to min-max of the GRADIENT within cell
+#    DYcell = cell.groupby('binposxcell').DY.mean()
+#
+#    Xmom = vf.scaleminmax(Xmom, DYcell)
+#    Xbud = vf.scaleminmax(Xbud, DYcell)
+#    Xbud.name = key
+#    Xmom.name = key
+#    medianDY = cell.groupby('type').median().DY
+#    medianDY.name = key
+#    cellall = cellall.append(medianDY)
+#    cellposbud = cellposbud.append(Xbud)
+#    cellposmom = cellposmom.append(Xmom)
+#    # temp dict of mean Δψ at +- range of dist from budneck
+#    tempdic = {dist: vf.neckDY(cell, cell.neckpos, dist)
+#               for dist in [.15, .3, .5]}
+#    temp = pd.DataFrame({'bud': pd.Series({k: tempdic[k][0] for k in tempdic}),
+#                         'mom': pd.Series({k: tempdic[k][1] for k in tempdic}),
+#                         'cellname': key})
+#    temp['dist'] = temp.index
+#    temp.set_index('cellname', inplace=True)
+#    neckregion = neckregion.append(temp, ignore_index=False)

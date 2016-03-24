@@ -1,4 +1,8 @@
 /deprecated
 /Examples
-*.pyc
+/WorkingData
 *.txt
+*.pyc
+*.pem
+*.key
+

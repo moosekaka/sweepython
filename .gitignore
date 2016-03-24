@@ -1,3 +1,6 @@
-*.pyc
-*.txt
 /WorkingData
+*.txt
+*.pyc
+*.pem
+*.key
+

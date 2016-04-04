@@ -21,6 +21,7 @@ import wrappers as wr
 # pylint: disable=maybe-no-member
 plt.rcParams['font.family'] = 'DejaVu Sans'
 plt.close('all')
+
 #datadir = op.join(os.getcwd(), 'data', 'transformedData')
 datadir = ("C:\\Users\\sweel_rafelski\\Documents\\GitHub\\sweepython\\WorkingData\\data\\transformedData")
 

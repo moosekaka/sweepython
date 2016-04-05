@@ -27,8 +27,7 @@ with open(op.join(datadir, 'mombudtrans.pkl'), 'rb') as inpt:
 try:
     filext = "*vtk"
     vtkF = wr.ddwalk(datadir, filext, stop=-4)
-except:
-    Exception
+except LookupError:
     sys.exit("error filetypes %s not found in %s" % (filext, datadir))
 
 filekeys = {item: vtkF[media][item] for media
@@ -48,8 +47,8 @@ binsvolmom = np.array([0, 30, 40, 80.])
 
 for key in sorted(filekeys)[:]:
     try:
-        cell = wr.safecall(key, filekeys, dfmb)
-    except Exception:
+        cell = vf.safecall(key, filekeys, dfmb)
+    except LookupError:
         sys.exit("%s not in filekeys" % key)
     # pos along x-axis for inidivual mom or bud cell
     cell['binposx'] = vf.bincell(cell, 'posx', binsaxis)

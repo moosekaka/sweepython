@@ -26,9 +26,9 @@ def searchfunc(fun, rootdir):
 
 if __name__ == '__main__':
 
-    datadir = os.getenv('PATH').split(';')
+    datadir = os.getenv('PYTHONPATH').split(';')
     scrloc = datadir[[num for num, val in enumerate(datadir)
-                      if re.search('SweeScripts', val)][0]]
+                      if re.search('sweepython', val)][0]]
 
-    searchfunc('edgeplot', scrloc)
+    searchfunc('safecall', scrloc)
 

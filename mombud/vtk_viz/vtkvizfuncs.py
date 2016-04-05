@@ -9,7 +9,26 @@ from mayavi import mlab
 from mayavi.sources.api import ParametricSurface
 from tvtk.api import tvtk
 import config
+import networkx as nx
 # pylint: disable=C0103
+
+def nicegrph(graph, axinput, grphtype='neato'):
+    # ‘neato’|’dot’|’twopi’|’circo’|’fdp’|
+    cols = []
+    sizes = []
+
+    for n, attr in graph.nodes(data=True):
+        if attr['degree'] == 1:
+            cols.append('#3366FF')
+            sizes.append(30)
+        else:
+            cols.append('#FF5050')
+            sizes.append(50)
+    nx.draw_graphviz(graph,
+                     prog=grphtype,
+                     ax=axinput,
+                     node_size=sizes,
+                     node_color=cols)
 
 
 def callreader(filepath):

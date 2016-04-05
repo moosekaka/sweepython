@@ -80,16 +80,16 @@ def plotauto2(autodata):
 def psd(cell, edgedata, T):
     '''return the power spectrum counts (ps) as function of spatial freq u
     '''
-    X=[]
-    Y=[]
+    X = []
+    Y = []
     for j in edgedata[cell]:
         if len(j) >= T:
             #    Z = np.hstack(Y[cell])
-           data = j - np.mean(j)
-           ps = (np.abs(np.fft.rfft(data))**2)/len(j)
-           time_step = 1
-           u = np.fft.rfftfreq(data.size, time_step)
-           idx = np.argsort(u)
-           X.append(u[idx])
-           Y.append(ps[idx])
+            data = j - np.mean(j)
+            ps = (np.abs(np.fft.rfft(data))**2)/len(j)
+            time_step = 1
+            u = np.fft.rfftfreq(data.size, time_step)
+            idx = np.argsort(u)
+            X.append(u[idx])
+            Y.append(ps[idx])
     return X, Y

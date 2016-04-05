@@ -6,7 +6,7 @@ Fit uniform, normal or shuffled distribution of cell DYs
 """
 from tvtk.api import tvtk
 from collections import defaultdict
-from autoCor.vtkfuncs import vtkdata, vtklineids, vtkshuf, vtksamp
+from tubuleHet.autoCor.vtkfuncs import vtkdata, vtklineids, vtkshuf, vtksamp
 # pylint: disable=C0103
 
 
@@ -73,5 +73,3 @@ def fitDist(files, Graphs):
     return(data, sampN, sampU, Norm, NormPermute,
            sampNRaw, sampURaw, NormRaw, NormPerRaw,
            lineId)
-
-

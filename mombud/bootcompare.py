@@ -51,13 +51,12 @@ def boot(X, p, N):
         result.append(rX.values)
     return result
 
+
 def bstrp(X, N):
     n=0
     while n<N:
         yield np.random.permutation(X)
         np.random.randint
-
-
 
 
 def cellpos(cellname, df, **kwargs):

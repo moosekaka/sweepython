@@ -11,16 +11,6 @@ from collections import defaultdict
 import mombud.vtk_viz.vtk_mbfuncs as vf
 
 
-def safecall(key, fkys, df0):
-    """
-    wrapper caller for iterators
-    """
-    cell = vf.cellpos(fkys.get(key, None), df0)
-    if None:
-        raise Exception
-    return cell
-
-
 def swalk(ddir, txt, start=None, stop=None):
     """
     wrapper caller for single level file dict, returns a dict

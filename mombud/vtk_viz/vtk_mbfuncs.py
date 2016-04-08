@@ -11,7 +11,6 @@ from mayavi import mlab
 import pandas as pd
 plt.rcParams['font.family'] = 'DejaVu Sans'
 # pylint: disable=C0103
-# pylint: disable=maybe-no-member
 plt.close('all')
 mlab.close(all=True)
 vtkF = defaultdict(dict)

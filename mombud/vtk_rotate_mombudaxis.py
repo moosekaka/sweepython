@@ -13,7 +13,6 @@ from tvtk.api import tvtk
 from mombud.vtk_viz import vtkvizfuncs as vz
 import wrappers as wr
 # pylint: disable=C0103
-# pylint:disable=E1101
 datadir = op.join(os.getcwd(), 'data')
 rawdir = op.join(os.getcwd(), 'output')
 

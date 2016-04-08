@@ -14,7 +14,6 @@ import seaborn as sns
 from mombud.vtk_viz import vtk_mbfuncs as vf
 import wrappers as wr
 # pylint: disable=C0103
-# pylint: disable=maybe-no-member
 plt.rcParams['font.family'] = 'DejaVu Sans'
 plt.close('all')
 mlab.close(all=True)

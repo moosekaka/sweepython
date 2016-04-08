@@ -15,7 +15,6 @@ import seaborn as sns
 import math
 import cPickle as pickle
 # pylint: disable=C0103
-# pylint:disable=E1101
 D = defaultdict(dict)
 
 

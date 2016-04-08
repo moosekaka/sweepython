@@ -35,6 +35,23 @@ def autocorout(cell, edgedata):
         X.append(edgecor)
     return([i for i in X if len(i)])
 
+def ac_cell(points, shift):
+    """Make the autocorrelation coefficient for every edge in a cell
+
+    Parameters
+    ----------
+    cell :
+        cell/file Name
+    edgeData :
+        array of edges points/data from one cell
+    """
+    z = np.zeros(shift)
+    points1 = np.concatenate([z, points[:-len(z)]])
+    result = np.corrcoef(points, points1)[0, 1]
+    #        X.append(edgecor)
+    return result
+
+
 
 def plotauto2(autodata):
     """

@@ -18,7 +18,7 @@ from tvtk.api import tvtk
 from mombud.vtk_viz import vtk_mbfuncs as vf
 import wrappers as wr
 # pylint: disable=C0103
-# pylint: disable=maybe-no-member
+
 plt.rcParams['font.family'] = 'DejaVu Sans'
 plt.close('all')
 
@@ -26,7 +26,7 @@ plt.close('all')
 datadir = ("C:\\Users\\sweel_rafelski\\Documents\\GitHub\\sweepython\\WorkingData\\data\\transformedData")
 
 
-def boot(X, p, N):
+def boot(X, N):
     """
     Bootstrap the cell values at column p by shuffling the indices
 
@@ -44,19 +44,13 @@ def boot(X, p, N):
         List of shuffled vals from column selected by p
 
     """
-    result = []
-    for _ in range(N):
-        rX = X.ix[:, p].sample(n=len(X), replace=True)
-#        idx = rX.index.tolist()
-        result.append(rX.values)
-    return result
-
-
-def bstrp(X, N):
-    n=0
-    while n<N:
-        yield np.random.permutation(X)
-        np.random.randint
+    n = 0
+    while n < N:
+        # samp = X.ix[:, p].sample(n=len(X), replace=True)
+        samp = np.random.permutation(X)
+        #    idx = rX.index.tolist()
+        yield samp
+        n += 1
 
 
 def cellpos(cellname, df, **kwargs):
@@ -121,6 +115,7 @@ if __name__ == '__main__':
 
     for key in sorted(filekeys)[:]:
         cell = vf.cellpos(filekeys[key], dfmb)
+        cperm = boot(cell.DY, 10)
         # pos along x-axis for inidivual mom or bud cell
     #    cell['binposx'] = vf.bincell(cell, 'posx', binsaxis)
     #    # scaled Δψ to min-max of the GRADIENT within mom/bud

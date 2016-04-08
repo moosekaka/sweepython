@@ -6,6 +6,7 @@ fitted DY distributions. Run lags\\MakeInputForLags.py in order to get the
 fitted distributions pickle file ('*lagsunscaled)
 @author: sweel
 """
+#%%
 import matplotlib.pyplot as plt
 import os
 import cPickle as pickle
@@ -18,6 +19,7 @@ import numpy as np
 sns.set_context("talk")
 sns.set(style="darkgrid")
 sns.set(rc={"legend.markerscale": 3})
+#%%
 # =============================================================================
 #           Data initialization
 # =============================================================================
@@ -47,7 +49,7 @@ for media in dirlist:
             media, '%s_grph.pkl' % labs), 'rb') as inpt:
         G = pickle.load(inpt)[2]
         Graphs = {i.graph['cell']: i for i in G}
-
+#%%
 # =============================================================================
 #           Main Function block
 # =============================================================================
@@ -65,7 +67,7 @@ for media in dirlist:
             autocorout(cell, randNDY))
         ACS[labs][cell].append(
             autocorout(cell, NormPermute))
-
+#%%
 # =============================================================================
 # plot by type of distribution for YPE
 # =============================================================================
@@ -130,7 +132,7 @@ with sns.plotting_context('talk', font_scale=1.4):
         subp.set_yticks(np.arange(-.25, 1.25, .25))
         subp.set_xticks(np.arange(0, 15, 2))
         subp.set_xticklabels(np.arange(0, 15, 2))
-
+#%%
 # =============================================================================
 # plot auto cor by media and tresh length
 # =============================================================================
@@ -183,7 +185,7 @@ with sns.plotting_context('talk', font_scale=1.4):
     for subp in FIGM.axes:
         subp.set_xticks(np.arange(0, 15, 2))
         subp.set_xticklabels(np.arange(0, 15, 2))
-
+#%%
 # =============================================================================
 # curve fitting exponential
 # =============================================================================

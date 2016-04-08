@@ -16,7 +16,6 @@ import seaborn as sns
 import math
 import cPickle as pickle
 # pylint: disable=C0103
-# pylint:disable=E1101
 D = defaultdict(dict)
 datadir = op.join(os.getcwd(), 'o2_2015')
 
@@ -186,7 +185,7 @@ with sns.plotting_context('talk', font_scale=1.5):
     g.set_ylabel(r'OCR per cell$ ( \times  10^{7})$ ')
     ax3.set_xlabel('')
     for xlab in g.axes.xaxis.get_ticklabels():
-       xlab.set_visible(False)
+        xlab.set_visible(False)
 
 #with sns.plotting_context('talk', font_scale=1.5):
 #    fig, ax3 = plt.subplots(1, 1)
@@ -201,7 +200,7 @@ with sns.plotting_context('talk', font_scale=1.5):
     g.set_ylabel(r'OCR per mg/ml ')
     ax2.set_xlabel('')
     for xlab in g.axes.xaxis.get_ticklabels():
-       xlab.set_visible(False)
+        xlab.set_visible(False)
 
 
 C.groupby('type').median()

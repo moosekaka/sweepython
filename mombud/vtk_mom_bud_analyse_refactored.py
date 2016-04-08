@@ -2,6 +2,7 @@
 """
 module to analyze mom bud asymmetry
 """
+#%%
 import sys
 import os
 import os.path as op
@@ -14,7 +15,7 @@ import seaborn as sns
 from mombud.vtk_viz import vtk_mbfuncs as vf
 import wrappers as wr
 # pylint: disable=C0103
-# pylint: disable=maybe-no-member
+
 plt.rcParams['font.family'] = 'DejaVu Sans'
 plt.close('all')
 mlab.close(all=True)
@@ -33,7 +34,7 @@ except LookupError:
 filekeys = {item: vtkF[media][item] for media
             in sorted(vtkF.keys()) for item
             in sorted(vtkF[media].keys())}
-
+#%%
 # compute 'z' positions  dyRaw
 cellall = pd.DataFrame(columns=['mom', 'bud'])
 cellposmom = pd.DataFrame()

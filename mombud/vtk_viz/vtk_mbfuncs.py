@@ -9,7 +9,6 @@ import pandas as pd
 from tvtk.api import tvtk
 import vtk
 # pylint: disable=C0103
-# pylint: disable=maybe-no-member
 vtkF = defaultdict(dict)
 mombud = defaultdict(dict)
 

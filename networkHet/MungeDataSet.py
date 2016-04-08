@@ -2,6 +2,8 @@
     Calculate the statistical and topological measures of interest of cells
     in various carbon sources and munge it into dataframe
 """
+import errno
+import sys
 import os
 import os.path as op
 import fnmatch

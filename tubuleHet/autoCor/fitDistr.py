@@ -57,13 +57,16 @@ def fitDist(files, Graphs):
         reader.update()
         data[filekey] = reader.output
         print filekey
+
 #       actual distribution
         Norm[filekey] = vtkdata(data[filekey])
         NormRaw[filekey] = vtkdata(data[filekey], voi='DY_raw')
         lineId[filekey] = vtklineids(data[filekey], Graphs[filekey])
+
 #       shuffle distribution
         NormPermute[filekey] = vtkshuf(data[filekey])
         NormPerRaw[filekey] = vtkshuf(data[filekey], voi='DY_raw')
+
 #       random distributions
         sampN[filekey] = vtksamp(data[filekey])[0]
         sampU[filekey] = vtksamp(data[filekey])[1]

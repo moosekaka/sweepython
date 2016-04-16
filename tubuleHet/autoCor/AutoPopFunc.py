@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Created on Wed Jul 08 12:25:50 2015
 Plot Autocorrelation curves by population
@@ -35,6 +36,7 @@ def autocorout(cell, edgedata):
         X.append(edgecor)
     return([i for i in X if len(i)])
 
+
 def ac_cell(points, shift):
     """Make the autocorrelation coefficient for every edge in a cell
 
@@ -50,48 +52,6 @@ def ac_cell(points, shift):
     result = np.corrcoef(points, points1)[0, 1]
     #        X.append(edgecor)
     return result
-
-
-
-def plotauto2(autodata):
-    """
-    Returns the autocorrelation coefficient for a population
-    with various minimum edge lengths given by minL and maxL and
-    return as a default dictionary with index f=media type  and
-    index b= minimum edge lengths
-
-    Parameters
-    ----------
-    autoData :
-        Dictionary containing list of outputs from autoCorOut:
-
-        autoData[media_type][cell_name] = autoCorOut(cell,edgeData)
-    """
-
-    minl = 10
-    maxl = 45
-    celltemp = {}
-
-    media = sorted(autodata.keys())
-    celltemp = defaultdict(dict)
-
-    for mem in media:
-
-        for _, b in enumerate(range(minl, maxl, 10)):
-
-            automedia = autodata[mem].values()
-
-            X = np.ravel(
-                [el for lis in automedia for el in lis[0]
-                 if len(el) > b])
-            celltemp[mem][b] = []
-            temp = []
-
-            for i in islice(izip_longest(*X, fillvalue=.0), 0, 15):
-                temp.append(np.mean(i))
-
-            celltemp[mem][b].append(temp)
-    return celltemp
 
 
 def psd(cell, edgedata, T):

@@ -12,9 +12,6 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
 from tubuleHet.autoCor.fitDistr import fitDist as fitd
-datadir = op.join(os.getcwd(), 'data')
-sns.set_context("talk")
-sns.set(style="dark")
 
 # =============================================================================
 #           Data initialization

@@ -9,10 +9,26 @@ import os
 import cPickle as pickle
 import seaborn as sns
 import pandas as pd
+from collections import defaultdict
 from tubuleHet.autoCor.lagsfun import iterlagspd
-from tubuleHet.autoCor.vtkfuncs import sclminmax
 sns.set_context("talk")
 plt.close('all')
+
+
+def sclminmax(data):
+    """return a scaled min max collection of vtk cellarray data
+    """
+    vtkscaled = defaultdict(dict)
+    for key in data.keys():
+        flat = [el for lis in data[key] for el in lis]
+        fmax = max(flat)
+        fmin = min(flat)
+        vtkscaled[key] = []
+        for line in data[key]:
+            vtkscaled[key].append([(el - fmin) /
+                                   (fmax - fmin) for el in line])
+    return vtkscaled
+
 
 # =============================================================================
 #    Data input

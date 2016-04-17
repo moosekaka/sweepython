@@ -18,18 +18,17 @@ def acf(vec):
     return np.array([1] + cor)
 
 
-def autocorout(cell, edgedata):
+def autocorout(edgedata):
     """Make the autocorrelation coefficient for every edge in a cell
 
     Parameters
     ----------
-    cell :
-        cell/file Name
+
     edgeData :
         array of edges points/data from one cell
     """
     X = []
-    for j in edgedata[cell]:
+    for j in edgedata:
         #        edgeCor = estimated_autocorrelation(j)
         edgecor = acf(j)
         #        X.append(edgeCor[0])

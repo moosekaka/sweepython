@@ -1,70 +1,53 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Jul 14 17:44:48 2015
 Script to create a distribution of lags for Intensities along edges of cells
 @author: sweel
 """
-import glob
 import os
 import os.path as op
 import cPickle as pickle
-import seaborn as sns
-import matplotlib.pyplot as plt
-import numpy as np
-from tubuleHet.autoCor.fitDistr import fitDist as fitd
-
+from tubuleHet.autoCor.fitDistr import fitDist
+from pipeline.make_networkx import makegraph
+import wrappers as wr
+import vtk
+from tvtk.api import tvtk
 # =============================================================================
 #           Data initialization
 # =============================================================================
-plt.close('all')
-temp = []
-for root, dirs, files in os.walk(os.getcwd()):
-    for f in dirs:
-        if f.startswith('YP'):
-            temp.append(
-                os.path.join(root, f))
+datadir = op.join(os.getcwd(), 'data')
+rawdir = op.join(os.getcwd(), 'output')
+vtkF = wr.ddwalk(op.join(rawdir, 'normalizedVTK'),
+                 '*skeleton.vtk', start=5, stop=-13)
 
-for mem in temp:
-    print'Now on %s' % mem+"\n"+"="*79
-    randNDY = {}  # normal dist fit
-    randUDY = {}  # uniform dist fit
-    files = glob.glob(mem+r'\Norm*vtk')
-    labs = mem[-3:]
+for mediatype in sorted(vtkF.keys())[:]:
+    for filekey in sorted(vtkF[mediatype].keys())[:]:
+        lNorm = []
+        lNormP = []
+        llineId = []
+        randNDY = []
+        randUDY = []
 
-    with open(os.path.join(mem,
-                           '%s_grph.pkl' % labs), 'rb') as inpt:
-        G = pickle.load(inpt)[2]
-        Graphs = {i.graph['cell']: i for i in G}
+        reader = vtk.vtkPolyDataReader()
+        reader.SetFileName(vtkF[mediatype][filekey])
+        reader.Update()
+        vtkdata = reader.GetOutput()
+        tvtkdata = tvtk.to_tvtk(vtkdata)
 
-    output = fitd(files, Graphs)
-    data = output[0]
-#    1:5 for scaled, 5:9 for unscaled
-    lineId = output[9]
-#
-    sampN, sampU, Norm, NormPermute = output[1:5]
-    for cell in data.keys():
-        for line in range(data[cell].number_of_lines):
-            M = data[cell].get_cell(line).number_of_points
-            randNDY.setdefault(cell, []).append(sampN[cell].rvs(size=M))
-            randUDY.setdefault(cell, []).append(sampU[cell].rvs(size=M))
+        _, _, nxgrph = makegraph(vtkdata, filekey)
+        output = fitDist(tvtkdata, nxgrph)
+        fitted_data = output[:4]
 
-    out = (randNDY, randUDY, Norm, NormPermute, data, lineId)
-    with open('%s_lagsUnscaled.pkl' % labs, 'wb') as OUT:
-        pickle.dump(out, OUT)
+        lineId = output[-1:]
+        #    0:4 for scaled, 5:8 for unscaled
+        sampN, sampU, Norm, NormPermute = output[4:8]
+        lNorm.append(Norm)
+        lNormP.append(NormPermute)
+        llineId.append(lineId)
+        randNDY.append(sampN)
+        randUDY.append(sampU)
+        print "append norm dist %s" % filekey
 
-#    1:5 for scaled, 5:9 for unscaled
-#    sampN, sampU, Norm, NormPermute = output[1:5]
-#    for cell in data.keys():
-#        for line in range(data[cell].number_of_lines):
-#            M = data[cell].get_cell(line).number_of_points
-#            randNDY.setdefault(cell, []).append(sampN[cell].rvs(size=M))
-#            randUDY.setdefault(cell, []).append(sampU[cell].rvs(size=M))
-#    out2 = (randNDY, randUDY, Norm, NormPermute)
-#    with open('%s_lagscaled.pkl' % labs, 'wb') as OUT2:
-#        pickle.dump(out2, OUT2)
-
-Y=np.hstack(Norm[cell])
-X=np.arange(len(Y))
-
-
-#    plt.plot(freqs[idx], ps[idx])
+        with open(
+         op.join(rawdir, 'fitted_data', "%s.pkl" % filekey), 'wb') as OUT:
+            pickle.dump((lNorm, lNormP, randNDY, randUDY, llineId),
+                        OUT, protocol=2)

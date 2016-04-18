@@ -5,8 +5,8 @@ Plot Autocorrelation curves by population
 @author: sweel
 """
 import numpy as np
-from itertools import islice, izip_longest
-from collections import defaultdict
+import pandas as pd
+# pylint: disable=C0103
 
 
 def acf(vec):
@@ -29,9 +29,7 @@ def autocorout(edgedata):
     """
     X = []
     for j in edgedata:
-        #        edgeCor = estimated_autocorrelation(j)
-        edgecor = acf(j)
-        #        X.append(edgeCor[0])
+        edgecor = acf(j)  # estimated_autocorrelation(j)
         X.append(edgecor)
     return([i for i in X if len(i)])
 
@@ -53,13 +51,13 @@ def ac_cell(points, shift):
     return result
 
 
-def psd(cell, edgedata, T):
+def psd(edgedata, threshold_length):
     '''return the power spectrum counts (ps) as function of spatial freq u
     '''
     X = []
     Y = []
-    for j in edgedata[cell]:
-        if len(j) >= T:
+    for j in edgedata:
+        if len(j) >= threshold_length:
             #    Z = np.hstack(Y[cell])
             data = j - np.mean(j)
             ps = (np.abs(np.fft.rfft(data))**2)/len(j)
@@ -69,3 +67,124 @@ def psd(cell, edgedata, T):
             X.append(u[idx])
             Y.append(ps[idx])
     return X, Y
+
+
+def conv_to_pd(autodata):
+    """
+    Returns flattened dataframe of PSD values for each cell (columns)
+
+    Parameters
+    ----------
+
+    autodata:
+        Dictionary of PSD by cells (thresholded to a min. length)
+
+    Returns
+    -------
+
+    pdx, pdy:
+        Dataframe of the power spectrum power (y) at frequencies (x)
+
+    """
+    x1 = pd.concat([pd.Series(autodata[k][0][0], name=k) for k
+                    in autodata.keys()], axis=1)
+    y1 = pd.concat([pd.Series(autodata[k][0][1], name=k) for k
+                    in autodata.keys()], axis=1)
+    x_ls = x1.stack()
+    y_ls = y1.stack()
+    x_ls.reset_index(drop=True, inplace=True)
+    y_ls.reset_index(drop=True, inplace=True)
+    pdx = pd.DataFrame({i: pd.Series(x_ls.ix[i]) for i in x_ls.index})
+    pdy = pd.DataFrame({i: pd.Series(y_ls.ix[i]) for i in y_ls.index})
+    return pdx, pdy
+
+
+def tidy_psd(pdx, pdy, bins, typelabel):
+    """
+    Compresses the flat dataframe into a longform tidydata format
+
+    Parameters
+    ----------
+
+    pdx, pdy:
+        Dataframe of the power spectrum power (y) at frequencies (x)
+    bins:
+        the histogram bins/ half open intervals of edgelens
+    typelabel:
+        categorical labels for each type
+
+    Returns
+    -------
+
+    tidypd:
+        Dataframe in longform with var psd and categorical var typelabel
+        and id variables of frequencies (u)
+
+    """
+    temp = []
+    tidypd = pd.DataFrame()
+    labs = np.round(bins[1:], 2)
+    for edge in pdx.columns:
+        mean_y = pdy.ix[:, edge].groupby(pd.cut(pdx.ix[:, edge],
+                                                bins,
+                                                labels=labs)).mean()
+        temp.append(mean_y)
+    psdframe = pd.concat(temp, axis=1)
+    psdframe['u'] = labs
+    psdtidy = pd.melt(psdframe,
+                      id_vars='u',
+                      var_name='lineid',
+                      value_name='psd')
+    psdtidy['type'] = typelabel
+    tidypd = tidypd.append(psdtidy, ignore_index=True)
+    return tidypd
+
+
+def binedges(coldata, interval):
+    """
+    Bins the edge lists according to length of edge array
+
+    Parameters
+    ----------
+
+    coldata:
+        column from dataframe, each row contains vector of autocor coeffs for
+        and edge
+    interval:
+        the histogram bins/ half open intervals of edgelens
+    """
+    coldata = coldata.dropna()
+    edgelen = coldata.apply(len)
+    edgs = pd.DataFrame({'auto_cor': coldata, 'len': edgelen})
+    edgs['cut'] = pd.cut(edgs.len,
+                         interval,
+                         labels=interval[:-1],
+                         include_lowest=True,
+                         right=False)
+    edgs = edgs.dropna()  # drops edges < min len
+    return edgs
+
+
+def lagdist(edgebinned, thresh, label):
+    """
+    Returns an array of lag distances (k) with the autocor coef at that k
+
+    Parameters
+    ----------
+
+    edgebinned:
+        edges with autocorr binned by lengths
+    thresh:
+        cutoff (lower bound) threshold length
+    labels:
+        categorical labels for each type
+    """
+    binned_edges = edgebinned.loc[edgebinned.cut == thresh]
+    dftemp = pd.DataFrame({i: pd.Series(j) for i, j
+                           in binned_edges.ix[:, 'auto_cor'].iteritems()})
+
+    dftemp = dftemp.stack().reset_index(0)
+    dftemp.columns = ['lag', 'auto_cor']
+    dftemp['thresh'] = thresh
+    dftemp['type'] = label
+    return dftemp

@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Jul 03 15:41:34 2015
 Script to plot the autocorrelation coefficients of the various actual and
-fitted DY distributions. Run lags\\MakeInputForLags.py in order to get the
-fitted distributions pickle file ('*lagsunscaled)
+fitted Δψ distributions. Run lags MakeInputForLags.py in order to get the
+fitted distributions pickle files.
 @author: sweel
 """
 import os
@@ -12,45 +11,18 @@ import cPickle as pickle
 from collections import defaultdict
 import seaborn as sns
 import matplotlib.pyplot as plt
-from scipy.optimize import curve_fit
 import pandas as pd
 import numpy as np
 import wrappers as wr
-from tubuleHet.autoCor.AutoPopFunc import autocorout
+from tubuleHet.autoCor.AutoPopFunc import autocorout, binedges, lagdist
+# pylint: disable=C0103
 sns.set_context("talk")
 sns.set(style="darkgrid")
 sns.set(rc={"legend.markerscale": 3})
-
-
-def binedges(coldata, interval):
-    """
-    Bins the edge lists according to length of edge array
-    """
-    coldata = coldata.dropna()
-    edgelen = coldata.apply(len)
-    edgs = pd.DataFrame({'auto_cor': temp, 'len': edgelen})
-    edgs['cut'] = pd.cut(edgs.len,
-                         interval,
-                         labels=interval[:-1],
-                         include_lowest=True,
-                         right=False)
-    edgs = edgs.dropna()  # drops edges < min len
-    return edgs
-
-
-def lagdist(edgebinned, thresh, label):
-    """
-    returns an array of lag distances (k) with the autocor coef at that k
-    """
-    binned_edges = edgebinned.loc[edgebinned.cut == thresh]
-    dftemp = pd.DataFrame({i: pd.Series(j) for i, j
-                           in binned_edges.ix[:, 'auto_cor'].iteritems()})
-
-    dftemp = dftemp.stack().reset_index(0)
-    dftemp.columns = ['lag', 'auto_cor']
-    dftemp['thresh'] = thresh
-    dftemp['type'] = label
-    return dftemp
+colors = ["medium green",
+          "greyish blue",
+          "yellowy brown",
+          "reddish grey"]
 
 # =============================================================================
 #           Data initialization
@@ -66,8 +38,13 @@ ACN = defaultdict(dict)  # Normal dist autocors
 ACS = defaultdict(dict)  # Shuffled dist autocors
 ACDY = defaultdict(dict)  # DY_scaled  autocors
 
+autocor_type = {'actual YPE': ACDY['YPE'],
+                'normal': ACN['YPE'],
+                'shuffled': ACS['YPE'],
+                'uniform': ACU['YPE']}
+
 # =============================================================================
-#           Main Function block
+# Load fitted and real data, calculate autocor coeff.
 # =============================================================================
 for mtype in sorted(vtkF.keys())[:]:
     for cell in vtkF[mtype].keys():
@@ -89,16 +66,7 @@ for mtype in sorted(vtkF.keys())[:]:
 # =============================================================================
 # Calculate population autocorr coef of YPE for real vs random
 # =============================================================================
-autocor_type = {'actual YPE': ACDY['YPE'],
-                'normal': ACN['YPE'],
-                'shuffled': ACS['YPE'],
-                'uniform': ACU['YPE']}
-colors = ["medium green",
-          "greyish blue",
-          "yellowy brown",
-          "reddish grey"]
 real_rand_lags = pd.DataFrame()
-
 
 for dist_type in sorted(autocor_type.keys()):
     autodata_cell = autocor_type[dist_type]
@@ -154,7 +122,7 @@ for carbon in sorted(ACDY.keys()):
                                                ignore_index=True)
 
 #    ================================================================
-    # Plots
+#     Plots
 #    ================================================================
 # real vs random
 with sns.plotting_context('talk', font_scale=1.4):
@@ -192,26 +160,3 @@ with sns.plotting_context('talk', font_scale=1.4):
     for subp in FIGM.axes:
         subp.set_xticks(np.arange(0, 15, 2))
         subp.set_xticklabels(np.arange(0, 15, 2))
-
-# =============================================================================
-# curve fitting exponential
-# =============================================================================
-
-#def func(x, b):
-#    ''' fit an exponential function to vect x
-#    '''
-#    return np.exp(-b * x)
-#
-#for mem in sorted(ACDY.keys()):
-#    data = ferm_resp_edges.loc[(ferm_resp_edges.type == mem) & (ferm_resp_edges.thresh == 40)]
-#    xdata = data.lag
-#    ydata = data.auto_cor
-#    popt, pcov = curve_fit(func, xdata, ydata)
-#    perr = np.sqrt(np.diag(pcov))
-#
-#    print 'alpha for %s : %6.4f with std=%6.4f' % (mem, popt, perr)
-#
-#popt, pcov = curve_fit(func, xdata, ydata)
-
-#with open('autocorNorm.pkl', 'wb') as output:
-#    pickle.dump(ferm_resp_edges, output)

@@ -27,6 +27,12 @@ for mediatype in sorted(vtkF.keys())[:]:
         randNDY = []
         randUDY = []
 
+        #scaled versions
+        lNorm_s = []
+        lNormP_s = []
+        randNDY_s = []
+        randUDY_s = []
+
         reader = vtk.vtkPolyDataReader()
         reader.SetFileName(vtkF[mediatype][filekey])
         reader.Update()
@@ -38,16 +44,29 @@ for mediatype in sorted(vtkF.keys())[:]:
 
         lineId = output[-1:]
         #    0:4 for scaled, 5:8 for unscaled
+        sampN, sampU, Scaled, sPermute = output[0:4]
         sampNRaw, sampURaw, unScaled, rPermute = output[4:8]
         lineId = output[-1:]
+        llineId.append(lineId)
+
         lNorm.append(unScaled)
         lNormP.append(rPermute)
-        llineId.append(lineId)
         randNDY.append(sampNRaw)
         randUDY.append(sampURaw)
+
+        lNorm_s.append(Scaled)
+        lNormP_s.append(sPermute)
+        randNDY_s.append(sampN)
+        randUDY_s.append(sampU)
+
         print "append norm dist %s" % filekey
 
         with open(
          op.join(rawdir, 'fitted_data', "%s.pkl" % filekey), 'wb') as OUT:
             pickle.dump((lNorm, lNormP, randNDY, randUDY, llineId),
                         OUT, protocol=2)
+        with open(
+         op.join(rawdir,
+                 'fitted_data_scaled', "%s.pkl" % filekey), 'wb') as OT:
+            pickle.dump((lNorm_s, lNormP_s, randNDY_s, randUDY_s, llineId),
+                        OT, protocol=2)

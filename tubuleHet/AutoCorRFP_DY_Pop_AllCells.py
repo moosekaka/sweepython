@@ -209,3 +209,23 @@ for mem in sorted(ACDY.keys()):
 popt, pcov = curve_fit(func, xdata, ydata)
 with open('autocorRFP.pkl', 'wb') as output:
     pickle.dump(f_lags, output)
+
+# =============================================================================
+# curve fitting exponential
+# =============================================================================
+
+#def func(x, b):
+#    ''' fit an exponential function to vect x
+#    '''
+#    return np.exp(-b * x)
+#
+#for mem in sorted(ACDY.keys()):
+#    data = ferm_resp_edges.loc[(ferm_resp_edges.type == mem) & (ferm_resp_edges.thresh == 40)]
+#    xdata = data.lag
+#    ydata = data.auto_cor
+#    popt, pcov = curve_fit(func, xdata, ydata)
+#    perr = np.sqrt(np.diag(pcov))
+#
+#    print 'alpha for %s : %6.4f with std=%6.4f' % (mem, popt, perr)
+#
+#popt, pcov = curve_fit(func, xdata, ydata)

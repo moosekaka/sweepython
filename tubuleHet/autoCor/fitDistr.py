@@ -187,38 +187,38 @@ def fitDist(vdata, grph):
 
     Parameters
     ----------
-    files :
-        List of Norm vtk files
-    Graphs :
+    vdata :
+        tvtk data
+    grph :
         Network x graph objects, generated from
         03createEdgeNodeListMulti.py
 
     Returns
     -------
-    data :
-        Dictionary of vtk object indexed by cell name
+    s(r)Permute:
+        Dictionary of shuffled scaled(raw) DY values
     sampN :
         Dictionary of normal distribution based on mean and std
         of cell indexed
     sampN :
         Dictionary of uniform distribution based mean-2*std
         (clipped at zero) and mean+4*std of cell indexed
-    Norm :
-        Dictionary of scaled DY values listed by cell edges of
+    (un)Scaled :
+        Dictionary of actual (un)scaled DY values listed by cell edges of
         cell indexed
     lineId :
         list of lines with the start and end point vtk Index and also
         type of point (branch/end)
     """
 
- #       actual distribution
-    Norm = vtkdata(vdata)
-    NormRaw = vtkdata(vdata, voi='DY_raw')
+    #   actual distribution
+    Scaled = vtkdata(vdata)
+    unScaled = vtkdata(vdata, voi='DY_raw')
     lineId = vtklineids(vdata, grph)
 
 #       shuffle distribution
-    NormPermute = vtkshuf(vdata)
-    NormPerRaw = vtkshuf(vdata, voi='DY_raw')
+    sPermute = vtkshuf(vdata)
+    rPermute = vtkshuf(vdata, voi='DY_raw')
 
 #       random distributions
     sampN = vtksamp(vdata)[0]
@@ -226,6 +226,6 @@ def fitDist(vdata, grph):
     sampNRaw = vtksamp(vdata, voi='DY_raw')[0]
     sampURaw = vtksamp(vdata, voi='DY_raw')[1]
 
-    return(sampN, sampU, Norm, NormPermute,
-           sampNRaw, sampURaw, NormRaw, NormPerRaw,
+    return(sampN, sampU, Scaled, sPermute,
+           sampNRaw, sampURaw, unScaled, rPermute,
            lineId)

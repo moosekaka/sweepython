@@ -35,16 +35,16 @@ for mediatype in sorted(vtkF.keys())[:]:
 
         _, _, nxgrph = makegraph(vtkdata, filekey)
         output = fitDist(tvtkdata, nxgrph)
-        fitted_data = output[:4]
 
         lineId = output[-1:]
         #    0:4 for scaled, 5:8 for unscaled
-        sampN, sampU, Norm, NormPermute = output[4:8]
-        lNorm.append(Norm)
-        lNormP.append(NormPermute)
+        sampNRaw, sampURaw, unScaled, rPermute = output[4:8]
+        lineId = output[-1:]
+        lNorm.append(unScaled)
+        lNormP.append(rPermute)
         llineId.append(lineId)
-        randNDY.append(sampN)
-        randUDY.append(sampU)
+        randNDY.append(sampNRaw)
+        randUDY.append(sampURaw)
         print "append norm dist %s" % filekey
 
         with open(

@@ -52,7 +52,6 @@ def lagdist(edgebinned, thresh, label):
     dftemp['type'] = label
     return dftemp
 
-
 # =============================================================================
 #           Data initialization
 # =============================================================================
@@ -67,7 +66,6 @@ ACN = defaultdict(dict)  # Normal dist autocors
 ACS = defaultdict(dict)  # Shuffled dist autocors
 ACDY = defaultdict(dict)  # DY_scaled  autocors
 
-
 # =============================================================================
 #           Main Function block
 # =============================================================================
@@ -76,16 +74,16 @@ for mtype in sorted(vtkF.keys())[:]:
         with open(op.join(rawdir,
                           'fitted_data',
                           '%s.pkl' % cell), 'rb') as inpt:
-            (Norm, NormPermute, randNDY, randUDY, lineId) = pickle.load(inpt)
+            (lNorm, lNormP, randNDY, randUDY, llineId) = pickle.load(inpt)
         ACU[mtype][cell] = []
         ACN[mtype][cell] = []
         ACS[mtype][cell] = []
         ACDY[mtype][cell] = []
 
-        ACDY[mtype][cell].append(autocorout(Norm[0]))
+        ACDY[mtype][cell].append(autocorout(lNorm[0]))
         ACU[mtype][cell].append(autocorout(randUDY[0]))
         ACN[mtype][cell].append(autocorout(randNDY[0]))
-        ACS[mtype][cell].append(autocorout(NormPermute[0]))
+        ACS[mtype][cell].append(autocorout(lNormP[0]))
         print "done calculating autocor for %s" % cell
 
 # =============================================================================

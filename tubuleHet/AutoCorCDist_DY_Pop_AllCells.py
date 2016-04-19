@@ -16,6 +16,7 @@ import numpy as np
 import wrappers as wr
 from tubuleHet.autoCor.AutoPopFunc import autocorout, binedges, lagdist
 # pylint: disable=C0103
+# pylint: disable=R0204
 sns.set_context("talk")
 sns.set(style="darkgrid")
 sns.set(rc={"legend.markerscale": 3})
@@ -57,10 +58,10 @@ for mtype in sorted(vtkF.keys())[:]:
         ACS[mtype][cell] = []
         ACDY[mtype][cell] = []
 
-        ACDY[mtype][cell].append(autocorout(lNorm[0]))
-        ACU[mtype][cell].append(autocorout(randUDY[0]))
-        ACN[mtype][cell].append(autocorout(randNDY[0]))
-        ACS[mtype][cell].append(autocorout(lNormP[0]))
+        ACDY[mtype][cell].append(autocorout(np.squeeze(lNorm)))
+        ACU[mtype][cell].append(autocorout(np.squeeze(randUDY)))
+        ACN[mtype][cell].append(autocorout(np.squeeze(randNDY)))
+        ACS[mtype][cell].append(autocorout(np.squeeze(lNormP)))
         print "done calculating autocor for %s" % cell
 
 # =============================================================================

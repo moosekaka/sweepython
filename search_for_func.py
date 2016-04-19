@@ -30,9 +30,6 @@ if __name__ == '__main__':
     scrloc = datadir[[num for num, val in enumerate(datadir)
                       if re.search('sweepython', val)][0]]
 
-<<<<<<< HEAD
-    searchfunc('nicegrph', scrloc)
-=======
-    searchfunc('autocorout', scrloc)
 
->>>>>>> 61b7358... refactoring
+    searchfunc('nicegrph', scrloc)
+

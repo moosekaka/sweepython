@@ -7,14 +7,15 @@ Plot Autocorrelation curves by population
 import numpy as np
 import pandas as pd
 # pylint: disable=C0103
-
+# pylint: disable=R0204
 
 def acf(vec):
     """Statistical method of autocorrelation using numpy corrcoef
+    https://en.wikipedia.org/wiki/Autocorrelation
     """
-    length = len(vec)
-    cor = [np.corrcoef(vec[:-i], vec[i:])[0, 1]
-           for i in range(1, length)]
+    L = len(vec)
+    cor = [np.corrcoef(vec[:L-i], vec[i:L])[0, 1]
+           for i in range(1, L)]
     return np.array([1] + cor)
 
 
@@ -188,3 +189,52 @@ def lagdist(edgebinned, thresh, label):
     dftemp['thresh'] = thresh
     dftemp['type'] = label
     return dftemp
+
+
+def calcdlag(df, lag):
+    """Calc the lags in an edge or vector as a delta of two intensity points
+    separated by a lag value and return the absolute value of that edge
+    """
+    delta = df.shift(lag) - df
+    delta = delta.ix[lag:]
+    delta = delta.dropna(how='all', axis=1)
+    abso = delta.abs()
+    return abso
+
+
+def iterlagspd(data, labs, lagdist=None):
+    """Take an edge data per cell and compute the lags in lagList using apply
+    and calclagPD, and output in  wideform Dataframe with a 'cat' label=labs.
+    This is done for all cell names in cols and the result of each iteration
+    appended to the dat DataFrame for output.
+
+    Parameters
+    ----------
+    data:
+        DataFrame consisting of columns = cells, each row in the df
+        is an edge list containing the values of interest
+    labs:
+        media type of the cells
+    lagdist:
+        list of lag distances, defaults [1, 5, 10, 15, 20]
+
+    Returns
+    -------
+        Dataframe in wideform of lag values with column name = lag
+    """
+    if lagdist is None:
+        lagdist = [1, 5, 10, 15, 20]  # default values
+    dat = pd.DataFrame()
+    data = np.squeeze(data)
+
+    dfedge = pd.DataFrame(
+        {row: pd.Series(edge) for row, edge in enumerate(data)})
+
+    dfedge.dropna(how='all', inplace=True)
+    listoflags = [calcdlag(dfedge, k).mean() for k in lagdist]
+
+    out = pd.concat([l for l in listoflags], axis=1)
+    dat = dat.append(out, ignore_index=True)
+    dat.rename(columns=lambda x: lagdist[x], inplace=True)
+    dat['cat'] = labs
+    return dat

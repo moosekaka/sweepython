@@ -14,6 +14,7 @@ import numpy as np
 import wrappers as wr
 from tubuleHet.autoCor.AutoPopFunc import psd, conv_to_pd, tidy_psd
 # pylint: disable=C0103
+# pylint: disable=R0204
 sns.set_context("talk")
 sns.set(style="whitegrid")
 sns.set(rc={"legend.markerscale": 3})

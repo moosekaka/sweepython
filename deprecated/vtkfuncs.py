@@ -25,7 +25,7 @@ def pointIdsList(data):
     return pointIds
 
 
-def vtkdata(data, voi='DY_minmax'):
+def vtkdata(data, **kwargs):
     """Return flattened list of variable of interest (VOR) from vtkdata
     default vor is DY_minmax if kwarg not specified
 
@@ -33,8 +33,8 @@ def vtkdata(data, voi='DY_minmax'):
     ----------
     data:
         vtk reader output
-    voi:
-        rRFP|rGFP|TubeWidth|DY_minmax|DY_raw|WidthEq|bkstGFP|bkstRFP
+    kwargs:
+        voi='WidthEq'| 'DY_raw'| 'rRFP'| 'rGFP'| 'bkstRFP'| 'bkstGFP'| 'tubeWidth'
 
     Returns
     -------
@@ -42,8 +42,12 @@ def vtkdata(data, voi='DY_minmax'):
         list of edges data values
      """
     norm = []
-    pdata = data.point_data
-    datavals = np.ravel(pdata.get_array(voi))
+    voi = kwargs.pop("voi", None)
+    if voi is None:
+        datavals = data.point_data.scalars
+    else:
+        temp = data.point_data
+        datavals = np.ravel(temp.get_array(voi))
 
     for j in range(data.number_of_lines):
         cids = data.get_cell(j).point_ids
@@ -86,7 +90,7 @@ def vtklineids(data, graph):
     return lid
 
 
-def vtkshuf(data, voi='DY_minmax'):
+def vtkshuf(data, **kwargs):
     """Return shuffled list of variable of interest (VOR) from vtkdata
     default vor is DY_minmax if kwarg not specified
 
@@ -94,8 +98,8 @@ def vtkshuf(data, voi='DY_minmax'):
     ----------
     data:
         vtk reader output
-    voi:
-        rRFP|rGFP|TubeWidth|DY_minmax|DY_raw|WidthEq|bkstGFP|bkstRFP
+    kwargs:
+        voi='WidthEq'| 'DY_raw'| 'rRFP'| 'rGFP'| 'bkstRFP'| 'bkstGFP'| 'tubeWidth'
     Returns
     -------
     normpermute:
@@ -103,9 +107,13 @@ def vtkshuf(data, voi='DY_minmax'):
 
      """
     normpermute = []
+    voi = kwargs.pop("voi", None)
     ptIds = pointIdsList(data)
-    pdata = data.point_data
-    datavals = np.ravel(pdata.get_array(voi))
+    if voi is None:
+        datavals = data.point_data.scalars
+    else:
+        temp = data.point_data
+        datavals = np.ravel(temp.get_array(voi))
 
     for j in range(data.number_of_lines):
         cids = data.get_cell(j).point_ids
@@ -117,7 +125,7 @@ def vtkshuf(data, voi='DY_minmax'):
     return normpermute
 
 
-def vtksamp(data, voi='DY_minmax'):
+def vtksamp(data, **kwargs):
     """Return a fitted uniform and normal list of variable of interest (VOR)
     from vtkdata, default vor is DY_minmax if kwarg not specified
 
@@ -125,8 +133,8 @@ def vtksamp(data, voi='DY_minmax'):
     ----------
     data:
         vtk reader output
-    voi:
-        rRFP|rGFP|TubeWidth|DY_minmax|DY_raw|WidthEq|bkstGFP|bkstRFP
+    kwargs:
+        voi='WidthEq'| 'DY_raw'| 'rRFP'| 'rGFP'| 'bkstRFP'| 'bkstGFP'| 'tubeWidth'
 
     Returns
     -------
@@ -135,8 +143,13 @@ def vtksamp(data, voi='DY_minmax'):
     sampU:
         scipy unifrm distr bounded by .01 and .99 percentile of act dist
      """
-    temp = data.point_data
-    datavals = np.ravel(temp.get_array(voi))
+    voi = kwargs.pop("voi", None)
+    if voi is None:
+        datavals = data.point_data.scalars
+    else:
+        temp = data.point_data
+        datavals = np.ravel(temp.get_array(voi))
+
     cellMeans = np.mean(datavals)
     cellStds = np.std(datavals)
 

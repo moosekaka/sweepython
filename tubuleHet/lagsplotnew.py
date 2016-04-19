@@ -4,70 +4,51 @@ Created on Thu Jul 16 01:26:31 2015
 Plot the rms of 'gradient' of two intensity edges/vectors shifted by a lag k
 @author: sweel
 """
-import matplotlib.pyplot as plt
 import os
+import os.path as op
 import cPickle as pickle
 import seaborn as sns
+import matplotlib.pyplot as plt
 import pandas as pd
-from tubuleHet.autoCor.lagsfun import iterlagspd
+import wrappers as wr
+from tubuleHet.autoCor.AutoPopFunc import iterlagspd
+# pylint: disable=C0103
+# pylint: disable=R0204
 sns.set_context("talk")
-plt.close('all')
+sns.set(style="whitegrid")
+sns.set(rc={"legend.markerscale": 3})
 
 # =============================================================================
-#    Data input
+#    Data initialization
 # =============================================================================
-# pylint: disable=C0103
-dirlist = []
-# pylint: disable=C0103
-for root, dirs, files in os.walk(os.getcwd()):
-    for f in dirs:
-        if f.startswith('YP'):
-            dirlist.append(
-                os.path.join(root, f))
+plt.close('all')
+datadir = op.join(os.getcwd(), 'data')
+rawdir = op.join(os.getcwd(), 'output')
+vtkF = wr.ddwalk(op.join(rawdir, 'normalizedVTK'),
+                 '*skeleton.vtk', start=5, stop=-13)
 
 DYL = pd.DataFrame()
 SHL = pd.DataFrame()
 DNL = pd.DataFrame()
 DUL = pd.DataFrame()
 
-for media in dirlist[:]:
-    labs = media[-3:]
-    print'\nNow on %s' % labs + "\n" + "="*79
-    #   make sure the pkl file below exists, run MakeInputForLags.py otherwise
-    with open('%s_lagscaled.pkl' % labs, 'rb') as inpt:
-        (randNDY, randUDY, Norm, NormPermute) = pickle.load(inpt)
+# =============================================================================
+# Calculate the lags /variogram
+# ==============================================================================
+for mtype in sorted(vtkF.keys())[:]:
+    for cell in vtkF[mtype].keys():
+        with open(op.join(rawdir,
+                          'fitted_data_scaled',
+                          '%s.pkl' % cell), 'rb') as inpt:
+            (lNorm, lNormP, randNDY, randUDY, llineId) = pickle.load(inpt)
 
-    dfDY = pd.DataFrame({cells: pd.Series([edge for edge
-                                           in Norm[cells]]) for cells
-                         in Norm.keys()})
-    dfShf = pd.DataFrame({cells: pd.Series([edge for edge
-                                            in NormPermute[cells]]) for cells
-                          in Norm.keys()})
-    dfU = pd.DataFrame({cells: pd.Series([edge for edge
-                                          in randUDY[cells]]) for cells
-                        in Norm.keys()})
-    dfN = pd.DataFrame({cells: pd.Series([edge for edge
-                                          in randNDY[cells]]) for cells
-                        in Norm.keys()})
-    cols1 = dfDY.columns
-    cols2 = dfShf.columns
-    cols3 = dfU.columns
-    cols4 = dfN.columns
+            DYL = DYL.append(iterlagspd(lNorm, mtype), ignore_index=True)
+            SHL = SHL.append(iterlagspd(lNormP, mtype), ignore_index=True)
+            DNL = DNL.append(iterlagspd(randNDY, mtype), ignore_index=True)
+            DUL = DUL.append(iterlagspd(randUDY, mtype), ignore_index=True)
+            print "done {}".format(cell)
 
-    pdDY = iterlagspd(dfDY, cols1, labs)
-    print'DY complete'
-    pdSh = iterlagspd(dfShf, cols2, labs)
-    print'Shuffle complete'
-    pdU = iterlagspd(dfU, cols3, labs)
-    print'Uniform complete'
-    pdN = iterlagspd(dfN, cols4, labs)
-    print'Normal complete'
-    DYL = DYL.append(pdDY, ignore_index=True)
-    SHL = SHL.append(pdSh, ignore_index=True)
-    DUL = DUL.append(pdU, ignore_index=True)
-    DNL = DNL.append(pdN, ignore_index=True)
-
-DYL['type'] = r'$\Delta \Psi$ expt.'
+DYL['type'] = r'$\Delta \Psi$ actual'
 SHL['type'] = 'Shuffled'
 DNL['type'] = 'Normal Dist.'
 DUL['type'] = 'Uniform Dist.'
@@ -78,9 +59,13 @@ A = pd.melt(BIG,
             var_name='lags/k',
             value_name='F(k)')
 
-MASK = A['type'] == r'$\Delta \Psi$ expt.'
+MASK = A['type'] == r'$\Delta \Psi$ actual'
 B = A[MASK]
 
+# =============================================================================
+# Plots
+# =============================================================================
+sns.set(style='white')
 with sns.plotting_context('talk', font_scale=1.25):
     FIG1 = sns.factorplot(x='lags/k',
                           y='F(k)',
@@ -93,14 +78,14 @@ with sns.plotting_context('talk', font_scale=1.25):
     plt.show()
     plt.savefig('lags2.png')
 
-sns.set(style='white')
-plt.figure()
 with sns.plotting_context('talk', font_scale=1.25):
+    _, ax1 = plt.subplots(1, 1)
     FIG2 = sns.pointplot(x='lags/k',
                          y='F(k)',
                          hue='cat',
                          data=B,
-                         ci=99)
+                         ci=99,
+                         ax=ax1)
     sns.despine(top=True, right=True)
     FIG2.set_ylabel('F(k)')
     plt.show()

@@ -83,11 +83,11 @@ if __name__ == "__main__":
     tvtkdata = tvtk.to_tvtk(vtkdata)
     _, _, nxgrph = makegraph(vtkdata, filekey)
 # ONLY RUN THESE LINES IF WANT TO REFIT NEW DISTRIBUTIONS!!
-#    output = fitDist(tvtkdata, nxgrph)
-#    normal, uniform, actual, permute = output[4:8]
-#    cell = tvtkdata  # YPE_042515_001_RFPstack_000'
-#    with open(op.join(rawdir, 'DataForOneCellDist.pkl'), 'wb') as output:
-#        pickle.dump((actual, permute, normal, uniform), output)
+    output = fitDist(tvtkdata, nxgrph)
+    normal, uniform, actual, permute = output[4:8]
+    cell = tvtkdata  # YPE_042515_001_RFPstack_000'
+    with open(op.join(rawdir, 'DataForOneCellDist.pkl'), 'wb') as output:
+        pickle.dump((actual, permute, normal, uniform), output)
 
     with open(op.join(rawdir, 'DataForOneCellDist.pkl'), 'rb') as INPT:
         actual, permute, normal, uniform = pickle.load(INPT)

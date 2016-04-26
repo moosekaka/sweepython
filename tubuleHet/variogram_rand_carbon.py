@@ -66,6 +66,7 @@ B = A[MASK]
 # Plots
 # =============================================================================
 sns.set(style='white')
+#vs random
 with sns.plotting_context('talk', font_scale=1.25):
     FIG1 = sns.factorplot(x='lags/k',
                           y='F(k)',
@@ -77,7 +78,7 @@ with sns.plotting_context('talk', font_scale=1.25):
                           scale=.65)
     plt.show()
     plt.savefig('lags2.png')
-
+#vs carbon type
 with sns.plotting_context('talk', font_scale=1.25):
     _, ax1 = plt.subplots(1, 1)
     FIG2 = sns.pointplot(x='lags/k',

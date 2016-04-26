@@ -93,6 +93,7 @@ for carbon in sorted(PSDY.keys()):
 # Plot
 # ============================================================================
 sns.set(style="whitegrid")
+# vs random
 with sns.plotting_context('talk', font_scale=1.4):
     _, ax1 = plt.subplots(1, 1)
     sns.pointplot(x='u',
@@ -103,7 +104,7 @@ with sns.plotting_context('talk', font_scale=1.4):
                   data=psd_tidydata,
                   ax=ax1)
     ax1.get_legend().set_visible(False)
-
+# vs carbon type
 with sns.plotting_context('talk', font_scale=1.4):
     _, ax2 = plt.subplots(1, 1)
     sns.pointplot(x='u',

@@ -1,52 +1,35 @@
 # -*- coding: utf-8 -*-
 """
 Created on Mon Apr 25 18:17:20 2016
-
+Memoized versions for factorial and Fibonacci
 @author: swee-i5-SSD
 """
 
 
-def retfactorial(n):
-    results = []
-    print "factorial(%u) = " % n,
-    F = factorial(n, results)
-    print "= {:,}".format(F)
-    return F, results
+def factorial(n):
+    memo = {0: 1}
 
+    def fac(N):
+        print "calling Fac({})".format(N)
+        try:
+            return memo[N]
+        except KeyError:
+            memo[N] = N*fac(N-1)
+            return memo[N]
 
-def factorial(n, results):
-    if n > 1:
-        print "%u x" % n,
-        fn = n*factorial(n-1, results)
-        results.append(fn)
-        return fn
-    else:
-        print "%u" % n,
-        results.append(1)
-        return 1
+    return fac(n), memo
+
 
 def fib(n):
-#    m={0:0, 1:1}
+    memo = {0: 0, 1: 1}
 
-#    def fib_inner(inner_n):
-#        try:
-#            return m[inner_n]
-#
-#        except KeyError:
-#            print "%u not in m" % inner_n
-#            m[inner_n] = fib(inner_n-1) + fib(inner_n-2)
-#            return m[inner_n]
-#
-#        finally:
-#            print "returning Fib({})={}".format(inner_n, m[inner_n])
-    memo = {0:0, 1:1}
-    def fibm(n):
-        print "Calling fibm({})".format(n)
-        if n not in memo:
-            print "%u not in memo" % n
-            memo[n] = fibm(n-1) + fibm(n-2)
-            print "returning fibm({})={}".format(n, memo[n])
-        return memo[n]
+    def fib_inner(N):
+        print "calling Fib({})".format(N)
+        try:
+            return memo[N]
 
-    return fibm(n)
+        except KeyError:
+            memo[N] = fib_inner(N-1) + fib_inner(N-2)
+            return memo[N]
 
+    return fib_inner(n)

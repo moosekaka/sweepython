@@ -44,7 +44,7 @@ df1 = pd.pivot_table(spend,
                      index='Date',
                      aggfunc='sum')
 MthlySpd = df1.resample('M', how='sum')
-MthlySpd = - MthlySpd.ix['2015-2':]
+
 
 # =============================================================================
 #       item breakdowns
@@ -86,7 +86,7 @@ pattern = 'FARMERS IN|AM SOC|USPS 053711025|U-HAUL\
 |STATE OF CALIF DMV'
 spend.loc[spend.Desc.str.contains(pattern), ['Category']] = 'Misc'
 
-pattern = 'UCI PARK|GOOGLE *'
+pattern = 'UCI PARK|GOOGLE *|UCI TRANS'
 spend.loc[spend.Desc.str.contains(pattern), ['Category']] = 'PhonePark'
 
 pattern = 'AMZ  STORECARD|PAYPAL|AMAZON'
@@ -120,6 +120,9 @@ total = pd.concat([spend, cashback, netgro], ignore_index=True)
 # =============================================================================
 #    Pivot to group by cat and months and plot
 # =============================================================================
+date_range = '2015-9'
+dollar_lim = 2500
+MthlySpd = - MthlySpd.ix[date_range:]
 df = pd.pivot_table(total,
                     index='Date',
                     columns='Category',
@@ -129,21 +132,21 @@ byMonth = df.resample('M', how='sum')
 cols = [u'ATMcash', u'AsianFood', u'Coffee',
         u'Extra', u'FastFood', u'Lazy', u'Market',
         u'Petrol', u'Restaurants', u'PhonePark', u'Misc', u'Deferred']
-Filt = -byMonth.ix['2015-2':, 1:]
+Filt = -byMonth.ix[date_range:, 1:]
 
 #    Plot
 fig = plt.plot(figsize=(11, 8.5))
 ax = plt.subplot(111)
-ax.set_ylim(0, MthlySpd.max() + 200)
+ax.set_ylim(0, MthlySpd.max() + dollar_lim)
 ax.set_axis_bgcolor('#C0C0C0')
 ax.set_title('Stacked Monthly Expenditure')
 Filt.ix[:, cols].plot(kind='Area',
                       colormap=plt.cm.Paired,
                       sort_columns=True,
                       ax=ax)
-ax.set_ylim(0, 2000)
-MthlySpd.plot(ax=ax)
 
+MthlySpd.plot(ax=ax)
+ax.set_ylim(0, dollar_lim)
 fig2 = plt.plot(figsize=(11, 8.5))
 ax2 = plt.subplot(111)
 ax2 = Filt.ix[:, cols].plot(kind='bar', colormap=plt.cm.Paired)

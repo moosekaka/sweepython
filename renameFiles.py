@@ -17,6 +17,18 @@ def copy(src, dest):
         else:
             print('Directory not copied. Error: %s' % e)
 
+
+def mkdir_exist(path):
+    try:
+        os.makedirs(path)
+    except OSError as error:
+        if error.errno != errno.EEXIST:
+            raise
+
+
+with open(filepath, 'w') as my_file:
+    do_stuff(my_file)
+
 parDir = os.path.dirname(os.getcwd())
 b = glob.glob(parDir+'\*[0-9][0-9]*')  # directory names
 A = glob.glob('N*.vtk')
@@ -116,3 +128,38 @@ for root, dirs, files in os.walk(os.getcwd()):
         if fn.fnmatchcase(i, '*_rfp_*tif'):
             print op.join(root,i)
             os.remove(op.join(root, i))
+
+
+#==============================================================================
+# MUTANT CELLS all in YPE
+#==============================================================================
+# copy vtk files into app. folders
+
+
+def renamecopy(f, r, word):
+    """
+    macro to change filename label to date and return path of file
+    """
+    if fn.fnmatch(f, word):
+        filename = f.partition("_")
+        pth = op.join(op.dirname(r), filename[0])
+        date = r.rsplit(os.sep)[-1]
+        newname = "_".join((date, filename[-1][:-4]))
+        return (pth, newname)
+
+
+for root, dirs, files in os.walk(os.getcwd(), topdown=False):
+    dirs[:]=[op.join(root, d) for d in dirs if fn.fnmatch(d, "*[0-9][0-9]*")]  # inplace list modfhghfghgh
+
+
+for dircell in dirs:
+    for root, dirs, files in os.walk(dircell):
+        for fil in files:
+            P = renamecopy(fil, root, '*RFP*surface*')  # change
+            if P:
+                mkdir_exist(P[0])
+                sh.copy(op.join(root, fil), op.join(P[0], P[1]))
+
+
+
+

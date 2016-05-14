@@ -144,7 +144,7 @@ def renamecopy(f, r, word):
         filename = f.partition("_")
         pth = op.join(op.dirname(r), filename[0])
         date = r.rsplit(os.sep)[-1]
-        newname = "_".join((date, filename[-1][:-4]))
+        newname = "_".join((date, filename[-1]))
         return (pth, newname)
 
 
@@ -155,11 +155,16 @@ for root, dirs, files in os.walk(os.getcwd(), topdown=False):
 for dircell in dirs:
     for root, dirs, files in os.walk(dircell):
         for fil in files:
-            P = renamecopy(fil, root, '*RFP*surface*')  # change
+            P = renamecopy(fil, root, '*RFP*skeleton*')  # change
             if P:
                 mkdir_exist(P[0])
                 sh.copy(op.join(root, fil), op.join(P[0], P[1]))
 
 
-
+#for root, dirs, files in os.walk(os.getcwd()):
+#    for f in files:
+#        if fn.fnmatchcase(f, '*surface*'):
+#            old = op.join(root, f)
+#            new = old + ".vtk"
+#            os.rename(old, new)
 

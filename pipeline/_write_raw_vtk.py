@@ -16,17 +16,17 @@ datadir = op.join(os.getcwd())
 # filelist and graph list
 if __name__ == '__main__':
     try:
-        with open(op.join(datadir, 'input', 'fileMetas.pkl'), 'rb') as inpt:
+        with open(op.join(datadir, 'mutants', 'fileMetas.pkl'), 'rb') as inpt:
             filemetas = pickle.load(inpt)
     except IOError:
         print "Error: Make sure you have file metadatas in working directory"
 
     try:
-        vtkSkel = wr.ddwalk(op.join(datadir, 'input', 'SkelVTK'),
+        vtkSkel = wr.ddwalk(op.join(datadir, 'mutants', 'SkelVTK'),
                             '*skeleton.vtk', stop=-13)
-        vtkVolRfp = wr.ddwalk(op.join(datadir, 'input', 'resampledFiles'),
+        vtkVolRfp = wr.ddwalk(op.join(datadir, 'mutants', 'resampledFiles'),
                               '*RF*resampled.vtk', stop=-14)
-        vtkVolGfp = wr.ddwalk(op.join(datadir, 'input', 'resampledFiles'),
+        vtkVolGfp = wr.ddwalk(op.join(datadir, 'mutants', 'resampledFiles'),
                               '*GF*resampled.vtk', stop=-14)
     except Exception:
         print "Error: check your filepaths"
@@ -34,7 +34,7 @@ if __name__ == '__main__':
 
     for lab in sorted(vtkSkel.keys())[:]:
         try:
-            folder = op.join(datadir, 'output', 'normalizedVTK', lab)
+            folder = op.join(datadir, 'mutants', 'normalizedVTK', lab)
             os.makedirs(folder)
         except OSError as exception:
             if exception.errno != errno.EEXIST:
@@ -51,7 +51,7 @@ if __name__ == '__main__':
                                   vtkVolGfp[lab][key.replace('RFP', 'GFP')])
             filename = op.join(folder, 'Norm_%s_%s_skeleton.vtk' % (lab, key))
             nm, rw, rb, gb, wq = pf.normSkel(data,
-                                             filemetas['_'.join((lab, key))])
+                                             filemetas['_'.join((lab, key[:-4]))])
             calc = {'DY_minmax': nm,
                     'DY_raw': rw,
                     'bkstRFP': rb,

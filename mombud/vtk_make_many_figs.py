@@ -14,14 +14,14 @@ import wrappers as wr
 # pylint: disable=C0103
 plt.close('all')
 mlab.close(all=True)
-inputdir = op.join(os.getcwd(), 'input')
-rawdir = op.join(os.getcwd(), 'output')
+inputdir = op.join(os.getcwd(), 'mutants')
+rawdir = op.join(os.getcwd(), 'mutants')
 
 
 # filelist and graph list
 if __name__ == '__main__':
     try:
-        vtkF = wr.ddwalk(op.join(rawdir, 'normSkel'),
+        vtkF = wr.ddwalk(op.join(rawdir, 'normalizedVTK'),
                          '*skeleton.vtk', start=5, stop=-13)
         vtkS = wr.ddwalk(op.join(inputdir, 'surfaceFiles'),
                          '*surface.vtk', stop=-12)
@@ -34,12 +34,18 @@ if __name__ == '__main__':
                 in sorted(vtkF.keys()) for item
                 in sorted(vtkF[media].keys())}
 
-    for key in sorted(filekeys.keys())[2::25]:
-        data = vf.callreader(vtkF[key[:3]][key])
+    for key in sorted(filekeys.keys())[::]:
+        temp = key.partition("_")
+        etype = temp[0]
+        cellkey = temp[-1]
+        data = vf.callreader(vtkF[etype][key])
         node_data, edge_data, nxgrph = mg(data, key)
         figone = mlab.figure(figure=key,
                              size=(800, 600),
                              bgcolor=(.15, .15, .15))
         vtkobj, _ = vf.cellplot(figone, filekeys[key])
-        vf.rendsurf(vtkS[key[:3]][key[4:]])
+        vf.rendsurf(vtkS[etype][cellkey])
         vf.labelbpoints(nxgrph, bsize=0.08, esize=0.08)
+        mlab.savefig(op.join(rawdir, '%s.png' % key))
+        mlab.close()
+

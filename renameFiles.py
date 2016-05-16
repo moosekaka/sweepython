@@ -168,3 +168,21 @@ for dircell in dirs:
 #            new = old + ".vtk"
 #            os.rename(old, new)
 
+#==============================================================================
+# rename BF stacks to be same name as RFP for mom bud tracing macros
+#==============================================================================
+for root, dirs, files in os.walk(os.getcwd(), topdown=False):
+    dirs[:] = [op.join(root, d) for d in dirs if fn.fnmatch(d, "[BGR]F*")]
+
+BF = [files for _, _, files in os.walk(dirs[0])][0]
+RFP = [files for _, _, files in os.walk(dirs[2])][0]
+
+newname = {}
+for key, val in zip(BF, RFP):
+    newname[key] = val
+
+for bf in BF:
+    oldpath = op.join(root, 'BF', bf)
+    newpath = op.join(root, 'BF', newname[bf])
+    os.rename(oldpath, newpath)
+

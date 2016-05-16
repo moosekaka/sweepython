@@ -17,6 +17,7 @@ from networkHet.mungedata import MungeDataFuncs as md
 import pandas as pd
 import cPickle as pickle
 from numpy.random import choice as samp_no_rep
+import wrappers as wr
 plt.close('all')
 
 # =============================================================================

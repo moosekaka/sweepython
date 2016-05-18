@@ -7,20 +7,33 @@ import os
 import os.path as op
 import matplotlib.pyplot as plt
 from mayavi import mlab
+from mayavi.sources.vtk_file_reader import VTKFileReader
 from pipeline.make_networkx import makegraph as mg
 from mombud.vtk_viz import vtkvizfuncs as vf
 import wrappers as wr
 # pylint: disable=C0103
 plt.close('all')
 mlab.close(all=True)
-datadir = op.join(os.getcwd(), 'data')
-inptdir = op.join(os.getcwd(), 'input')
-outputdir =  op.join(os.getcwd(), 'output')
+datadir = op.join(os.getcwd(), 'mutants')
+inptdir = op.join(os.getcwd(), 'mutants')
+outputdir =  op.join(os.getcwd(), 'mutants')
+
+
+def setup_data(fname):
+    """Given a VTK file name `fname`, this creates a mayavi2 reader
+    for it and adds it to the pipeline.  It returns the reader
+    created.
+    """
+    # 'mayavi' is always defined on the interpreter.
+    d = VTKFileReader()
+    d.initialize(fname)
+    return d
+
 
 # filelist and graph list
 if __name__ == '__main__':
 
-    filekey = 'YPL_042515_015_RFPstack_016'
+    filekey = 'WT_032716_007_RFPstack_060'
     try:
         vtkF = wr.swalk(op.join(outputdir, 'normalizedVTK'),
                         'N*Skeleton.vtk', start=5, stop=-13)
@@ -31,6 +44,7 @@ if __name__ == '__main__':
         print ("Check your filepaths\nSearch directory is %s\n" % inptdir)
         sys.exit()
 
+    source = setup_data(vtkF[filekey])
     data = vf.callreader(vtkF[filekey])
     node_data, edge_data, nxgrph = mg(data, filekey)
 

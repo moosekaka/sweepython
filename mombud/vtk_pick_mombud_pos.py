@@ -14,8 +14,8 @@ from mombud.vtk_viz import vtkvizfuncs as vz
 import wrappers as wr
 # pylint: disable=C0103
 vtkF = defaultdict(dict)
-datadir = op.join(os.getcwd(), 'data')
-rawdir = op.join(os.getcwd(), 'output')
+datadir = op.join(os.getcwd(), 'mutants')
+rawdir = op.join(os.getcwd(), 'mutants')
 
 
 def picker_callback(picker_obj):
@@ -123,14 +123,14 @@ def callback(obj, event):
             print 'results recorded!'
 
 # filelist and graph list
-vtkF = wr.ddwalk(op.join(rawdir, 'normSkel'), '*skeleton.vtk',
+vtkF = wr.ddwalk(op.join(rawdir, 'normalizedVTK'), '*skeleton.vtk',
                  start=5, stop=-13)
 
 filekeys = {item: vtkF[media][item] for media
             in sorted(vtkF.keys()) for item
             in sorted(vtkF[media].keys())}
 
-DataSize = pd.read_table(op.join(datadir, 'transformedData', 'Results.txt'))
+DataSize = pd.read_table(op.join(datadir, 'Results.txt'))
 df = DataSize.ix[:, 1:]
 df['cell'] = df.ix[:, 'Label'].apply(lambda x: x.partition(':')[2])
 df['vol'] = 4/3 * np.pi * (df.Major*.055/2) * (df.Minor*.055/2) ** 2
@@ -138,7 +138,7 @@ df['vol'] = 4/3 * np.pi * (df.Major*.055/2) * (df.Minor*.055/2) ** 2
 # Draw cell using cellplot and edgeplot
 if __name__ == "__main__":
     mlab.close(all=True)
-    filekey = 'YPR_052315_029_RFPstack_033'
+    filekey = 'WT_032716_009_RFPstack_061'
     df2 = vz.getelipspar(filekey, df)
     df2 = df2.sort_values(by='vol')
     df2.reset_index(drop=True, inplace=True)

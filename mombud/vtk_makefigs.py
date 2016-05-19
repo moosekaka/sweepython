@@ -33,12 +33,14 @@ def setup_data(fname):
 # filelist and graph list
 if __name__ == '__main__':
 
-    filekey = 'WT_032716_007_RFPstack_060'
+    filekey = 'NUM1_032016_011_RFPstack_030'
     try:
-        vtkF = wr.swalk(op.join(outputdir, 'normalizedVTK'),
-                        'N*Skeleton.vtk', start=5, stop=-13)
-        vtkS = wr.swalk(op.join(inptdir, 'surfaceFiles'),
-                        '*surface.vtk', stop=-12)
+#        vtkF = wr.swalk(op.join(outputdir, 'normalizedVTK'),
+#                        'N*Skeleton.vtk', start=5, stop=-13)
+        vtkF = wr.swalk(os.getcwd(),
+                        '*.vtk', start=0, stop=-4)
+#        vtkS = wr.swalk(op.join(inptdir, 'surfaceFiles'),
+#                        '*surface.vtk', stop=-12)
 
     except Exception:
         print ("Check your filepaths\nSearch directory is %s\n" % inptdir)
@@ -66,7 +68,7 @@ if __name__ == '__main__':
         vtktube.actor.mapper.scalar_visibility = True  # False for no heatmap
         #    vf.rendsurf(vtkS[filekey[:3]][filekey[4:]])
         vf.labelbpoints(nxgrph, bsize=.12, esize=0.06)
-        mlab.savefig(op.join(datadir, 'pipelineFigs', i + '.png'))
+#        mlab.savefig(op.join(datadir, 'pipelineFigs', i + '.png'))
 
     f, ax = plt.subplots()
     vf.nicegrph(nxgrph, ax)

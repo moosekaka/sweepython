@@ -39,10 +39,10 @@ ACN = defaultdict(dict)  # Normal dist autocors
 ACS = defaultdict(dict)  # Shuffled dist autocors
 ACDY = defaultdict(dict)  # DY_scaled  autocors
 
-autocor_type = {'actual YPE': ACDY['YPE'],
-                'normal': ACN['YPE'],
-                'shuffled': ACS['YPE'],
-                'uniform': ACU['YPE']}
+autocor_type = {'actual WT': ACDY['WT'],
+                'normal': ACN['WT'],
+                'shuffled': ACS['WT'],
+                'uniform': ACU['WT']}
 
 # =============================================================================
 # Load fitted and real data, calculate autocor coeff.

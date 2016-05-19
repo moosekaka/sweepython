@@ -19,7 +19,7 @@ import wrappers as wr
 plt.rcParams['font.family'] = 'DejaVu Sans'
 plt.close('all')
 mlab.close(all=True)
-datadir = op.join(os.getcwd(), 'data', 'transformedData')
+datadir = op.join(os.getcwd(), 'mutants', 'transformedData')
 
 # filelist and graph list
 with open(op.join(datadir, 'mombudtrans.pkl'), 'rb') as inpt:
@@ -85,7 +85,7 @@ for key in sorted(filekeys)[:]:
 cellall['budvol'] = dfmb.bud
 cellall['momvol'] = dfmb.mom
 cellall = cellall.reset_index()
-cellall['type'] = cellall['index'].apply(lambda x: x[:3])
+cellall['type'] = cellall['index'].apply(lambda x: x.split('_')[0])
 cellposbud = cellposbud.reset_index()
 cellposmom = cellposmom.reset_index()
 cellposbud = pd.concat([cellposbud, cellall.ix[:, ['type', 'neck']]], axis=1)
@@ -105,7 +105,7 @@ cellposmom['momvol'] = cellall['momvol']
 
 cellposbud['binvol'] = vf.bincell(cellposbud, 'budvol', binsvolbud)
 cellposmom['binvol'] = vf.bincell(cellposmom, 'momvol', binsvolmom)
-
+#%%
 # =============================================================================
 # cells binned by budding progression
 # =============================================================================
@@ -124,12 +124,12 @@ cellall['bin_budprog'] = vf.bincell(cellall, 'budvolratio', binsbudprog)
 cellall['binbudvol'] = cellposbud['binvol']
 
 # reject super large cells
-rejectlist = cellposmom.ix[(np.asarray(cellposmom.momvol) > 60) &
+rejectlist = cellposmom.ix[(np.asarray(cellposmom.momvol) > 100) &
                            (cellposmom.type != 'YPD'), 'index']
 cellall = cellall.ix[~ cellall.ix[:, 'index'].isin(rejectlist)]
 cellposmom = cellposmom.ix[~cellposmom.ix[:, 'index'].isin(rejectlist)]
 cellposbud = cellposbud.ix[~cellposbud.ix[:, 'index'].isin(rejectlist)]
-
+#%%
 # =============================================================================
 # Progression of Δψ as move along the bud axis
 # =============================================================================
@@ -158,18 +158,24 @@ with sns.plotting_context('talk', font_scale=1.1):
     h.set_xlabels('mom cell axis position')
     h.set(ylim=(0, 1.))
 
+#    m = sns.FacetGrid(bigbinsbud,
+#                      row="type",
+#                      col="binvol",
+#                      hue='type',
+#                      col_order=binsvolbud[1:])
+    # without binning by vol
     m = sns.FacetGrid(bigbinsbud,
-                      row="type",
-                      col="binvol",
+                      col="type",
                       hue='type',
-                      col_order=binsvolbud[1:])
+                      col_wrap=2)
+
     m = m.map(sns.pointplot,
               'bud axis position',
               r'$\Delta\Psi$ scaled gradient')
     m.set_xticklabels(fontsize=14)
     m.set_xlabels("bud axis position")
     m.set(ylim=(0, 1.))
-
+#%%
 # =============================================================================
 # frac Δψ as function of budratio
 # =============================================================================
@@ -211,28 +217,29 @@ with sns.plotting_context('talk'):
 A.dropna(inplace=True)
 with sns.plotting_context('talk', font_scale=1.4):
     sns.barplot(x='dist', y='value', hue='variable', data=A, ax=ax3a)
+#%%
 #  ============================================================================
 #  frac Δψ violinplots by media
 #  ============================================================================
-#with sns.plotting_context('talk'):
-#    _, ax1 = plt.subplots(1, 1)
-#    g = sns.violinplot(x='type',
-#                       y='value',
-#                       hue='type',
-#                       data=BIG,
-#                       ax=ax1)
-#    g.set_ylim(0, 3)
-#    g.get_legend().set_visible(False)
-#    g = sns.stripplot(x='type',
-#                      split=True,
-#                      y='value',
-#                      hue='type',
-#                      data=BIG,
-#                      jitter=.15,
-#                      ax=ax1)
-##    g.set_ylim(0.4, 2.0)
-#    g.get_legend().set_visible(False)
-# =============================================================================
+with sns.plotting_context('talk'):
+    _, ax1 = plt.subplots(1, 1)
+    g = sns.violinplot(x='type',
+                       y='value',
+                       hue='type',
+                       data=BIG,
+                       ax=ax1)
+    g.set_ylim(0, 3)
+    g.get_legend().set_visible(False)
+    g = sns.stripplot(x='type',
+                      split=True,
+                      y='value',
+                      hue='type',
+                      data=BIG,
+                      jitter=.15,
+                      ax=ax1)
+#    g.set_ylim(0.4, 2.0)
+    g.get_legend().set_visible(False)
+#%%
 # violinplot mom vs bud Δψ scaled
 # =============================================================================
 with sns.plotting_context('talk', font_scale=1.4):
@@ -251,7 +258,7 @@ with sns.plotting_context('talk', font_scale=1.4):
                   ax=ax3)
     h.set_ylim(0, 1.)
     h.get_legend().set_visible(False)
-#
+#%%
 # =============================================================================
 # frac Δψ as function of budvol
 # =============================================================================

@@ -13,24 +13,23 @@ import pandas as pd
 from tvtk.api import tvtk
 from mombud.vtk_viz import vtkvizfuncs as vz
 import wrappers as wr
-mlab.options.offscreen = True
 # pylint: disable=C0103
 
-datadir = op.join(os.getcwd(), 'data')
-rawdir = op.join(os.getcwd(), 'output')
+datadir = op.join(os.getcwd(), 'mutants')
+rawdir = op.join(os.getcwd(), 'mutants')
 
 # filelist and graph list
-vtkF = wr.ddwalk(op.join(rawdir, 'normSkel'),
+vtkF = wr.ddwalk(op.join(rawdir, 'normalizedVTK'),
                  '*skeleton.vtk', start=5, stop=-13)
 
 mombud = wr.swalk(op.join(datadir, 'csv'),
-                  'YP*csv', stop=-4)
+                  '*csv', stop=-4)
 
 filekeys = {item: vtkF[media][item] for media
             in sorted(vtkF.keys()) for item
             in sorted(vtkF[media].keys())}
 
-DataSize = pd.read_table(op.join(datadir, 'csv', 'Results.txt'))
+DataSize = pd.read_table(op.join(datadir, 'Results.txt'))
 df = DataSize.ix[:, 1:]
 df['cell'] = df.ix[:, 'Label'].apply(lambda x: x.partition(':')[2])
 df['vol'] = 4 / 3 * np.pi * (df.Major * .055 / 2) * (df.Minor * .055 / 2) ** 2
@@ -39,7 +38,7 @@ df['vol'] = 4 / 3 * np.pi * (df.Major * .055 / 2) * (df.Minor * .055 / 2) ** 2
 
 if __name__ == "__main__":
     dfmb = pd.DataFrame(columns=['base', 'neck', 'tip', 'media'])
-#    mlab.close(all=True)
+    mlab.close(all=True)
     for key in sorted(mombud.keys()[:]):
         print "now on %s" % key
         df1 = pd.read_csv(op.join(datadir, 'csv', '%s.csv' % key),
@@ -55,7 +54,7 @@ if __name__ == "__main__":
         df2 = df2.sort_values('vol')
         df2.reset_index(drop=True, inplace=True)
         df2.index = ['bud', 'mom']
-        df2['center'] = zip((df2.X - 25) * .055, (225 - df2.Y) * .055)
+        df2['center'] = zip((df2.X) * .055, (250 - df2.Y) * .055)
         figone = mlab.figure(figure='test',
                              size=(800, 600),
                              bgcolor=(0., 0., 0.))
@@ -187,24 +186,25 @@ if __name__ == "__main__":
         dfmb = dfmb.append(dftemp)
 
         # THIS IS THE TRANSFORMED CELL VTK POLYDATA THAT WE WANT!!
-#        cell_t2 = mlab.pipeline.surface(cell_t, figure=figone)
-#        cell_t2.actor.mapper.scalar_visibility = True
-#        cell_t2.module_manager.lut_data_mode = 'point data'
-#        vz.adjustlut(cell_t2)
-#
-#        t2tube = mlab.pipeline.tube(cell_t2, figure=figone)
-#        t2tube.filter.radius = .07
-#        t2surfTube = mlab.pipeline.surface(t2tube)
-#        t2surfTube.actor.mapper.scalar_visibility = True
-#        vz.adjustlut(t2surfTube)
+        cell_t2 = mlab.pipeline.surface(cell_t, figure=figone)
+        cell_t2.actor.mapper.scalar_visibility = True
+        cell_t2.module_manager.lut_data_mode = 'point data'
+        vz.adjustlut(cell_t2)
+
+        t2tube = mlab.pipeline.tube(cell_t2, figure=figone)
+        t2tube.filter.radius = .07
+        t2surfTube = mlab.pipeline.surface(t2tube)
+        t2surfTube.actor.mapper.scalar_visibility = True
+        vz.adjustlut(t2surfTube)
 #
 #        figone.scene.disable_render = False
+#        mlab.show()
 #        mlab.view(0, 0, 180)
 #        mlab.view(distance='auto')
-        # rotated vtk coordinate files
-#        w = tvtk.PolyDataWriter(input=cell_t, file_name='%s.vtk' % key)
-#        w.write()
-    with open(op.join(datadir,
-                      'transformedData',
-                      'mombudtrans.pkl'), 'wb') as output:
-        pickle.dump(dfmb, output)
+#         rotated vtk coordinate files
+        w = tvtk.PolyDataWriter(input=cell_t, file_name='%s.vtk' %
+                                op.join(datadir, 'transformedData', key))
+        w.write()
+#    with open(op.join(datadir,
+#                      'mombudtrans.pkl'), 'wb') as output:
+#        pickle.dump(dfmb, output)

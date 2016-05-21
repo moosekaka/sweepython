@@ -21,20 +21,6 @@ import wrappers as wr
 datadir = op.join(os.getcwd(), 'mutants')
 
 
-def adjustlut(vtksurface):
-    """ adjust lut colormap
-    """
-    mmgr = vtksurface.module_manager.scalar_lut_manager
-    mmgr.show_legend = True
-    mmgr.reverse_lut = True
-    mmgr.lut_mode = 'RdBu'
-    mmgr.number_of_labels = 5
-    mmgr.scalar_bar.label_format = '%4.f'
-    mmgr.label_text_property.font_size = 12
-    mmgr.scalar_bar_representation.position = [.85, .25]
-    mmgr.scalar_bar_representation.position2 = [.1, .4]
-
-
 def getelipspar(filename, df):
     """ parameters for ellipse from cell tracing """
     dftemp = df[df.cell == filename]
@@ -65,32 +51,6 @@ def setup_ellipsedata(strg, df):
     D['yc'] = df2.ix[strg, 'center'][1]
     D['zpos'] = 0
     return D
-
-
-def getellipsesource(data):
-    #    x, y = df2.ix[strg, 'center']
-    #    mlab.points3d(np.array(x), np.array(y), np.array(zpos),
-    #                  mode='2dcross',
-    #                  scale_factor=.3,
-    #                  color=(.5, .7, 0.),)
-    source = ParametricSurface()
-    source.function = 'ellipsoid'
-    source.parametric_function.set(x_radius=data['major'],
-                                   y_radius=data['minor'],
-                                   z_radius=data['minor'])
-    return source
-
-
-def adjustElip(ee, data):
-    actor = ee.actor
-    actor.property.opacity = .35
-    actor.property.color = (.9, .9, .0)
-    actor.mapper.scalar_visibility = False
-    actor.property.backface_culling = True
-    actor.property.specular = 0.1
-    actor.property.frontface_culling = True
-    actor.actor.position = np.array([data['xc'], data['yc'], data['zpos']])
-    actor.actor.orientation = np.array([0, 0, data['angle']])
 
 
 def arrowvect(B, A, C):
@@ -133,19 +93,37 @@ def arrowvect(B, A, C):
     return trans, matrix, length
 
 
+class cell_ellipse(HasTraits):
+    name = Str()
+    data = Dict()
+    src = Instance(Source)
+
+    def __init__(self, **traits):
+        HasTraits.__init__(self, **traits)
+        self.src = self.getellipsesource(self.data)
+
+    def getellipsesource(self, data):
+        source = ParametricSurface()
+        source.function = 'ellipsoid'
+        source.parametric_function.set(x_radius=data['major'],
+                                       y_radius=data['minor'],
+                                       z_radius=data['minor'])
+        return source
+
+
 class MombudPicker(HasTraits):
     name = Str()
     data_src3d = Instance(Source)
-    data_mom = Dict()
-    data_bud = Dict()
     scene3d = Instance(MlabSceneModel, (), editor=SceneEditor())
-    momelps_src = Instance(Source)
-    budelps_src = Instance(Source)
+    momellipse = Instance(cell_ellipse, ())
+    budellipse = Instance(cell_ellipse, ())
+    emom = Instance(PipelineBase)
+    ebud = Instance(PipelineBase)
     arrow_src = Instance(Source)
     z_position = Range(-10., 10., 0)
-    neck = Array()
-    base = Array()
-    tip = Array()
+    neck = Instance(PipelineBase)
+    base = Instance(PipelineBase)
+    tip = Instance(PipelineBase)
     button1 = Button('Mom')
     button2 = Button('Bud')
     button3 = Button('Neck')
@@ -153,6 +131,36 @@ class MombudPicker(HasTraits):
     button5 = Button('Arrow')
 
     engine_view = Instance(EngineView)
+    _axis_names = dict(x=0, y=1, z=2)
+
+    @staticmethod
+    def adjustellipse(surf, data):
+        actor = surf.actor
+        actor.property.opacity = .35
+        actor.property.color = (.9, .9, .0)
+        actor.mapper.scalar_visibility = False
+        actor.property.backface_culling = True
+        actor.property.specular = 0.1
+        actor.property.frontface_culling = True
+        actor.actor.position = np.array([data['xc'],
+                                         data['yc'],
+                                         data['zpos']])
+        actor.actor.orientation = np.array([0, 0, data['angle']])
+
+    @staticmethod
+    def adjustlut(surf):
+        """ adjust lut colormap
+        """
+        mmgr = surf.module_manager.scalar_lut_manager
+        mmgr.show_legend = True
+        mmgr.reverse_lut = True
+        mmgr.lut_mode = 'RdBu'
+        mmgr.number_of_labels = 5
+        mmgr.scalar_bar.label_format = '%4.f'
+        mmgr.label_text_property.font_size = 12
+        mmgr.scalar_bar_representation.position = [.85, .25]
+        mmgr.scalar_bar_representation.position2 = [.1, .4]
+
 
     def __init__(self, **traits):
         # init the parent class HasTraits
@@ -161,41 +169,41 @@ class MombudPicker(HasTraits):
         self.scene3d.mayavi_scene.name = self.name
         self.engine_view = EngineView(engine=self.scene3d.engine)
 
-        self.data_mom['zpos'] = np.mean(
+        self.momellipse.data['zpos'] = zinit = np.mean(
             self.data_src3d.outputs[0].bounds[4:])
         print "%s has init. mean z pos = %6.4f" % (self.name,
-                                                   self.data_mom['zpos'])
+                                                   zinit)
 
     @on_trait_change('scene3d.activated')
     def display_scene3d(self):
         self.scene3d.picker.show_gui=False
         x, y, z = self.data_src3d.outputs[0].center
-        mlab.points3d(0, 0, 0,
-                      mode='2dcross',
-                      scale_factor=.25,
-                      color=(.9, .1, .1),
-                      name='neck')
-        mlab.points3d(0, 0, 0,
-                      mode='2dcross',
-                      scale_factor=.25,
-                      color=(.0, .25, .9),
-                      name='base')
-        mlab.points3d(0, 0, 0,
-                      mode='2dcross',
-                      scale_factor=.25,
-                      color=(.2, .7, .2),
-                      name='tip')
+        self.neck = mlab.points3d(0, 0, 0,
+                                  mode='2dcross',
+                                  scale_factor=.25,
+                                  color=(.9, .1, .1),
+                                  name='neck')
+        self.base = mlab.points3d(0, 0, 0,
+                                  mode='2dcross',
+                                  scale_factor=.25,
+                                  color=(.0, .25, .9),
+                                  name='base')
+        self.tip = mlab.points3d(0, 0, 0,
+                                 mode='2dcross',
+                                 scale_factor=.25,
+                                 color=(.2, .7, .2),
+                                 name='tip')
 
         tube = mlab.pipeline.tube(self.data_src3d,
                                   figure=self.scene3d.mayavi_scene)
-        emom = mlab.pipeline.surface(self.momelps_src,
-                                     name='momSurf',
-                                     figure=self.scene3d.mayavi_scene)
-        ebud = mlab.pipeline.surface(self.budelps_src,
-                                     name='budSurf',
-                                     figure=self.scene3d.mayavi_scene)
-        adjustElip(emom, self.data_mom)
-        adjustElip(ebud, self.data_bud)
+        self.emom = mlab.pipeline.surface(self.momellipse.src,
+                                          name='momSurf',
+                                          figure=self.scene3d.mayavi_scene)
+        self.ebud = mlab.pipeline.surface(self.budellipse.src,
+                                          name='budSurf',
+                                          figure=self.scene3d.mayavi_scene)
+        MombudPicker.adjustellipse(self.emom, self.momellipse.data)
+        MombudPicker.adjustellipse(self.ebud, self.budellipse.data)
 
         self.data_src3d.point_scalars_name = 'DY_raw'
         surfTube = mlab.pipeline.surface(tube)
@@ -204,47 +212,50 @@ class MombudPicker(HasTraits):
         mmgr.scalar_bar.title = 'DY_raw'
         mmgr.data_name = 'DY_raw'
         tube.filter.number_of_sides = 32
-        adjustlut(surfTube)
+        MombudPicker.adjustlut(surfTube)
         self.scene3d.mlab.view(0, 0, 180)
         self.scene3d.scene.background = (0, 0, 0)
 
+
     @on_trait_change('z_position')
     def update_z(self):
-        momsurf = self.scene3d.mayavi_scene.children[-2].children[0].children[0]
-        budsurf = self.scene3d.mayavi_scene.children[-1].children[0].children[0]
-        momsurf.actor.actor.set(position=[self.data_mom['xc'],
-                                          self.data_mom['yc'],
-                                          self.z_position])
-        budsurf.actor.actor.set(position=[self.data_bud['xc'],
-                                          self.data_bud['yc'],
-                                          self.z_position])
+        self.emom.actor.actor.set(position=[self.momellipse.data['xc'],
+                                            self.momellipse.data['yc'],
+                                            self.z_position])
+        self.ebud.actor.actor.set(position=[self.budellipse.data['xc'],
+                                            self.budellipse.data['yc'],
+                                            self.z_position])
 
     @on_trait_change('button1')
     def updatemom(self):
-        x, y, z = self.base = self.scene3d.picker.pointpicker.pick_position
-        mompick = self.scene3d.mayavi_scene.children[1].children[0].children[0]
-        mompick.actor.actor.set(position=[x, y, z])
+        x, y, z = self.scene3d.picker.pointpicker.pick_position
+        self.base.actor.actor.set(position=[x, y, z])
 
     @on_trait_change('button2')
     def updatebud(self):
-        x, y, z = self.tip = self.scene3d.picker.pointpicker.pick_position
-        budpick = self.scene3d.mayavi_scene.children[2].children[0].children[0]
-        budpick.actor.actor.set(position=[x, y, z])
+        x, y, z = self.scene3d.picker.pointpicker.pick_position
+        self.tip.actor.actor.set(position=[x, y, z])
 
     @on_trait_change('button3')
     def updateneck(self):
-        x, y, z = self.neck = self.scene3d.picker.pointpicker.pick_position
-        neckpick = self.scene3d.mayavi_scene.children[0].children[0].children[0]
-        neckpick.actor.actor.set(position=[x, y, z])
+        x, y, z = self.scene3d.picker.pointpicker.pick_position
+        self.neck.actor.actor.set(position=[x, y, z])
 
     @on_trait_change('button4')
     def savecoords(self):
         output = op.join(datadir, '%s.csv' % self.name)
         f = open(output, 'w')
         f.write('%s\n' % self.name)
-        f.write('neck,{},{},{}\n'.format(*tuple(self.neck)))
-        f.write('base,{},{},{}\n'.format(*tuple(self.base)))
-        f.write('tip,{},{},{}\n'.format(*tuple(self.tip)))
+        for part in ['neck', 'base', 'tip']:
+            out = getattr(self, part)
+            f.write('{},{},{},{}\n'.format(part,
+                    *tuple(out.mlab_source.points[0])))
+#        f.write('neck,{},{},{}\n'.format(
+#            *tuple(self.neck.mlab_source.points[0])))
+#        f.write('base,{},{},{}\n'.format(
+#            *tuple(self.base.mlab_source.points[0])))
+#        f.write('tip,{},{},{}\n'.format(
+#            *tuple(self.tip.mlab_source.points[0])))
         f.write('centerpt,{}\n'.format(self.z_position))
         f.close()
         print 'results recorded for {}!'.format(self.name)
@@ -284,14 +295,15 @@ if __name__ == "__main__":
 
         df2 = getelipspar(filename, df)
         Dmom = setup_ellipsedata('mom', df2)
-    #    Dmom['zpos'] = zpos_init
         Dbud = setup_ellipsedata('bud', df2)
-    #    Dbud['zpos'] = zpos_init
+        mom = cell_ellipse(name='mom', data=Dmom)
+        bud = cell_ellipse(name='bud', data=Dbud)
+
+
         m = MombudPicker(name=filename,
                          data_src3d=vtkob,
-                         data_mom=Dmom,
-                         data_bud=Dbud,
-                         momelps_src=getellipsesource(Dmom),
-                         budelps_src=getellipsesource(Dbud))
+                         momellipse = mom,
+                         budellipse = bud)
+
         m.configure_traits()
         m.scene3d.mayavi_scene.scene.reset_zoom()

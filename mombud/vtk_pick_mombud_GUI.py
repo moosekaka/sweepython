@@ -62,18 +62,35 @@ def getellipsesource(datadic):
     return source
 
 
-def arrowvect(B, A, C):
-    """draws a vector based on base, B and tip, A.
-    calculates the transformation matrix trans and returns it along with the
-    rotation matrix
+def arrowvect(base, tip, neck):
+    """
+    Draws a vector based on base (mom end) and tip (bud end) of cell.
+    Calculates the transformation matrix trans and returns it along with the
+    rotation matrix.
+
+    Parameters
+    ----------
+    base, tip, neck : float array with shape (3L,)
+        coordinates for the apical ends of mom and bud cells
+
+    Returns
+    -------
+    trans : vtkTransform
+        Transform filter
+
+    matrix : vtkMatrix4x4
+        Rotation matrix
+
+    length : float
+      scale factor for arrow length
     """
     normalizedX = np.zeros(3)
     normalizedY = np.zeros(3)
     normalizedZ = np.zeros(3)
     AP = np.zeros(3)
     math = tvtk.Math()
-    math.subtract(A, B, normalizedX)  # normalizedX is the arrow unit vector
-    math.subtract(C, B, AP)
+    math.subtract(tip, base, normalizedX)  # normalizedX = arrow unit vector
+    math.subtract(neck, base, AP)
     length = math.norm(normalizedX)
     math.normalize(normalizedX)
     math.normalize(AP)  # another unit vector used to fix the local x-y plane
@@ -96,7 +113,7 @@ def arrowvect(B, A, C):
         matrix.set_element(el, 1, normalizedY[el])
         matrix.set_element(el, 2, normalizedZ[el])
     trans = tvtk.Transform()
-    trans.translate(B)  # translate origin to base of arrow
+    trans.translate(base)  # translate origin to base of arrow
     trans.concatenate(matrix)  # rotate around the base of arrow
     trans.scale(length, length, length)
     return trans, matrix, length
@@ -143,7 +160,8 @@ class MombudPicker(HasTraits):
     name = Str()
     data_src3d = Instance(Source)
     scene3d = Instance(MlabSceneModel, (), editor=SceneEditor())
-    arrow_src = Instance(PipelineBase)
+    arrow_src = None
+    arrow_actor = None
     z_position = Range(-10., 10., 3.0)
     momellipse = Instance(CellEllipse, ())
     budellipse = Instance(CellEllipse, ())
@@ -152,9 +170,12 @@ class MombudPicker(HasTraits):
     tip_curs = Instance(PipelineBase)
     emom = Instance(PipelineBase)
     ebud = Instance(PipelineBase)
-    neck = Array()
-    base = Array()
-    tip = Array()
+#    neck = Array()
+#    base = Array()
+#    tip = Array()
+    neck = None
+    base = None
+    tip = None
     button1 = Button('Mom')
     button2 = Button('Bud')
     button3 = Button('Neck')
@@ -229,11 +250,15 @@ class MombudPicker(HasTraits):
     def updatemom(self):
         x, y, z = self.base = self.scene3d.picker.pointpicker.pick_position
         self.base_curs.actor.actor.set(position=[x, y, z])
+        if self.tip:
+            self.drawarrow()
 
     @on_trait_change('button2')
     def updatebud(self):
         x, y, z = self.tip = self.scene3d.picker.pointpicker.pick_position
         self.tip_curs.actor.actor.set(position=[x, y, z])
+        if self.base:
+            self.drawarrow()
 
     @on_trait_change('button3')
     def updateneck(self):
@@ -252,6 +277,30 @@ class MombudPicker(HasTraits):
         f.close()
         print 'results recorded for {}!'.format(self.name)
 
+    @on_trait_change('button5')
+    def drawarrow(self):
+        tr, rot, scale = arrowvect(self.base, self.tip, self.neck)
+
+        self.arrow_src = tvtk.ArrowSource(shaft_radius=.01,
+                                          shaft_resolution=18,
+                                          tip_length=.15,
+                                          tip_radius=.05,
+                                          tip_resolution=18)
+        tranf_output = tvtk.TransformPolyDataFilter(
+            input=self.arrow_src.output, transform=tr)
+
+        if self.arrow_actor:
+            self.arrow_actor.parent.parent.remove()
+            self.arrow_actor = mlab.pipeline.surface(
+                tranf_output.output,
+                figure=self.scene3d.mayavi_scene,
+                opacity=.5)
+        else:
+            self.arrow_actor = mlab.pipeline.surface(
+                tranf_output.output,
+                figure=self.scene3d.mayavi_scene,
+                opacity=.5)
+
     # GUI layout
     view = View(
         HSplit(
@@ -261,7 +310,7 @@ class MombudPicker(HasTraits):
                         height=800, width=600),
                    Group('_', 'z_position',
                          'button1', 'button2',
-                         'button3', 'button4',
+                         'button3', 'button5', 'button4',
                          show_labels=False),
                    show_labels=False),
             show_labels=False),

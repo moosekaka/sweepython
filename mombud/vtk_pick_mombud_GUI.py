@@ -16,7 +16,8 @@ from mayavi.sources.vtk_data_source import tvtk, VTKDataSource
 from mayavi.sources.api import ParametricSurface
 from mayavi import mlab
 from mayavi.core.api import PipelineBase, Source
-from mayavi.core.ui.api import SceneEditor, MlabSceneModel, EngineView
+from mayavi.core.ui.api import SceneEditor, MlabSceneModel, EngineView, \
+                               MayaviScene
 
 from seaborn import xkcd_palette as scolor
 import wrappers as wr
@@ -184,6 +185,7 @@ class MombudPicker(HasTraits):
     """
     name = Str()
     data_src3d = Instance(Source)
+
     scene3d = Instance(MlabSceneModel, (), editor=SceneEditor())
     scene2 = Instance(MlabSceneModel, (), editor=SceneEditor())
     arrow_src = None
@@ -201,7 +203,7 @@ class MombudPicker(HasTraits):
     button3 = Button('Neck')
     button4 = Button('SaveOutput')
     button5 = Button('Arrow')
-    transform = Button('Tranform')
+    transform = Button('Transform')
     cursors = Dict({'base': None, 'tip': None, 'neck': None})
     # colors defined from xkcd pallete
     cur_col = Dict(
@@ -231,12 +233,15 @@ class MombudPicker(HasTraits):
                                               color=palette[self.cur_col[key]],
                                               name=key)
 
-        # the scalar value data for the skeleton , adjust the LUT
-        tube = mlab.pipeline.tube(self.data_src3d, tube_sides=32,
-                                  figure=self.scene3d.mayavi_scene)
+        # select which scalartype to show on the skeleton
         self.data_src3d.point_scalars_name = 'DY_raw'
-        surfTube = mlab.pipeline.surface(tube)
-        adjustlut(surfTube)
+
+        # the scalar value data for the skeleton , adjust the LUT
+#        tube = mlab.pipeline.tube(self.data_src3d, tube_sides=32,
+#                                  figure=self.scene3d.mayavi_scene)
+#        surfTube = mlab.pipeline.surface(tube)
+#        adjustlut(surfTube)
+        self._tubify('data_src3d', 'scene3d')
 
         # draw and mom/bud ellipse surface and adjust the positions
         self.emom = mlab.pipeline.surface(self.momellipse.src,
@@ -261,6 +266,14 @@ class MombudPicker(HasTraits):
         # Keep the view always pointing up
         self.scene2.scene.interactor.interactor_style = \
             tvtk.InteractorStyleTerrain()
+
+    def _tubify(self, data, scene_name):
+        datasrc = getattr(self, data)
+        scene = getattr(self, scene_name)
+        tube = mlab.pipeline.tube(datasrc, tube_sides=32,
+                                  figure=scene.mayavi_scene)
+        surfTube = mlab.pipeline.surface(tube)
+        adjustlut(surfTube)
 
     def _labelscene(self, label, scene_name):
         scene = getattr(self, scene_name)
@@ -305,6 +318,30 @@ class MombudPicker(HasTraits):
         self.arrow_actor.set(mapper=mapper)
         self.scene3d.mayavi_scene.scene.add_actor(self.arrow_actor)
 
+    def _transform(self, obj, trans_filter):
+        transformed = tvtk.TransformPolyDataFilter(
+            input=obj,
+            transform=trans_filter).output
+        return transformed
+
+    @on_trait_change('transform')
+    def draw_transformed(self):
+        if self.base and self.tip and self.neck:
+            tr, rot, scale1 = arrowvect(self.base, self.tip, self.neck)
+            tr_filt = tvtk.Transform()
+            rot.transpose()
+            tr_filt.translate(np.negative(self.base))
+            tr_filt.post_multiply()  # translate, THEN rotate
+            tr_filt.concatenate(rot)
+            tr_filt.translate([-1, 0, 0])
+            skel_polydata = self.data_src3d.outputs[0]
+            # this is the transformed VTK object of interest
+            self.trans_obj = self._transform(skel_polydata, tr_filt)
+            mlab.clf(figure=self.scene2.mayavi_scene)
+            self._tubify('trans_obj', 'scene2')
+        else:
+            print "please finish selecting all three points!"
+
     @on_trait_change('z_position')
     def _update_z(self):
         self.emom.actor.actor.set(position=[self.momellipse.data['xc'],
@@ -332,15 +369,18 @@ class MombudPicker(HasTraits):
 
     @on_trait_change('button4')
     def _savecoords(self):
-        output = op.join(datadir, '%s.csv' % self.name)
-        f = open(output, 'w')
-        f.write('%s\n' % self.name)
-        for part in ['neck', 'base', 'tip']:
-            out = getattr(self, part)
-            f.write('{},{},{},{}\n'.format(part, *tuple(out)))
-        f.write('centerpt,{}\n'.format(self.z_position))
-        f.close()
-        print 'results recorded for {}!'.format(self.name)
+        if self.base and self.tip and self.neck:
+            output = op.join(datadir, '%s.csv' % self.name)
+            f = open(output, 'w')
+            f.write('%s\n' % self.name)
+            for part in ['neck', 'base', 'tip']:
+                out = getattr(self, part)
+                f.write('{},{},{},{}\n'.format(part, *tuple(out)))
+            f.write('centerpt,{}\n'.format(self.z_position))
+            f.close()
+            print 'results recorded for {}!'.format(self.name)
+        else:
+            print "please finish selecting all three points!"
 
     @on_trait_change('button5')
     def redraw_arrow(self):
@@ -357,9 +397,10 @@ class MombudPicker(HasTraits):
                   ),
                   Group(
                        Item('scene3d',
-                            editor=SceneEditor(),
+                            editor=SceneEditor(scene_class=MayaviScene),
                             height=600,
                             width=600),
+                       'z_position',
                        'button1',
                        'button2',
                        'button3',

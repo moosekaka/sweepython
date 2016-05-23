@@ -260,11 +260,11 @@ class MombudPicker(HasTraits):
         self.scene2.scene.background = (0, 0, 0)
         # Keep the view always pointing up
         self.scene2.scene.interactor.interactor_style = \
-                                 tvtk.InteractorStyleTerrain()
+            tvtk.InteractorStyleTerrain()
 
     def _labelscene(self, label, scene_name):
         scene = getattr(self, scene_name)
-       # label text and adjust view
+        # label text and adjust view
         vtext = tvtk.TextActor()
         vtext.set(input=label, text_scale_mode='viewport')
         vtext.text_property.set(font_size=14)
@@ -347,6 +347,7 @@ class MombudPicker(HasTraits):
         self._drawarrow()
 
     # GUI layout
+    # pylint: disable=C0330
     view = View(HSplit(
                  Group(
                        Item('engine_view',
@@ -375,7 +376,8 @@ class MombudPicker(HasTraits):
                   ),
                 ),
                 resizable=True,
-                )
+               )
+    # pylint: enable=C0330
 ##############################################################################
 if __name__ == "__main__":
     DataSize = pd.read_table(op.join(datadir, 'Results.txt'))

@@ -249,20 +249,26 @@ class MombudPicker(HasTraits):
         adjustellipse(self.ebud, self.budellipse.data)
         self._update_z()  # update z to default range value
 
-#        self._drawarrow(default=1)
-
-        # label text and adjust view
-        self.vtext = tvtk.TextActor()
-        self.vtext.set(input=self.name, text_scale_mode='viewport')
-        self.vtext.text_property.set(font_size=12)
-        self.scene3d.mayavi_scene.scene.add_actor(self.vtext)
+        self._labelscene(self.name, 'scene3d')
         self.scene3d.mlab.view(0, 0, 180)
         self.scene3d.scene.background = (0, 0, 0)
 
     @on_trait_change('scene2.activated')
     def display_scene2(self):
-        x, y, z, s = np.random.random((4, 100))
-        mlab.points3d(x, y, z, s, figure=self.scene2.mayavi_scene)
+        mlab.clf(figure=self.scene2.mayavi_scene)
+        self._labelscene('Transformed View', 'scene2')
+        self.scene2.scene.background = (0, 0, 0)
+        # Keep the view always pointing up
+        self.scene2.scene.interactor.interactor_style = \
+                                 tvtk.InteractorStyleTerrain()
+
+    def _labelscene(self, label, scene_name):
+        scene = getattr(self, scene_name)
+       # label text and adjust view
+        vtext = tvtk.TextActor()
+        vtext.set(input=label, text_scale_mode='viewport')
+        vtext.text_property.set(font_size=14)
+        scene.mayavi_scene.scene.add_actor(vtext)
 
     def _update_curs(self, part):
         """
@@ -340,7 +346,6 @@ class MombudPicker(HasTraits):
     def redraw_arrow(self):
         self._drawarrow()
 
-
     # GUI layout
     view = View(HSplit(
                  Group(
@@ -352,8 +357,8 @@ class MombudPicker(HasTraits):
                   Group(
                        Item('scene3d',
                             editor=SceneEditor(),
-                            height=500,
-                            width=500),
+                            height=600,
+                            width=600),
                        'button1',
                        'button2',
                        'button3',
@@ -361,8 +366,8 @@ class MombudPicker(HasTraits):
                   ),
                   Group(
                        Item('scene2',
-                            editor=SceneEditor(), height=500,
-                            width=500, show_label=False),
+                            editor=SceneEditor(), height=600,
+                            width=600, show_label=False),
                        'button4',
                        'button5',
                        'transform',
@@ -371,20 +376,6 @@ class MombudPicker(HasTraits):
                 ),
                 resizable=True,
                 )
-#    view = View(
-#        HSplit(
-#            Item(name='engine_view', style='custom', resizable=True),
-#            VSplit(Item('scene3d',
-#                        editor=SceneEditor(),
-#                        height=800, width=600),
-#                   Group('_', 'z_position',
-#                         'button1', 'button2',
-#                         'button3', 'button5', 'button4',
-#                         show_labels=False),
-#                   show_labels=False),
-#            show_labels=False),
-#        resizable=True)
-
 ##############################################################################
 if __name__ == "__main__":
     DataSize = pd.read_table(op.join(datadir, 'Results.txt'))

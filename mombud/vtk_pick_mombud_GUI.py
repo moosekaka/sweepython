@@ -317,6 +317,7 @@ class MombudPicker(HasTraits):
         mapper.set(input=tranf_output)
         self.arrow_actor.set(mapper=mapper)
         self.scene3d.mayavi_scene.scene.add_actor(self.arrow_actor)
+        self.arrow_actor.property.set(opacity=0.33)
 
     def _transform(self, obj, trans_filter):
         transformed = tvtk.TransformPolyDataFilter(
@@ -324,23 +325,17 @@ class MombudPicker(HasTraits):
             transform=trans_filter).output
         return transformed
 
-    @on_trait_change('transform')
-    def draw_transformed(self):
-        if self.base and self.tip and self.neck:
-            tr, rot, scale1 = arrowvect(self.base, self.tip, self.neck)
-            tr_filt = tvtk.Transform()
-            rot.transpose()
-            tr_filt.translate(np.negative(self.base))
-            tr_filt.post_multiply()  # translate, THEN rotate
-            tr_filt.concatenate(rot)
-            tr_filt.translate([-1, 0, 0])
-            skel_polydata = self.data_src3d.outputs[0]
-            # this is the transformed VTK object of interest
-            self.trans_obj = self._transform(skel_polydata, tr_filt)
-            mlab.clf(figure=self.scene2.mayavi_scene)
-            self._tubify('trans_obj', 'scene2')
-        else:
-            print "please finish selecting all three points!"
+    def _savecsv(self):
+        output = op.join(datadir, '%s.csv' % self.name)
+        f = open(output, 'w')
+        f.write('%s\n' % self.name)
+        for part in ['neck', 'base', 'tip']:
+            out = getattr(self, part)
+            f.write('{},{},{},{}\n'.format(part, *tuple(out)))
+        f.write('centerpt,{}\n'.format(self.z_position))
+        f.close()
+        print 'coordinates for base, tip and neck recorded for\
+            {}!'.format(self.name)
 
     @on_trait_change('z_position')
     def _update_z(self):
@@ -370,21 +365,31 @@ class MombudPicker(HasTraits):
     @on_trait_change('button4')
     def _savecoords(self):
         if self.base and self.tip and self.neck:
-            output = op.join(datadir, '%s.csv' % self.name)
-            f = open(output, 'w')
-            f.write('%s\n' % self.name)
-            for part in ['neck', 'base', 'tip']:
-                out = getattr(self, part)
-                f.write('{},{},{},{}\n'.format(part, *tuple(out)))
-            f.write('centerpt,{}\n'.format(self.z_position))
-            f.close()
-            print 'results recorded for {}!'.format(self.name)
+            self._savecsv()
         else:
             print "please finish selecting all three points!"
 
     @on_trait_change('button5')
     def redraw_arrow(self):
         self._drawarrow()
+
+    @on_trait_change('transform')
+    def draw_transformed(self):
+        if self.base and self.tip and self.neck:
+            tr, rot, scale1 = arrowvect(self.base, self.tip, self.neck)
+            tr_filt = tvtk.Transform()
+            rot.transpose()
+            tr_filt.translate(np.negative(self.base))
+            tr_filt.post_multiply()  # translate, THEN rotate
+            tr_filt.concatenate(rot)
+            tr_filt.translate([-1, 0, 0])
+            skel_polydata = self.data_src3d.outputs[0]
+            # this is the transformed VTK object of interest
+            self.trans_obj = self._transform(skel_polydata, tr_filt)
+            mlab.clf(figure=self.scene2.mayavi_scene)
+            self._tubify('trans_obj', 'scene2')
+        else:
+            print "please finish selecting all three points!"
 
     # GUI layout
     # pylint: disable=C0330

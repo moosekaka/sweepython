@@ -185,6 +185,7 @@ class MombudPicker(HasTraits):
     name = Str()
     data_src3d = Instance(Source)
     scene3d = Instance(MlabSceneModel, (), editor=SceneEditor())
+    scene2 = Instance(MlabSceneModel, (), editor=SceneEditor())
     arrow_src = None
     arrow_actor = None
     momellipse = Instance(CellEllipse, ())
@@ -200,6 +201,7 @@ class MombudPicker(HasTraits):
     button3 = Button('Neck')
     button4 = Button('SaveOutput')
     button5 = Button('Arrow')
+    transform = Button('Tranform')
     cursors = Dict({'base': None, 'tip': None, 'neck': None})
     # colors defined from xkcd pallete
     cur_col = Dict(
@@ -247,6 +249,8 @@ class MombudPicker(HasTraits):
         adjustellipse(self.ebud, self.budellipse.data)
         self._update_z()  # update z to default range value
 
+#        self._drawarrow(default=1)
+
         # label text and adjust view
         self.vtext = tvtk.TextActor()
         self.vtext.set(input=self.name, text_scale_mode='viewport')
@@ -254,6 +258,11 @@ class MombudPicker(HasTraits):
         self.scene3d.mayavi_scene.scene.add_actor(self.vtext)
         self.scene3d.mlab.view(0, 0, 180)
         self.scene3d.scene.background = (0, 0, 0)
+
+    @on_trait_change('scene2.activated')
+    def display_scene2(self):
+        x, y, z, s = np.random.random((4, 100))
+        mlab.points3d(x, y, z, s, figure=self.scene2.mayavi_scene)
 
     def _update_curs(self, part):
         """
@@ -266,6 +275,29 @@ class MombudPicker(HasTraits):
         setattr(self, part, self.scene3d.picker.pointpicker.pick_position)
         array = getattr(self, '%s' % part)
         self.cursors[part].actor.actor.set(position=array)
+
+    def _drawarrow(self):
+        # initialize arrow object
+        if self.arrow_src is None:
+            self.arrow_src = tvtk.ArrowSource(shaft_radius=.01,
+                                              shaft_resolution=18,
+                                              tip_length=.15,
+                                              tip_radius=.05,
+                                              tip_resolution=18)
+        # remove the previous arrow object if it exists
+        if self.arrow_actor is not None:
+            self.scene3d.mayavi_scene.scene.remove_actor(self.arrow_actor)
+
+        # tr is the transform filter (transformation matrix object)
+        tr, _, _ = arrowvect(self.base, self.tip, self.neck)
+
+        tranf_output = tvtk.TransformPolyDataFilter(
+            input=self.arrow_src.output, transform=tr).output
+        mapper = tvtk.PolyDataMapper()
+        self.arrow_actor = tvtk.Actor()
+        mapper.set(input=tranf_output)
+        self.arrow_actor.set(mapper=mapper)
+        self.scene3d.mayavi_scene.scene.add_actor(self.arrow_actor)
 
     @on_trait_change('z_position')
     def _update_z(self):
@@ -305,40 +337,53 @@ class MombudPicker(HasTraits):
         print 'results recorded for {}!'.format(self.name)
 
     @on_trait_change('button5')
-    def _drawarrow(self):
-        tr, _, _ = arrowvect(self.base, self.tip, self.neck)
+    def redraw_arrow(self):
+        self._drawarrow()
 
-        self.arrow_src = tvtk.ArrowSource(shaft_radius=.01,
-                                          shaft_resolution=18,
-                                          tip_length=.15,
-                                          tip_radius=.05,
-                                          tip_resolution=18)
-        tranf_output = tvtk.TransformPolyDataFilter(
-            input=self.arrow_src.output, transform=tr)
-
-        # remove the previous arrow object if it exists
-        if hasattr(self.arrow_actor, 'parent'):
-            self.arrow_actor.parent.parent.remove()
-
-        self.arrow_actor = mlab.pipeline.surface(
-            tranf_output.output,
-            figure=self.scene3d.mayavi_scene,
-            opacity=.5)
 
     # GUI layout
-    view = View(
-        HSplit(
-            Item(name='engine_view', style='custom', resizable=True),
-            VSplit(Item('scene3d',
-                        editor=SceneEditor(),
-                        height=800, width=600),
-                   Group('_', 'z_position',
-                         'button1', 'button2',
-                         'button3', 'button5', 'button4',
-                         show_labels=False),
-                   show_labels=False),
-            show_labels=False),
-        resizable=True)
+    view = View(HSplit(
+                 Group(
+                       Item('engine_view',
+                            style='custom',
+                            resizable=True),
+                       show_labels=False
+                  ),
+                  Group(
+                       Item('scene3d',
+                            editor=SceneEditor(),
+                            height=500,
+                            width=500),
+                       'button1',
+                       'button2',
+                       'button3',
+                       show_labels=False,
+                  ),
+                  Group(
+                       Item('scene2',
+                            editor=SceneEditor(), height=500,
+                            width=500, show_label=False),
+                       'button4',
+                       'button5',
+                       'transform',
+                       show_labels=False,
+                  ),
+                ),
+                resizable=True,
+                )
+#    view = View(
+#        HSplit(
+#            Item(name='engine_view', style='custom', resizable=True),
+#            VSplit(Item('scene3d',
+#                        editor=SceneEditor(),
+#                        height=800, width=600),
+#                   Group('_', 'z_position',
+#                         'button1', 'button2',
+#                         'button3', 'button5', 'button4',
+#                         show_labels=False),
+#                   show_labels=False),
+#            show_labels=False),
+#        resizable=True)
 
 ##############################################################################
 if __name__ == "__main__":

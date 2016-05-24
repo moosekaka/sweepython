@@ -185,11 +185,11 @@ class MombudPicker(HasTraits):
     name = Str()
     data_src3d = Instance(Source)
     arrow_src = Instance(Source)
-    momellipse = Instance(CellEllipse, ())
-    budellipse = Instance(CellEllipse, ())
+    momellipse = Instance(CellEllipse)
+    budellipse = Instance(CellEllipse)
 
-    scene3d = Instance(MlabSceneModel, (), )
-    scene2 = Instance(MlabSceneModel, (), )
+    scene1 = Instance(MlabSceneModel, args=())
+    scene2 = Instance(MlabSceneModel, args=())
     arrow_actor = Instance(PipelineBase)
     emom = Instance(PipelineBase)
     ebud = Instance(PipelineBase)
@@ -215,18 +215,20 @@ class MombudPicker(HasTraits):
     def __init__(self, label='z_position', **traits):
         # init the parent class HasTraits
         HasTraits.__init__(self, **traits)
-        self.engine_view = EngineView(engine=self.scene3d.engine)
+        self.scene1.mayavi_scene.name = 'scene1'
+        self.engine_view = EngineView(engine=self.scene1.engine)
+        self.scene2.mayavi_scene.name = 'scene2'
         zmin, zmax = self.data_src3d.outputs[0].bounds[4:]
         self.momellipse.data['zpos'] = zinit = np.mean((zmin, zmax))
         self.budellipse.data['zpos'] = zinit = np.mean((zmin, zmax))
         trait = Range(zmin, zmax, zinit)
         self.add_trait(label, trait)
 
-    def _scene3d_default(self):
+    def _scene1_default(self):
         " The default initializer for 'scene1' "
         self.engine1.start()
-        scene3d = MlabSceneModel(engine=self.engine1)
-        return scene3d
+        scene1 = MlabSceneModel(engine=self.engine1)
+        return scene1
 
     def _scene2_default(self):
         " The default initializer for 'scene1' "
@@ -234,10 +236,9 @@ class MombudPicker(HasTraits):
         scene2 = MlabSceneModel(engine=self.engine1)
         return scene2
 
-    @on_trait_change('scene3d.activated')
-    def _display_scene3d(self):
-        self.scene3d.picker.show_gui = False
-        self.scene3d.mayavi_scene.name = 'scene3d'
+    @on_trait_change('scene1.activated')
+    def _display_scene1(self):
+        self.scene1.picker.show_gui = False
 
         # cursor to mark mom/neck/bud locations
         for key in self.cursors:
@@ -250,29 +251,28 @@ class MombudPicker(HasTraits):
         # select which scalartype to show on the skeleton
         self.data_src3d.point_scalars_name = 'DY_raw'
 
-        self._tubify('data_src3d', 'scene3d')
+        self._tubify('data_src3d', 'scene1')
         self.arrow_actor = mlab.pipeline.surface(self.arrow_src,
                                                  name='arrow',
                                                  opacity=0.5,
-                                                 figure=self.scene3d.mayavi_scene)
+                                                 figure=self.scene1.mayavi_scene)
 
         # draw and mom/bud ellipse surface and adjust the positions
         for key in ['mom', 'bud']:
             ellipse = getattr(self, '%sellipse' % key)
             obj = mlab.pipeline.surface(ellipse.src,
                                         name='%sSurf' % key,
-                                        figure=self.scene3d.mayavi_scene)
+                                        figure=self.scene1.mayavi_scene)
             setattr(self, 'e%s' % key, obj)
             adjustellipse(obj, ellipse.data)
             self._update_zpos(obj)
 
-        self._labelscene(self.name, 'scene3d')
-        self.scene3d.mlab.view(0, 0, 180)
-        self.scene3d.scene.background = (0, 0, 0)
+        self._labelscene(self.name, 'scene1')
+        self.scene1.mlab.view(0, 0, 180)
+        self.scene1.scene.background = (0, 0, 0)
 
     @on_trait_change('scene2.activated')
     def _display_scene2(self):
-        self.scene2.mayavi_scene.name = 'scene2'
         mlab.clf(figure=self.scene2.mayavi_scene)
         self._labelscene('Transformed View', 'scene2')
         self.scene2.scene.background = (0, 0, 0)
@@ -304,7 +304,7 @@ class MombudPicker(HasTraits):
             setattr(self, '%s' % part,
                     Array(value=(0, 0, 0),
                           shape=(3,)))
-        setattr(self, part, self.scene3d.picker.pointpicker.pick_position)
+        setattr(self, part, self.scene1.picker.pointpicker.pick_position)
         array = getattr(self, '%s' % part)
         self.cursors[part].actor.actor.set(position=array)
 
@@ -378,6 +378,8 @@ class MombudPicker(HasTraits):
 
     @on_trait_change('transform')
     def _draw_transformed(self):
+        mlab.view(0, 0, figure=self.scene1.mayavi_scene)
+        self.scene1.mayavi_scene.scene.reset_zoom()
         if self.base and self.tip and self.neck:
             _, rot, scale1 = arrowvect(self.base, self.tip, self.neck)
             tr_filt = tvtk.Transform()
@@ -413,9 +415,7 @@ class MombudPicker(HasTraits):
                                              color=palette[self.cur_col[key]],
                                              name='%s_trnf' % key)
                 surf.actor.actor.user_transform = tr_filt
-
             self.scene2.mayavi_scene.scene.reset_zoom()
-            self.scene3d.mayavi_scene.scene.reset_zoom()
         else:
             print "please finish selecting all three points!"
 
@@ -429,7 +429,7 @@ class MombudPicker(HasTraits):
                        show_labels=False
                   ),
                   Group(
-                       Item('scene3d',
+                       Item('scene1',
                             editor=SceneEditor(scene_class=MayaviScene),
                             height=600,
                             width=600),
@@ -465,7 +465,7 @@ if __name__ == "__main__":
     mlab.close(all=True)
 #    vtkF = wr.ddwalk(datadir, '*csv', start=0, stop=-4)
     D = {key:None for key in hasbuds.cell.values}
-    for i in hasbuds.cell.unique()[110:111]:
+    for i in hasbuds.cell.unique()[115:116]:
         filename = i
         vtkob = setup_data(op.join(datadir,
                                    'normalizedVTK/Norm_%s_skeleton.vtk' %
@@ -486,12 +486,12 @@ if __name__ == "__main__":
                                   tip_resolution=18).output
                               )
 #        e=Engine()
-        D[i] = MombudPicker(name=filename,
+        m = MombudPicker(name=filename,
                          data_src3d=vtkob,
                          momellipse=mom,
                          budellipse=bud,
                          arrow_src=arrow,
                          )
 
-        D[i].configure_traits()
-        D[i].scene3d.mayavi_scene.scene.reset_zoom()
+        m.configure_traits()
+        m.scene1.mayavi_scene.scene.reset_zoom()

@@ -337,6 +337,14 @@ class MombudPicker(HasTraits):
         print 'coordinates for base, tip and neck recorded for\
             {}!'.format(self.name)
 
+    def _save_transform_vtk(self, vtkobj):
+        data = getattr(self, vtkobj)
+        w = tvtk.PolyDataWriter(
+            input=data,
+            file_name=op.join(datadir, '%s.vtk' % self.name))
+        w.write()
+        print 'transformed vtk saved as {}.vtk!'.format(self.name)
+
     @on_trait_change('z_position')
     def _update_z(self):
         self.emom.actor.actor.set(position=[self.momellipse.data['xc'],
@@ -365,13 +373,17 @@ class MombudPicker(HasTraits):
     @on_trait_change('button4')
     def _savecoords(self):
         if self.base and self.tip and self.neck:
-            self._savecsv()
+            #self._savecsv()
+            self._save_transform_vtk('trans_obj')
         else:
             print "please finish selecting all three points!"
 
     @on_trait_change('button5')
     def redraw_arrow(self):
-        self._drawarrow()
+        if self.base and self.tip and self.neck:
+            self._drawarrow()
+        else:
+            print "please finish selecting all three points!"
 
     @on_trait_change('transform')
     def draw_transformed(self):

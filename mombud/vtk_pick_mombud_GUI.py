@@ -255,7 +255,8 @@ class MombudPicker(HasTraits):
         self.arrow_actor = mlab.pipeline.surface(self.arrow_src,
                                                  name='arrow',
                                                  opacity=0.5,
-                                                 figure=self.scene1.mayavi_scene)
+                                                 figure=self.
+                                                 scene1.mayavi_scene)
 
         # draw and mom/bud ellipse surface and adjust the positions
         for key in ['mom', 'bud']:
@@ -463,9 +464,9 @@ if __name__ == "__main__":
     hasbuds = df[df.cell.isin(counter[counter > 1].index.values)]
 
     mlab.close(all=True)
-#    vtkF = wr.ddwalk(datadir, '*csv', start=0, stop=-4)
+#    vtkF = wr.swalk(datadir, '*csv', start=0, stop=-4)
     D = {key:None for key in hasbuds.cell.values}
-    for i in hasbuds.cell.unique()[115:116]:
+    for i in hasbuds.cell.unique()[0:1]:
         filename = i
         vtkob = setup_data(op.join(datadir,
                                    'normalizedVTK/Norm_%s_skeleton.vtk' %
@@ -485,7 +486,6 @@ if __name__ == "__main__":
                                   tip_radius=.05,
                                   tip_resolution=18).output
                               )
-#        e=Engine()
         m = MombudPicker(name=filename,
                          data_src3d=vtkob,
                          momellipse=mom,

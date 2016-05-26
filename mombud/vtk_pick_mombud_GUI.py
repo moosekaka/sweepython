@@ -28,14 +28,35 @@ colors = ["medium green",
           "red"]
 palette = {col:rgb for col, rgb in zip(colors, scolor(colors))}
 
-def getelipspar(fname, datafile):
-    """ parameters for ellipse from cell tracing """
-    dftemp = datafile[datafile.cell == fname]
-    dftemp = dftemp.sort_values(by='vol')
-    dftemp.index = ['bud', 'mom']
+
+def getelipspar(fname, dfin):
+    """
+    Return parameters for ellipse from cell tracing dataframe
+
+    Parameters:
+    -----------
+    fname: Str
+        cell name id, e.g. `MFB1_032016_002_RFPstack_000`
+    dfin: DataFrame
+        Dataframe file from pandas.csv read of a cell tracing data
+
+    Returns:
+    --------
+    dftemp
+
+
+    """
+    # selection returns a view by default, we want a copy!
+    dfout = dfin[dfin.cell == fname].copy()
+    dfout['Major'] = dfout.Major * .055/2
+    dfout['Minor'] = dfout.Minor * .055/2
+    dfout['vol'] =  \
+        4 / 3 * np.pi * dfout.Major * dfout.Minor
+    dfout = dfout.sort_values(by='vol')
+    dfout.index = ['bud', 'mom']
     # reverse the y-coordinate system (VTK vs ImageJ)
-    dftemp['center'] = zip((dftemp.X) * .055, (250 - dftemp.Y) * .055)
-    return dftemp
+    dfout['center'] = zip((dfout.X) * .055, (250 - dfout.Y) * .055)
+    return dfout
 
 
 def setup_data(fname):
@@ -55,8 +76,8 @@ def setup_ellipsedata(strg, dF):
     CellEllipse class
     """
     D = {}
-    D['major'] = dF.ix[strg, 'Major'] * .055 / 2
-    D['minor'] = dF.ix[strg, 'Minor'] * .055 / 2
+    D['major'] = dF.ix[strg, 'Major']
+    D['minor'] = dF.ix[strg, 'Minor']
     D['angle'] = dF.ix[strg, 'Angle']
     D['xc'] = dF.ix[strg, 'center'][0]
     D['yc'] = dF.ix[strg, 'center'][1]
@@ -64,15 +85,15 @@ def setup_ellipsedata(strg, dF):
     return D
 
 
-def getellipsesource(datadic):
+def getellipsesource(major, minor):
     """
     Convenience wrapper to generate a Mayavi Source object based on datadic
     """
     source = ParametricSurface()
     source.function = 'ellipsoid'
-    source.parametric_function.set(x_radius=datadic['major'],
-                                   y_radius=datadic['minor'],
-                                   z_radius=datadic['minor'])
+    source.parametric_function.set(x_radius=major,
+                                   y_radius=minor,
+                                   z_radius=minor)
     return source
 
 
@@ -174,7 +195,8 @@ class CellEllipse(HasTraits):
 
     def __init__(self, **traits):
         HasTraits.__init__(self, **traits)
-        self.src = getellipsesource(self.data)
+        self.src = getellipsesource(self.data['major'],
+                                    self.data['minor'])
 
 
 class MombudPicker(HasTraits):
@@ -459,13 +481,12 @@ if __name__ == "__main__":
     DataSize = pd.read_table(op.join(datadir, 'Results.txt'))
     df = DataSize.ix[:, 1:]
     df['cell'] = df.ix[:, 'Label'].apply(lambda x: x.partition(':')[2])
-    df['vol'] = 4 / 3 * np.pi * (df.Major * .055 / 2) * (df.Minor * .055 / 2)
     counter = df.groupby('cell').Label.count()
     hasbuds = df[df.cell.isin(counter[counter > 1].index.values)]
 
     mlab.close(all=True)
 #    vtkF = wr.swalk(datadir, '*csv', start=0, stop=-4)
-    D = {key:None for key in hasbuds.cell.values}
+    Dcells = {key:None for key in hasbuds.cell.values}
     for i in hasbuds.cell.unique()[0:1]:
         filename = i
         vtkob = setup_data(op.join(datadir,

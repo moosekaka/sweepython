@@ -19,8 +19,8 @@ from mombud.vtk_pick_mombud_GUI import \
     arrowvect, getelipspar, setup_ellipsedata, getellipsesource, adjustellipse
 
 # pylint: disable=C0103
-datadir = op.join(os.getcwd(), 'mutants', 'transformedData2')
-rawdir = op.join(os.getcwd(), 'mutants', 'transformedData2')
+datadir = op.join(os.getcwd(), 'mutants', 'transformedData3')
+rawdir = op.join(os.getcwd(), 'mutants', 'transformedData3')
 
 # xkcd palette colors
 colors = ["medium green",

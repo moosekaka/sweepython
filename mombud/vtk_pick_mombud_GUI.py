@@ -156,23 +156,6 @@ def arrowvect(base, tip, neck):
     return trans, matrix, length
 
 
-def adjustellipse(surf, data):
-    """
-    Adjust ellipse position
-    """
-    actor = surf.actor
-    actor.property.opacity = .35
-    actor.property.color = (.9, .9, .0)
-    actor.mapper.scalar_visibility = False
-    actor.property.backface_culling = True
-    actor.property.specular = 0.1
-    actor.property.frontface_culling = True
-    actor.actor.position = np.array([data['xc'],
-                                     data['yc'],
-                                     data['zpos']])
-    actor.actor.orientation = np.array([0, 0, data['angle']])
-
-
 def adjustlut(surf):
     """
     Adjust lut colormap of skeleton
@@ -201,17 +184,40 @@ class ArrowClass(HasTraits):
         self.vtk_src = VTKDataSource(data=self.arrow_src.output)
 
 
+class MitoSkel(HasTraits):
+    """
+    Container for VTKSource of mitoskel
+    """
+    data_src = Instance(Source)
+
+    def __init__(self, **traits):
+        HasTraits.__init__(self, **traits)
+
+    def viz_skel(self, **kwargs):
+        tube = mlab.pipeline.tube(self.data_src, tube_sides=32, **kwargs)
+        self.skelsurf = mlab.pipeline.surface(tube, **kwargs)
+        mmgr = self.skelsurf.module_manager.scalar_lut_manager
+        mmgr.show_legend = False
+        mmgr.reverse_lut = True
+        mmgr.lut_mode = 'RdBu'
+        mmgr.number_of_labels = 5
+        mmgr.scalar_bar.label_format = '%4.f'
+        mmgr.label_text_property.font_size = 12
+        mmgr.scalar_bar_representation.position = [.85, .25]
+        mmgr.scalar_bar_representation.position2 = [.1, .4]
+
+
 class CellEllipse(HasTraits):
     """
     Ellipse class container for mom bud cells
     """
-    name = Str(desc='either mom or bud')
+    name = Str(desc='must be of the form mom_xx or bud_xx')
     data = Dict(desc='dictionary of ellipse parameters')
     dataframe = Instance(DataFrame)
 
     def __init__(self, **traits):
         HasTraits.__init__(self, **traits)
-        self.data = setup_ellipsedata(self.name, self.dataframe)
+        self.data = setup_ellipsedata(self.name.split('_')[0], self.dataframe)
         self.src = getellipsesource(self.data['major'],
                                     self.data['minor'])
 
@@ -245,7 +251,7 @@ class MombudPicker(HasTraits):
     orientation to the cell axis
     """
     name = Str()
-    data_src3d = Instance(Source)
+    data_src3d = Instance(MitoSkel)
     momellipse = Instance(CellEllipse)
     budellipse = Instance(CellEllipse)
 
@@ -315,10 +321,14 @@ class MombudPicker(HasTraits):
         self.scene1.mayavi_scene.name = 'scene1'
         self.engine_view = EngineView(engine=self.scene1.engine)
         self.scene2.mayavi_scene.name = 'scene2'
-        zmin, zmax = self.data_src3d.outputs[0].bounds[4:]
+
+        # set initial z-position of cell based on vtk bounds, also
+        # initialize Range to this position
+        zmin, zmax = self.data_src3d.data_src.data.bounds[4:]
         self.momellipse.data['zpos'] = zinit = np.mean((zmin, zmax))
         self.budellipse.data['zpos'] = zinit = np.mean((zmin, zmax))
         trait = Range(zmin, zmax, zinit)
+        # note, this adds the Range trait to the object instance!
         self.add_trait(label, trait)
 
     def _scene1_default(self):
@@ -346,8 +356,8 @@ class MombudPicker(HasTraits):
                                               name=key)
 
         # select which scalartype to show on the skeleton
-        self.data_src3d.point_scalars_name = 'DY_raw'
-        self._tubify('data_src3d', 'scene1')
+        self.data_src3d.data_src.point_scalars_name = 'DY_raw'
+        self.data_src3d.viz_skel(figure=self.scene1.mayavi_scene)
 
         self.arrow_actor = mlab.pipeline.surface(self.arrow_src.vtk_src,
                                                  name='arrow',
@@ -370,17 +380,34 @@ class MombudPicker(HasTraits):
         mlab.clf(figure=self.scene2.mayavi_scene)
         self._labelscene('Transformed View', 'scene2')
         self.scene2.scene.background = (0, 0, 0)
-        # Keep the view always pointing up
-        self.scene2.scene.interactor.interactor_style = \
-            tvtk.InteractorStyleTerrain()
 
-    def _tubify(self, data, scene_name):
-        datasrc = getattr(self, data)
-        scene = getattr(self, scene_name)
-        tube = mlab.pipeline.tube(datasrc, tube_sides=32,
-                                  figure=scene.mayavi_scene)
-        surfTube = mlab.pipeline.surface(tube)
-        adjustlut(surfTube)
+        # instanstiate a copy of mitoskel
+        vtk_src_copy = VTKDataSource(data=self.data_src3d.data_src.data)
+        # We will be transforming this copy!!
+        self.src_copy = MitoSkel(data_src=vtk_src_copy)
+        self.src_copy.viz_skel(figure=self.scene2.mayavi_scene)
+
+        # instanstiate a copy of ellipses
+        self.mom_t = CellEllipse(name='mom_t',
+                                 dataframe=self.momellipse.dataframe)
+        self.bud_t = CellEllipse(name='bud_t',
+                                 dataframe=self.budellipse.dataframe)
+        self.mom_t.make_surf(figure=self.scene2.mayavi_scene)
+        self.mom_t.adjust_ellipse()
+        self.bud_t.make_surf(figure=self.scene2.mayavi_scene)
+        self.bud_t.adjust_ellipse()
+
+        # Keep the view always pointing up
+#        self.scene2.scene.interactor.interactor_style = \
+#            tvtk.InteractorStyleTerrain()
+
+#    def _tubify(self, data, scene_name):
+#        datasrc = getattr(self, data)
+#        scene = getattr(self, scene_name)
+#        tube = mlab.pipeline.tube(datasrc, tube_sides=32,
+#                                  figure=scene.mayavi_scene)
+#        surfTube = mlab.pipeline.surface(tube)
+#        adjustlut(surfTube)
 
     def _labelscene(self, label, scene_name):
         scene = getattr(self, scene_name)
@@ -465,6 +492,7 @@ class MombudPicker(HasTraits):
     @on_trait_change('transform')
     def _draw_transformed(self):
         mlab.view(0, 0, figure=self.scene1.mayavi_scene)
+        mlab.view(0, 0, figure=self.scene2.mayavi_scene)
         self.scene1.mayavi_scene.scene.reset_zoom()
         if self.base and self.tip and self.neck:
             _, rot, scale1 = arrowvect(self.base, self.tip, self.neck)
@@ -474,24 +502,20 @@ class MombudPicker(HasTraits):
             tr_filt.post_multiply()  # translate, THEN rotate
             tr_filt.concatenate(rot)
             tr_filt.translate([-1, 0, 0])
-            skel_polydata = self.data_src3d.outputs[0]
+#            skel_polydata = self.data_src3d.outputs[0]
             # this is the transformed VTK object of interest
             self.trans_obj = tvtk.TransformPolyDataFilter(
-                input=skel_polydata, transform=tr_filt).output
-            mlab.clf(figure=self.scene2.mayavi_scene)
-            self._tubify('trans_obj', 'scene2')
+                input=self.src_copy.data_src.data, transform=tr_filt).output
+            vtkactor = self.src_copy.skelsurf.actor.actor
+            vtkactor.user_transform = tr_filt
+#            mlab.clf(figure=self.scene2.mayavi_scene)
+#            self._tubify('trans_obj', 'scene2')
 
             # transf mom bud shells
-            for key in ['mom', 'bud']:
-                obj = getattr(self, 'e%s' % key)
-                ellipse = getattr(self, '%sellipse' % key)
-                temp = VTKDataSource(data=mlab.pipeline.get_vtk_src(obj)[0])
-                surf = mlab.pipeline.surface(temp,
-                                             name='%s_trnf' % key,
-                                             figure=self.scene2.mayavi_scene)
-                adjustellipse(surf, ellipse.data)
-                self._update_zpos(surf)
-                surf.actor.actor.user_transform = tr_filt
+            self.mom_t.surf_mom_t.actor.actor.user_transform = tr_filt
+            self.mom_t.update_zpos(self.z_position)
+            self.bud_t.surf_bud_t.actor.actor.user_transform = tr_filt
+            self.bud_t.update_zpos(self.z_position)
 
             # transf cursor pts
             for key in self.cursors:
@@ -529,9 +553,11 @@ if __name__ == "__main__":
         mom = CellEllipse(name='mom', dataframe=df2)
         bud = CellEllipse(name='bud', dataframe=df2)
 
+        mitoskel = MitoSkel(data_src=vtkob)
+
         # instanstiate the GUI
         m = MombudPicker(name=filename,
-                         data_src3d=vtkob,
+                         data_src3d=mitoskel,
                          momellipse=mom,
                          budellipse=bud)
         m.configure_traits()

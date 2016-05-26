@@ -6,30 +6,40 @@ Created on Fri Sep 18 17:54:10 2015
 import os
 import os.path as op
 from traits.api import HasTraits, Instance,\
-    on_trait_change, Dict, Range, Button, Str, Array, Float
+    on_trait_change, Dict, Range, Button, Str, Array
 from traitsui.api import View, Item, Group, HSplit
 import pandas as pd
+from pandas import DataFrame
 import numpy as np
 from tvtk.api import tvtk
+from tvtk.tvtk_classes.arrow_source import ArrowSource
 
 from mayavi.sources.vtk_data_source import VTKDataSource
 from mayavi.sources.api import ParametricSurface
 from mayavi import mlab
-from mayavi.core.api import PipelineBase, Source, Engine
+from mayavi.core.api import Source, Engine
 from mayavi.core.ui.api import SceneEditor, MlabSceneModel, EngineView, \
                                MayaviScene
-
 from seaborn import xkcd_palette as scolor
-from pandas import DataFrame
-from tvtk.tvtk_classes.arrow_source import ArrowSource
 import wrappers as wr
 # pylint: disable=C0103
 datadir = op.join(os.getcwd(), 'mutants')
 #xkcd palette colors
 colors = ["medium green",
-          "bright blue",
+          "light blue",
           "red"]
 palette = {col: rgb for col, rgb in zip(colors, scolor(colors))}
+
+
+def setup_data(fname):
+    """Given a VTK file name `fname`, this creates a mayavi2 reader
+    for it and adds it to the pipeline.  It returns the reader
+    created.
+    """
+    dat = tvtk.PolyDataReader(file_name=fname)
+    dat.update()   # very IMPORTANT!!!
+    src = VTKDataSource(data=dat.output)
+    return src
 
 
 def getelipspar(fname, dfin):
@@ -58,17 +68,6 @@ def getelipspar(fname, dfin):
     # reverse the y-coordinate system (VTK vs ImageJ)
     dfout['center'] = zip((dfout.X) * .055, (250 - dfout.Y) * .055)
     return dfout
-
-
-def setup_data(fname):
-    """Given a VTK file name `fname`, this creates a mayavi2 reader
-    for it and adds it to the pipeline.  It returns the reader
-    created.
-    """
-    dat = tvtk.PolyDataReader(file_name=fname)
-    dat.update()   # very IMPORTANT!!!
-    src = VTKDataSource(data=dat.output)
-    return src
 
 
 def setup_ellipsedata(mom_bud, dF):
@@ -156,22 +155,10 @@ def arrowvect(base, tip, neck):
     return trans, matrix, length
 
 
-def adjustlut(surf):
-    """
-    Adjust lut colormap of skeleton
-    """
-    mmgr = surf.module_manager.scalar_lut_manager
-    mmgr.show_legend = False
-    mmgr.reverse_lut = True
-    mmgr.lut_mode = 'RdBu'
-    mmgr.number_of_labels = 5
-    mmgr.scalar_bar.label_format = '%4.f'
-    mmgr.label_text_property.font_size = 12
-    mmgr.scalar_bar_representation.position = [.85, .25]
-    mmgr.scalar_bar_representation.position2 = [.1, .4]
-
-
 class ArrowClass(HasTraits):
+    """
+    Container for VTKSource of arrow glpyh
+    """
     def_data = dict(shaft_radius=0.01,
                     shaft_resolution=18,
                     tip_length=.15,
@@ -182,6 +169,14 @@ class ArrowClass(HasTraits):
     def __init__(self, **traits):
         HasTraits.__init__(self, **traits)
         self.vtk_src = VTKDataSource(data=self.arrow_src.output)
+
+    def viz_arrow(self, **kwargs):
+        obj = mlab.pipeline.surface(self.vtk_src, **kwargs)
+        setattr(self, 'surf', obj)
+
+    def transform(self, transform_filter):
+        actor = self.surf.actor.actor
+        actor.user_transform = transform_filter
 
 
 class MitoSkel(HasTraits):
@@ -195,8 +190,9 @@ class MitoSkel(HasTraits):
 
     def viz_skel(self, **kwargs):
         tube = mlab.pipeline.tube(self.data_src, tube_sides=32, **kwargs)
-        self.skelsurf = mlab.pipeline.surface(tube, **kwargs)
-        mmgr = self.skelsurf.module_manager.scalar_lut_manager
+        skelsurf = mlab.pipeline.surface(tube, **kwargs)
+        setattr(self, 'surf', skelsurf)
+        mmgr = skelsurf.module_manager.scalar_lut_manager
         mmgr.show_legend = False
         mmgr.reverse_lut = True
         mmgr.lut_mode = 'RdBu'
@@ -205,6 +201,10 @@ class MitoSkel(HasTraits):
         mmgr.label_text_property.font_size = 12
         mmgr.scalar_bar_representation.position = [.85, .25]
         mmgr.scalar_bar_representation.position2 = [.1, .4]
+
+    def transform(self, transform_filter):
+        actor = self.surf.actor.actor
+        actor.user_transform = transform_filter
 
 
 class CellEllipse(HasTraits):
@@ -225,7 +225,8 @@ class CellEllipse(HasTraits):
 
     def make_surf(self, **kwargs):
         obj = mlab.pipeline.surface(self.src,
-                                    name=self.name,)
+                                    name=self.name,
+                                    **kwargs)
         setattr(self, 'surf', obj)
 
     def adjust_ellipse(self):
@@ -245,6 +246,10 @@ class CellEllipse(HasTraits):
         objactor = getattr(self, 'surf')
         x, y, _ = objactor.actor.actor.position
         objactor.actor.actor.set(position=[x, y, zpos])
+
+    def transform(self, transform_filter):
+        actor = self.surf.actor.actor
+        actor.user_transform = transform_filter
 
 
 class MombudPicker(HasTraits):
@@ -364,12 +369,11 @@ class MombudPicker(HasTraits):
         self.data_src3d.data_src.point_scalars_name = 'DY_raw'
         self.data_src3d.viz_skel(figure=self.scene1.mayavi_scene)
 
-        self.arrow_actor = mlab.pipeline.surface(self.arrow_src.vtk_src,
-                                                 name='arrow',
-                                                 opacity=0.5,
-                                                 figure=self.
-                                                 scene1.mayavi_scene)
-        self.arrow_actor.set(visible=False)
+        # add arrow actor to pipeline
+        self.arrow_src.viz_arrow(name='arrow',
+                                 opacity=0.5,
+                                 figure=self.scene1.mayavi_scene)
+        self.arrow_src.surf.set(visible=False)
 
         # draw and mom/bud ellipse surface and adjust the positions
         self.momellipse.make_surf(figure=self.scene1.mayavi_scene)
@@ -447,8 +451,8 @@ class MombudPicker(HasTraits):
 
     def _drawarrow(self):
         tr, _, _ = arrowvect(self.base, self.tip, self.neck)
-        self.arrow_actor.actor.actor.user_transform = tr
-        self.arrow_actor.set(visible=True)
+        self.arrow_src.transform(tr)
+        self.arrow_src.surf.set(visible=True)
 
     def _savecsv(self):
         output = op.join(datadir, '%s.csv' % self.name)
@@ -512,7 +516,7 @@ class MombudPicker(HasTraits):
         mlab.view(0, 0, figure=self.scene2.mayavi_scene)
         self.scene1.mayavi_scene.scene.reset_zoom()
         if self.base and self.tip and self.neck:
-            _, rot, scale1 = arrowvect(self.base, self.tip, self.neck)
+            _, rot, _ = arrowvect(self.base, self.tip, self.neck)
             tr_filt = tvtk.Transform()
             rot.transpose()
             tr_filt.translate(np.negative(self.base))
@@ -523,13 +527,15 @@ class MombudPicker(HasTraits):
             self.trans_obj = tvtk.TransformPolyDataFilter(
                 input=self.src_copy.data_src.data,
                 transform=tr_filt).output
-            vtkactor = self.src_copy.skelsurf.actor.actor
-            vtkactor.user_transform = tr_filt
+
+            self.src_copy.transform(tr_filt)
+#            vtkactor = self.src_copy.surf.actor.actor
+#            vtkactor.user_transform = tr_filt
 
             # transf mom bud shells
-            self.mom_t.surf.actor.actor.user_transform = tr_filt
+            self.mom_t.transform(tr_filt)
             self.mom_t.update_zpos(self.z_position)
-            self.bud_t.surf.actor.actor.user_transform = tr_filt
+            self.bud_t.transform(tr_filt)
             self.bud_t.update_zpos(self.z_position)
 
             # transf cursor pts

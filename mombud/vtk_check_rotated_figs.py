@@ -19,8 +19,8 @@ from mombud.vtk_pick_mombud_GUI import \
     arrowvect, getelipspar, setup_ellipsedata, getellipsesource, adjustellipse
 
 # pylint: disable=C0103
-datadir = op.join(os.getcwd(), 'mutants', 'test')
-rawdir = op.join(os.getcwd(), 'mutants', 'test')
+datadir = op.join(os.getcwd(), 'mutants', 'transformedData2')
+rawdir = op.join(os.getcwd(), 'mutants', 'transformedData2')
 
 # xkcd palette colors
 colors = ["medium green",
@@ -34,16 +34,13 @@ DataSize = pd.read_table(op.join(datadir, op.pardir, 'Results.txt'))
 df_celltracing = DataSize.ix[:, 1:]
 df_celltracing['cell'] = \
     df_celltracing.ix[:, 'Label'].apply(lambda x: x.partition(':')[2])
-df_celltracing['vol'] = \
-    4 / 3 * np.pi * (df_celltracing.Major * .055 / 2) * \
-    (df_celltracing.Minor * .055 / 2)
 counter = df_celltracing.groupby('cell').Label.count()
 hasbuds = \
     df_celltracing[df_celltracing.cell.isin(counter[counter > 1].index.values)]
 
 # Figure to render on
 figone = mlab.figure(size=(800, 600), bgcolor=(.1, .1, .1))
-figone.scene.off_screen_rendering = True
+figone.scene.off_screen_rendering = False
 
 # vtk data and picked bud, neck, tip inputs
 try:
@@ -83,7 +80,9 @@ for key in vtkF.keys()[:]:
     Dmom = setup_ellipsedata('mom', df_ellipse)
     Dbud = setup_ellipsedata('bud', df_ellipse)
     for mb in [Dmom, Dbud]:
-        mb_glyph = mlab.pipeline.surface(getellipsesource(mb), figure=figone)
+        mb_glyph = mlab.pipeline.surface(getellipsesource(mb['major'],
+                                                          mb['minor']),
+                                         figure=figone)
         adjustellipse(mb_glyph, mb)
         x, y, _ = mb_glyph.actor.actor.position
         mb_glyph.actor.actor.set(

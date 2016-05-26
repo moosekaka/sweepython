@@ -6,11 +6,12 @@ Created on Fri Sep 18 17:54:10 2015
 import os
 import os.path as op
 from traits.api import HasTraits, Instance,\
-    on_trait_change, Dict, Range, Button, Str, Array
+    on_trait_change, Dict, Range, Button, Str, Array, Float
 from traitsui.api import View, Item, Group, HSplit
 import pandas as pd
 import numpy as np
 from tvtk.api import tvtk
+
 from mayavi.sources.vtk_data_source import VTKDataSource
 from mayavi.sources.api import ParametricSurface
 from mayavi import mlab
@@ -19,8 +20,9 @@ from mayavi.core.ui.api import SceneEditor, MlabSceneModel, EngineView, \
                                MayaviScene
 
 from seaborn import xkcd_palette as scolor
-import wrappers as wr
 from pandas import DataFrame
+from tvtk.tvtk_classes.arrow_source import ArrowSource
+import wrappers as wr
 # pylint: disable=C0103
 datadir = op.join(os.getcwd(), 'mutants')
 #xkcd palette colors
@@ -186,6 +188,19 @@ def adjustlut(surf):
     mmgr.scalar_bar_representation.position2 = [.1, .4]
 
 
+class ArrowClass(HasTraits):
+    def_data = dict(shaft_radius=0.01,
+                    shaft_resolution=18,
+                    tip_length=.15,
+                    tip_radius=.05,
+                    tip_resolution=18)
+    arrow_src = Instance(ArrowSource, kw=def_data)
+
+    def __init__(self, **traits):
+        HasTraits.__init__(self, **traits)
+        self.vtk_src = VTKDataSource(data=self.arrow_src.output)
+
+
 class CellEllipse(HasTraits):
     """
     Ellipse class container for mom bud cells
@@ -200,6 +215,19 @@ class CellEllipse(HasTraits):
         self.src = getellipsesource(self.data['major'],
                                     self.data['minor'])
 
+#    def adjust_ellipse(self):
+#    actor = surf.actor
+#    actor.property.opacity = .35
+#    actor.property.color = (.9, .9, .0)
+#    actor.mapper.scalar_visibility = False
+#    actor.property.backface_culling = True
+#    actor.property.specular = 0.1
+#    actor.property.frontface_culling = True
+#    actor.actor.position = np.array([data['xc'],
+#                                     data['yc'],
+#                                     data['zpos']])
+#    actor.actor.orientation = np.array([0, 0, data['angle']])
+
 
 class MombudPicker(HasTraits):
     """
@@ -208,7 +236,6 @@ class MombudPicker(HasTraits):
     """
     name = Str()
     data_src3d = Instance(Source)
-    arrow_src = Instance(Source)
     momellipse = Instance(CellEllipse)
     budellipse = Instance(CellEllipse)
 
@@ -236,9 +263,45 @@ class MombudPicker(HasTraits):
 
     engine1 = Instance(Engine, args=())
 
+    # GUI layout
+    # pylint: disable=C0330
+    view = View(HSplit(
+                 Group(
+                       Item('engine_view',
+                            style='custom',
+                            resizable=True),
+                       show_labels=False
+                  ),
+                  Group(
+                       Item('scene1',
+                            editor=SceneEditor(scene_class=MayaviScene),
+                            height=600,
+                            width=600),
+                       'z_position',
+                       'button1',
+                       'button2',
+                       'button3',
+                       show_labels=False,
+                  ),
+                  Group(
+                       Item('scene2',
+                            editor=SceneEditor(), height=600,
+                            width=600, show_label=False),
+                       '_',
+                       'button4',
+                       'button5',
+                       'transform',
+                       show_labels=False,
+                  ),
+                ),
+                resizable=True,
+               )
+    # pylint: enable=C0330
+
     def __init__(self, label='z_position', **traits):
         # init the parent class HasTraits
         HasTraits.__init__(self, **traits)
+        self.arrow_src = ArrowClass()
         self.scene1.mayavi_scene.name = 'scene1'
         self.engine_view = EngineView(engine=self.scene1.engine)
         self.scene2.mayavi_scene.name = 'scene2'
@@ -276,7 +339,7 @@ class MombudPicker(HasTraits):
         self.data_src3d.point_scalars_name = 'DY_raw'
 
         self._tubify('data_src3d', 'scene1')
-        self.arrow_actor = mlab.pipeline.surface(self.arrow_src,
+        self.arrow_actor = mlab.pipeline.surface(self.arrow_src.vtk_src,
                                                  name='arrow',
                                                  opacity=0.5,
                                                  figure=self.
@@ -444,42 +507,9 @@ class MombudPicker(HasTraits):
         else:
             print "please finish selecting all three points!"
 
-    # GUI layout
-    # pylint: disable=C0330
-    view = View(HSplit(
-                 Group(
-                       Item('engine_view',
-                            style='custom',
-                            resizable=True),
-                       show_labels=False
-                  ),
-                  Group(
-                       Item('scene1',
-                            editor=SceneEditor(scene_class=MayaviScene),
-                            height=600,
-                            width=600),
-                       'z_position',
-                       'button1',
-                       'button2',
-                       'button3',
-                       show_labels=False,
-                  ),
-                  Group(
-                       Item('scene2',
-                            editor=SceneEditor(), height=600,
-                            width=600, show_label=False),
-                       '_',
-                       'button4',
-                       'button5',
-                       'transform',
-                       show_labels=False,
-                  ),
-                ),
-                resizable=True,
-               )
-    # pylint: enable=C0330
 ##############################################################################
 if __name__ == "__main__":
+    # Read in the celltracing data into a Pandas Dataframe
     DataSize = pd.read_table(op.join(datadir, 'Results.txt'))
     df = DataSize.ix[:, 1:]
     df['cell'] = df.ix[:, 'Label'].apply(lambda x: x.partition(':')[2])
@@ -500,19 +530,11 @@ if __name__ == "__main__":
         df2 = getelipspar(filename, df)
         mom = CellEllipse(name='mom', dataframe=df2)
         bud = CellEllipse(name='bud', dataframe=df2)
-        arrow = VTKDataSource(
-            data=tvtk.ArrowSource(shaft_radius=.01,
-                                  shaft_resolution=18,
-                                  tip_length=.15,
-                                  tip_radius=.05,
-                                  tip_resolution=18).output
-                              )
+
+        # instanstiate the GUI
         m = MombudPicker(name=filename,
                          data_src3d=vtkob,
                          momellipse=mom,
-                         budellipse=bud,
-                         arrow_src=arrow,
-                         )
-
+                         budellipse=bud)
         m.configure_traits()
         m.scene1.mayavi_scene.scene.reset_zoom()

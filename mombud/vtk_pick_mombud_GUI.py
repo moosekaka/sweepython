@@ -20,6 +20,7 @@ from mayavi.core.ui.api import SceneEditor, MlabSceneModel, EngineView, \
 
 from seaborn import xkcd_palette as scolor
 import wrappers as wr
+from pandas import DataFrame
 # pylint: disable=C0103
 datadir = op.join(os.getcwd(), 'mutants')
 #xkcd palette colors
@@ -43,8 +44,6 @@ def getelipspar(fname, dfin):
     Returns:
     --------
     dftemp
-
-
     """
     # selection returns a view by default, we want a copy!
     dfout = dfin[dfin.cell == fname].copy()
@@ -70,24 +69,25 @@ def setup_data(fname):
     return src
 
 
-def setup_ellipsedata(strg, dF):
+def setup_ellipsedata(mom_bud, dF):
     """
-    setup dictionary based on pandas dataframe to serve as input data for
-    CellEllipse class
+    Returns a dict, `D` of ellipse parameters of `cell_ID` from a
+    dataframe `dF`.
     """
     D = {}
-    D['major'] = dF.ix[strg, 'Major']
-    D['minor'] = dF.ix[strg, 'Minor']
-    D['angle'] = dF.ix[strg, 'Angle']
-    D['xc'] = dF.ix[strg, 'center'][0]
-    D['yc'] = dF.ix[strg, 'center'][1]
+    D['major'] = dF.ix[mom_bud, 'Major']
+    D['minor'] = dF.ix[mom_bud, 'Minor']
+    D['angle'] = dF.ix[mom_bud, 'Angle']
+    D['xc'] = dF.ix[mom_bud, 'center'][0]
+    D['yc'] = dF.ix[mom_bud, 'center'][1]
     D['zpos'] = 0
     return D
 
 
 def getellipsesource(major, minor):
     """
-    Convenience wrapper to generate a Mayavi Source object based on datadic
+    Convenience wrapper to generate a Mayavi Source object based on
+    `major` and `minor` radius of ellipse parameters
     """
     source = ParametricSurface()
     source.function = 'ellipsoid'
@@ -190,11 +190,13 @@ class CellEllipse(HasTraits):
     """
     Ellipse class container for mom bud cells
     """
-    name = Str()
-    data = Dict()
+    name = Str(desc='either mom or bud')
+    data = Dict(desc='dictionary of ellipse parameters')
+    dataframe = Instance(DataFrame)
 
     def __init__(self, **traits):
         HasTraits.__init__(self, **traits)
+        self.data = setup_ellipsedata(self.name, self.dataframe)
         self.src = getellipsesource(self.data['major'],
                                     self.data['minor'])
 
@@ -489,17 +491,15 @@ if __name__ == "__main__":
     Dcells = {key:None for key in hasbuds.cell.values}
     for i in hasbuds.cell.unique()[0:1]:
         filename = i
+        # setup VTK input dataset
         vtkob = setup_data(op.join(datadir,
                                    'normalizedVTK/Norm_%s_skeleton.vtk' %
                                    filename))
-        zpos_init = np.mean(vtkob.outputs[0].bounds[4:])
 
-        # setup input dataset
+        # setup cell ellipse objects
         df2 = getelipspar(filename, df)
-        Dmom = setup_ellipsedata('mom', df2)
-        Dbud = setup_ellipsedata('bud', df2)
-        mom = CellEllipse(name='mom', data=Dmom)
-        bud = CellEllipse(name='bud', data=Dbud)
+        mom = CellEllipse(name='mom', dataframe=df2)
+        bud = CellEllipse(name='bud', dataframe=df2)
         arrow = VTKDataSource(
             data=tvtk.ArrowSource(shaft_radius=.01,
                                   shaft_resolution=18,

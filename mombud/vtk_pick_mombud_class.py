@@ -287,10 +287,12 @@ class MombudPicker(HasTraits):
     budellipse = Instance(CellEllipse)
     # The first engine. As default arguments (an empty tuple) are given,
     # traits initializes it.
+
     engine1 = Instance(Engine, args=())
     scene1 = Instance(MlabSceneModel)  # initiliazes _scene1_default
     scene2 = Instance(MlabSceneModel)  # initiliazes _scene2_default
     arrow_src = Instance(ArrowClass)   # initiliazes _arrow_src_default
+
     # xxx_pos are used to hold the picked coordinates
     neck_pos = None
     base_pos = None
@@ -302,7 +304,6 @@ class MombudPicker(HasTraits):
     spheres = Dict({'base': None, 'tip': None, 'neck': None})
     # TraitsUI buttons interface
     button_save = Button('SaveOutput')
-    button_arrow = Button('Arrow')
     button_transform = Button('Transform')
     # colors defined from xkcd pallete
     cur_col = Dict(
@@ -330,17 +331,17 @@ class MombudPicker(HasTraits):
                                   label='Picker Type')),
                         show_labels=False
                         ),
-                  Group(
-                       Item('scene2',
-                            editor=SceneEditor(), height=600,
-                            width=600, show_label=False),
-                       '_',
-                       'button_save',
-                       'button_arrow',
-                       'button_transform',
-                       show_labels=False,
+                        Group(
+                            Item('scene2',
+                                 editor=SceneEditor(), height=600,
+                                 width=600, show_label=False),
+                            '_',
+                            'button_save',
+                            'button_transform',
+                            show_labels=False,
+                            ),
                        ),
-                       )
+                       resizable=True,
                 )
     # pylint: enable=C0330
 
@@ -355,7 +356,8 @@ class MombudPicker(HasTraits):
         self.momellipse.data['zpos'] = zinit = np.mean((zmin, zmax))
         self.budellipse.data['zpos'] = zinit = np.mean((zmin, zmax))
         trait = Range(zmin, zmax, zinit)
-        # note, this adds the Range trait to the object instance!
+
+        # This adds the Range trait to the object instance!
         self.add_trait(label, trait)
 
     # ------------------------------------------------------------------------
@@ -407,6 +409,7 @@ class MombudPicker(HasTraits):
         self.budellipse.make_surf(figure=self.scene1.mayavi_scene)
         self.budellipse.adjust_ellipse()
 
+        # scene formating
         self._labelscene(self.name, 'scene1')
         self.scene1.mlab.view(0, 0)
         self.scene1.scene.background = (0, 0, 0)
@@ -423,6 +426,7 @@ class MombudPicker(HasTraits):
 
         # instanstiate a copy of mitoskel source data
         vtk_src_copy = VTKDataSource(data=self.data_src3d.data_src.data)
+
         # We will be transforming this copy!!
         self.src_copy = MitoSkel(data_src=vtk_src_copy)
         self.src_copy.viz_skel(figure=self.scene2.mayavi_scene)
@@ -467,7 +471,7 @@ class MombudPicker(HasTraits):
         """
         Logic to update the cursor points `part` based on mayavi point picker
         """
-        # if no cursors have been picked, the corres. attribute will be None
+        # if no cursors have been picked, the xxx_pos. attribute will be None
         setattr(self, '%s_pos' % part,
                 self.scene1.picker.pointpicker.pick_position)
         array = getattr(self, '%s_pos' % part)
@@ -477,6 +481,7 @@ class MombudPicker(HasTraits):
         self.spheres[part].actor.actor.position = array  # set pos. for spheres
 
     def _drawarrow(self):
+        # only draws an arrow when all three points are picked
         if self.base_pos and self.tip_pos and self.neck_pos:
             tr, _, _ = arrowvect(self.base_pos, self.tip_pos, self.neck_pos)
             self.arrow_src.transform(tr)
@@ -514,15 +519,9 @@ class MombudPicker(HasTraits):
         else:
             print "please finish selecting all three points!"
 
-    @on_trait_change('button_arrow')
-    def _redraw_arrow(self):
-        if self.base_pos and self.tip_pos and self.neck_pos:
-            self._drawarrow()
-        else:
-            print "please finish selecting all three points!"
-
     @on_trait_change('button_transform')
     def _draw_transformed(self):
+        # allows transformation only when three points picked
         if self.base_pos and self.tip_pos and self.neck_pos:
             _, rot, _ = arrowvect(self.base_pos, self.tip_pos, self.neck_pos)
             tr_filt = tvtk.Transform()
@@ -530,13 +529,14 @@ class MombudPicker(HasTraits):
             tr_filt.translate(np.negative(self.base_pos))
             tr_filt.post_multiply()  # translate, THEN rotate
             tr_filt.concatenate(rot)
-            tr_filt.translate([-1, 0, 0])
+            tr_filt.translate([-1., 0., 0.])
 
             # this is the transformed VTK object of interest
             self.trans_obj = tvtk.TransformPolyDataFilter(
                 input=self.src_copy.data_src.data,
                 transform=tr_filt).output
 
+            # this is just to visualize the VTK actor
             self.src_copy.transform(tr_filt)
 
             # transf mom bud shells
@@ -553,9 +553,12 @@ class MombudPicker(HasTraits):
             print "please finish selecting all three points!"
         mlab.view(0, 0, figure=self.scene1.mayavi_scene)
         mlab.view(0, 0, figure=self.scene2.mayavi_scene)
+        self.scene1.reset_zoom()
+        self.scene2.reset_zoom()
 
 ##############################################################################
 if __name__ == "__main__":
+    mlab.close(all=True)
     # Read in the celltracing data into a Pandas Dataframe
     DataSize = pd.read_table(op.join(datadir, 'Results.txt'))
     df = DataSize.ix[:, 1:]
@@ -563,10 +566,9 @@ if __name__ == "__main__":
     counter = df.groupby('cell').Label.count()
     hasbuds = df[df.cell.isin(counter[counter > 1].index.values)]
 
-    mlab.close(all=True)
 #    vtkF = wr.swalk(datadir, '*csv', start=0, stop=-4)
     Dcells = {key: None for key in hasbuds.cell.values}
-    for i in hasbuds.cell.unique()[22:28]:
+    for i in hasbuds.cell.unique()[22:26]:
         filename = i
         # setup VTK input dataset
         vtkob = setup_data(op.join(datadir,

@@ -215,18 +215,28 @@ class CellEllipse(HasTraits):
         self.src = getellipsesource(self.data['major'],
                                     self.data['minor'])
 
-#    def adjust_ellipse(self):
-#    actor = surf.actor
-#    actor.property.opacity = .35
-#    actor.property.color = (.9, .9, .0)
-#    actor.mapper.scalar_visibility = False
-#    actor.property.backface_culling = True
-#    actor.property.specular = 0.1
-#    actor.property.frontface_culling = True
-#    actor.actor.position = np.array([data['xc'],
-#                                     data['yc'],
-#                                     data['zpos']])
-#    actor.actor.orientation = np.array([0, 0, data['angle']])
+    def make_surf(self, **kwargs):
+        obj = mlab.pipeline.surface(self.src,
+                                    name=self.name,)
+        setattr(self, 'surf_%s' % self.name, obj)
+
+    def adjust_ellipse(self):
+        actor = getattr(self, 'surf_%s' % self.name).actor
+        actor.property.opacity = .35
+        actor.property.color = (.9, .9, .0)
+        actor.mapper.scalar_visibility = False
+        actor.property.backface_culling = True
+        actor.property.specular = 0.1
+        actor.property.frontface_culling = True
+        actor.actor.position = np.array([self.data['xc'],
+                                         self.data['yc'],
+                                         self.data['zpos']])
+        actor.actor.orientation = np.array([0, 0, self.data['angle']])
+
+    def update_zpos(self, zpos):
+        objactor = getattr(self, 'surf_%s' % self.name)
+        x, y, _ = objactor.actor.actor.position
+        objactor.actor.actor.set(position=[x, y, zpos])
 
 
 class MombudPicker(HasTraits):
@@ -337,8 +347,8 @@ class MombudPicker(HasTraits):
 
         # select which scalartype to show on the skeleton
         self.data_src3d.point_scalars_name = 'DY_raw'
-
         self._tubify('data_src3d', 'scene1')
+
         self.arrow_actor = mlab.pipeline.surface(self.arrow_src.vtk_src,
                                                  name='arrow',
                                                  opacity=0.5,
@@ -346,14 +356,10 @@ class MombudPicker(HasTraits):
                                                  scene1.mayavi_scene)
 
         # draw and mom/bud ellipse surface and adjust the positions
-        for key in ['mom', 'bud']:
-            ellipse = getattr(self, '%sellipse' % key)
-            obj = mlab.pipeline.surface(ellipse.src,
-                                        name='%sSurf' % key,
-                                        figure=self.scene1.mayavi_scene)
-            setattr(self, 'e%s' % key, obj)
-            adjustellipse(obj, ellipse.data)
-            self._update_zpos(obj)
+        self.momellipse.make_surf(figure=self.scene1.mayavi_scene)
+        self.momellipse.adjust_ellipse()
+        self.budellipse.make_surf(figure=self.scene1.mayavi_scene)
+        self.budellipse.adjust_ellipse()
 
         self._labelscene(self.name, 'scene1')
         self.scene1.mlab.view(0, 0, 180)
@@ -420,18 +426,10 @@ class MombudPicker(HasTraits):
         w.write()
         print 'transformed vtk saved as {}.vtk!'.format(self.name)
 
-    def _update_zpos(self, obj):
-        if isinstance(obj, basestring):
-            objactor = getattr(self, '%s' % obj)
-        else:
-            objactor = obj
-        x, y, _ = objactor.actor.actor.position
-        objactor.actor.actor.set(position=[x, y, self.z_position])
-
     @on_trait_change('z_position')
     def _update_range(self):
-        self._update_zpos('emom')
-        self._update_zpos('ebud')
+        self.momellipse.update_zpos(self.z_position)
+        self.budellipse.update_zpos(self.z_position)
 
     @on_trait_change('button1')
     def _updatemom(self):

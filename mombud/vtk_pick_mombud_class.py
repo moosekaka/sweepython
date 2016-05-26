@@ -6,18 +6,17 @@ Created on Fri Sep 18 17:54:10 2015
 import os
 import os.path as op
 from traits.api import HasTraits, Instance,\
-    on_trait_change, Dict, Range, Button, Str, Array, Trait
+    on_trait_change, Dict, Range, Button, Str, Trait
 from traitsui.api import View, Item, Group, HSplit
 import pandas as pd
 from pandas import DataFrame
 import numpy as np
 from tvtk.api import tvtk
 from tvtk.tvtk_classes.arrow_source import ArrowSource
-
 from mayavi.sources.vtk_data_source import VTKDataSource
 from mayavi.sources.api import ParametricSurface
 from mayavi import mlab
-from mayavi.core.api import Source, Engine, PipelineBase
+from mayavi.core.api import Source, Engine
 from mayavi.core.ui.api import SceneEditor, MlabSceneModel, EngineView, \
                                MayaviScene
 from seaborn import xkcd_palette as scolor
@@ -171,10 +170,16 @@ class ArrowClass(HasTraits):
         self.vtk_src = VTKDataSource(data=self.arrow_src.output)
 
     def viz_arrow(self, **kwargs):
+        """
+        Calls mayavi surface modules to visualize the arrow
+        """
         obj = mlab.pipeline.surface(self.vtk_src, **kwargs)
         setattr(self, 'surf', obj)
 
     def transform(self, transform_filter):
+        """
+        transform the actor using the transform_filter input
+        """
         actor = self.surf.actor.actor
         actor.user_transform = transform_filter
 
@@ -189,6 +194,9 @@ class MitoSkel(HasTraits):
         HasTraits.__init__(self, **traits)
 
     def viz_skel(self, **kwargs):
+        """
+        Calls mayavi tube and surface modules to visualize the VTK data
+        """
         tube = mlab.pipeline.tube(self.data_src, tube_sides=32, **kwargs)
         skelsurf = mlab.pipeline.surface(tube, **kwargs)
         setattr(self, 'surf', skelsurf)
@@ -203,6 +211,9 @@ class MitoSkel(HasTraits):
         mmgr.scalar_bar_representation.position2 = [.1, .4]
 
     def transform(self, transform_filter):
+        """
+        transform the actor using the transform_filter input
+        """
         actor = self.surf.actor.actor
         actor.user_transform = transform_filter
 
@@ -224,12 +235,19 @@ class CellEllipse(HasTraits):
                                     self.data['minor'])
 
     def make_surf(self, **kwargs):
+        """
+        calls mlab surface module on obj
+        """
         obj = mlab.pipeline.surface(self.src,
                                     name=self.name,
                                     **kwargs)
         setattr(self, 'surf', obj)
 
     def adjust_ellipse(self):
+        """
+        sets the ellipse position to the cell tracing positions, formats
+        the ellipse actor
+        """
         actor = getattr(self, 'surf').actor
         actor.property.opacity = .35
         actor.property.color = (.9, .9, .0)
@@ -243,11 +261,17 @@ class CellEllipse(HasTraits):
         actor.actor.orientation = np.array([0, 0, self.data['angle']])
 
     def update_zpos(self, zpos):
+        """
+        updates the z-position of the actor
+        """
         objactor = getattr(self, 'surf')
         x, y, _ = objactor.actor.actor.position
         objactor.actor.actor.set(position=[x, y, zpos])
 
     def transform(self, transform_filter):
+        """
+        transform the actor using the transform_filter input
+        """
         actor = self.surf.actor.actor
         actor.user_transform = transform_filter
 
@@ -261,32 +285,30 @@ class MombudPicker(HasTraits):
     data_src3d = Instance(MitoSkel)
     momellipse = Instance(CellEllipse)
     budellipse = Instance(CellEllipse)
-
     # The first engine. As default arguments (an empty tuple) are given,
     # traits initializes it.
     engine1 = Instance(Engine, args=())
     scene1 = Instance(MlabSceneModel)  # initiliazes _scene1_default
     scene2 = Instance(MlabSceneModel)  # initiliazes _scene2_default
     arrow_src = Instance(ArrowClass)   # initiliazes _arrow_src_default
-
+    # xxx_pos are used to hold the picked coordinates
     neck_pos = None
     base_pos = None
     tip_pos = None
     picktype = Trait('mom', {'mom': 'base',
                              'neck': 'neck',
                              'bud': 'tip'})
-
+    cursors = Dict({'base': None, 'tip': None, 'neck': None})
+    spheres = Dict({'base': None, 'tip': None, 'neck': None})
+    # TraitsUI buttons interface
     button_save = Button('SaveOutput')
     button_arrow = Button('Arrow')
     button_transform = Button('Transform')
-    cursors = Dict({'base': None, 'tip': None, 'neck': None})
-    spheres = Dict({'base': None, 'tip': None, 'neck': None})
     # colors defined from xkcd pallete
     cur_col = Dict(
         {part: col for col, part in zip(colors, ['tip', 'base', 'neck'])})
 
     engine_view = Instance(EngineView)
-
     # GUI layout
     # pylint: disable=C0330
     view = View(HSplit(
@@ -301,7 +323,7 @@ class MombudPicker(HasTraits):
                              editor=SceneEditor(scene_class=MayaviScene),
                              height=600,
                              width=600),
-                        Group('_','_',
+                        Group('_', '_',
                              Item('z_position'),
                              Item('picktype',
                                   style='custom',
@@ -320,39 +342,8 @@ class MombudPicker(HasTraits):
                        ),
                        )
                 )
-#
-#    view = View(HSplit(
-#                 Group(
-#                       Item('engine_view',
-#                            style='custom',
-#                            resizable=True),
-#                       show_labels=False
-#                  ),
-#                  Group(
-#                       Item('scene1',
-#                            editor=SceneEditor(scene_class=MayaviScene),
-#                            height=600,
-#                            width=600),
-#                       'z_position',
-#                       'button1',
-#                       'button2',
-#                       'button3',
-#                       show_labels=False,
-#                  ),
-#                  Group(
-#                       Item('scene2',
-#                            editor=SceneEditor(), height=600,
-#                            width=600, show_label=False),
-#                       '_',
-#                       'button4',
-#                       'button5',
-#                       'transform',
-#                       show_labels=False,
-#                  ),
-#                ),
-#                resizable=True,
-#               )
     # pylint: enable=C0330
+
     def __init__(self, label='z_position', **traits):
         # init the parent class HasTraits
         HasTraits.__init__(self, **traits)
@@ -419,9 +410,9 @@ class MombudPicker(HasTraits):
         self._labelscene(self.name, 'scene1')
         self.scene1.mlab.view(0, 0)
         self.scene1.scene.background = (0, 0, 0)
-        self.scene1.mayavi_scene.on_mouse_pick(self.pickcb)
+        self.scene1.mayavi_scene.on_mouse_pick(self._pickcb)
 
-    def pickcb(self, obj):
+    def _pickcb(self, obj):
         self._update_curs(self.picktype_)
         self._drawarrow()
 
@@ -477,14 +468,10 @@ class MombudPicker(HasTraits):
         Logic to update the cursor points `part` based on mayavi point picker
         """
         # if no cursors have been picked, the corres. attribute will be None
-#        if getattr(self, '%s_pos' % part) is None:
-##            setattr(self, '%s_pos' % part,
-##                    Array(value=(0, 0, 0), shape=(3,)))
         setattr(self, '%s_pos' % part,
                 self.scene1.picker.pointpicker.pick_position)
         array = getattr(self, '%s_pos' % part)
         self.cursors[part].actor.actor.set(position=array)
-
         if self.cursors[part].visible is False:
             self.cursors[part].set(visible=True)  # make cursors visible now
         self.spheres[part].actor.actor.position = array  # set pos. for spheres
@@ -497,13 +484,12 @@ class MombudPicker(HasTraits):
 
     def _savecsv(self):
         output = op.join(datadir, '%s.csv' % self.name)
-        f = open(output, 'w')
-        f.write('%s\n' % self.name)
-        for part in ['neck', 'base', 'tip']:
-            out = getattr(self, '%s_pos' % part)
-            f.write('{},{},{},{}\n'.format(part, *tuple(out)))
-        f.write('centerpt,{}\n'.format(self.z_position))
-        f.close()
+        with open(output, 'w') as f:
+            f.write('%s\n' % self.name)
+            for part in ['neck', 'base', 'tip']:
+                out = getattr(self, '%s_pos' % part)
+                f.write('{},{},{},{}\n'.format(part, *tuple(out)))
+            f.write('centerpt,{}\n'.format(self.z_position))
         print('coordinates for base, tip and neck recorded for {}!'
               .format(self.name))
 

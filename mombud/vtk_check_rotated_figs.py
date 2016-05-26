@@ -15,7 +15,7 @@ from tvtk.api import tvtk
 from seaborn import xkcd_palette as scolor
 import wrappers as wr
 from mombud.vtk_viz import vtkvizfuncs as vz
-from mombud.vtk_pick_mombud_GUI import arrowvect, getelipspar, CellEllipse
+from mombud.vtk_pick_mombud_class import arrowvect, getelipspar, CellEllipse
 
 # pylint: disable=C0103
 datadir = op.join(os.getcwd(), 'mutants', 'transformedData3')

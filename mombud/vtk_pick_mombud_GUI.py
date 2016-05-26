@@ -6,7 +6,7 @@ Created on Fri Sep 18 17:54:10 2015
 import os
 import os.path as op
 from traits.api import HasTraits, Instance,\
-    on_trait_change, Dict, Range, Button, Str, Array
+    on_trait_change, Dict, Range, Button, Str, Array, Trait
 from traitsui.api import View, Item, Group, HSplit
 import pandas as pd
 from pandas import DataFrame
@@ -159,12 +159,12 @@ class ArrowClass(HasTraits):
     """
     Container for VTKSource of arrow glpyh
     """
-    def_data = dict(shaft_radius=0.01,
-                    shaft_resolution=18,
-                    tip_length=.15,
-                    tip_radius=.05,
-                    tip_resolution=18)
-    arrow_src = Instance(ArrowSource, kw=def_data)
+    def_par = dict(shaft_radius=0.01,
+                   shaft_resolution=24,
+                   tip_length=.1,
+                   tip_radius=.035,
+                   tip_resolution=18)
+    arrow_src = Instance(ArrowSource, kw=def_par)
 
     def __init__(self, **traits):
         HasTraits.__init__(self, **traits)
@@ -269,16 +269,16 @@ class MombudPicker(HasTraits):
     scene2 = Instance(MlabSceneModel)  # initiliazes _scene2_default
     arrow_src = Instance(ArrowClass)   # initiliazes _arrow_src_default
 
-    neck = None
-    base = None
-    tip = None
+    neck_pos = None
+    base_pos = None
+    tip_pos = None
+    picktype = Trait( 'mom', {'mom': 'base',
+                              'neck': 'neck',
+                              'bud': 'tip'})
 
-    button1 = Button('Mom')
-    button2 = Button('Bud')
-    button3 = Button('Neck')
-    button4 = Button('SaveOutput')
-    button5 = Button('Arrow')
-    transform = Button('Transform')
+    button_save = Button('SaveOutput')
+    button_arrow = Button('Arrow')
+    button_transform = Button('Transform')
     cursors = Dict({'base': None, 'tip': None, 'neck': None})
     spheres = Dict({'base': None, 'tip': None, 'neck': None})
     # colors defined from xkcd pallete
@@ -297,34 +297,64 @@ class MombudPicker(HasTraits):
                        show_labels=False
                   ),
                   Group(
-                       Item('scene1',
-                            editor=SceneEditor(scene_class=MayaviScene),
-                            height=600,
-                            width=600),
-                       'z_position',
-                       'button1',
-                       'button2',
-                       'button3',
-                       show_labels=False,
-                  ),
+                        Item('scene1',
+                             editor=SceneEditor(scene_class=MayaviScene),
+                             height=600,
+                             width=600),
+                        Group('_','_',
+                             Item('z_position'),
+                             Item('picktype', style = 'custom',   label = 'Picker Type')),
+                        show_labels=False
+                        ),
                   Group(
                        Item('scene2',
                             editor=SceneEditor(), height=600,
                             width=600, show_label=False),
                        '_',
-                       'button4',
-                       'button5',
-                       'transform',
+                       'button_save',
+                       'button_arrow',
+                       'button_transform',
                        show_labels=False,
-                  ),
-                ),
-                resizable=True,
-               )
+                       ),
+                       )
+                )
+#
+#    view = View(HSplit(
+#                 Group(
+#                       Item('engine_view',
+#                            style='custom',
+#                            resizable=True),
+#                       show_labels=False
+#                  ),
+#                  Group(
+#                       Item('scene1',
+#                            editor=SceneEditor(scene_class=MayaviScene),
+#                            height=600,
+#                            width=600),
+#                       'z_position',
+#                       'button1',
+#                       'button2',
+#                       'button3',
+#                       show_labels=False,
+#                  ),
+#                  Group(
+#                       Item('scene2',
+#                            editor=SceneEditor(), height=600,
+#                            width=600, show_label=False),
+#                       '_',
+#                       'button4',
+#                       'button5',
+#                       'transform',
+#                       show_labels=False,
+#                  ),
+#                ),
+#                resizable=True,
+#               )
     # pylint: enable=C0330
-
     def __init__(self, label='z_position', **traits):
         # init the parent class HasTraits
         HasTraits.__init__(self, **traits)
+        self.arrow_src = ArrowClass()
 
         # set initial z-position of cell based on vtk bounds, also
         # initialize Range to this position
@@ -350,9 +380,6 @@ class MombudPicker(HasTraits):
         scene2 = MlabSceneModel(engine=self.engine1)
         return scene2
 
-    def _arrow_src_default(self):
-        return ArrowClass()
-
     # ------------------------------------------------------------------------
     # Traits callback
     # ------------------------------------------------------------------------
@@ -377,7 +404,7 @@ class MombudPicker(HasTraits):
 
         # add arrow actor to pipeline
         self.arrow_src.viz_arrow(name='arrow',
-                                 opacity=0.5,
+                                 opacity=0.35,
                                  figure=self.scene1.mayavi_scene)
         self.arrow_src.surf.set(visible=False)
 
@@ -390,6 +417,17 @@ class MombudPicker(HasTraits):
         self._labelscene(self.name, 'scene1')
         self.scene1.mlab.view(0, 0)
         self.scene1.scene.background = (0, 0, 0)
+        self.scene1.mayavi_scene.on_mouse_pick(self.pickcb)
+
+    def pickcb(self, obj):
+        print self.picktype
+        x ,y, z = obj.pick_position
+#        self._update_curs(self.picktype)
+        self._update_curs(self.picktype_)
+        self._drawarrow()
+#        if self.tip and self.neck:
+
+#        print "%6.4f, %6.4f, %6.4f" % (x,y,z)
 
     @on_trait_change('scene2.activated')
     def _display_scene2(self):
@@ -443,11 +481,12 @@ class MombudPicker(HasTraits):
         Logic to update the cursor points `part` based on mayavi point picker
         """
         # if no cursors have been picked, the corres. attribute will be None
-        if hasattr(self, 'part') is not None:
-            setattr(self, '%s' % part,
-                    Array(value=(0, 0, 0), shape=(3,)))
-        setattr(self, part, self.scene1.picker.pointpicker.pick_position)
-        array = getattr(self, '%s' % part)
+#        if getattr(self, '%s_pos' % part) is None:
+##            setattr(self, '%s_pos' % part,
+##                    Array(value=(0, 0, 0), shape=(3,)))
+        setattr(self, '%s_pos' % part,
+                self.scene1.picker.pointpicker.pick_position)
+        array = getattr(self, '%s_pos' % part)
         self.cursors[part].actor.actor.set(position=array)
 
         if self.cursors[part].visible is False:
@@ -455,16 +494,17 @@ class MombudPicker(HasTraits):
         self.spheres[part].actor.actor.position = array  # set pos. for spheres
 
     def _drawarrow(self):
-        tr, _, _ = arrowvect(self.base, self.tip, self.neck)
-        self.arrow_src.transform(tr)
-        self.arrow_src.surf.set(visible=True)
+        if self.base_pos and self.tip_pos and self.neck_pos:
+            tr, _, _ = arrowvect(self.base_pos, self.tip_pos, self.neck_pos)
+            self.arrow_src.transform(tr)
+            self.arrow_src.surf.set(visible=True)
 
     def _savecsv(self):
         output = op.join(datadir, '%s.csv' % self.name)
         f = open(output, 'w')
         f.write('%s\n' % self.name)
         for part in ['neck', 'base', 'tip']:
-            out = getattr(self, part)
+            out = getattr(self, '%s_pos', part)
             f.write('{},{},{},{}\n'.format(part, *tuple(out)))
         f.write('centerpt,{}\n'.format(self.z_position))
         f.close()
@@ -484,44 +524,28 @@ class MombudPicker(HasTraits):
         self.momellipse.update_zpos(self.z_position)
         self.budellipse.update_zpos(self.z_position)
 
-    @on_trait_change('button1')
-    def _updatemom(self):
-        self._update_curs('base')
-        if self.tip and self.neck:
-            self._drawarrow()
-
-    @on_trait_change('button2')
-    def _updatebud(self):
-        self._update_curs('tip')
-        if self.base and self.neck:
-            self._drawarrow()
-
-    @on_trait_change('button3')
-    def _updateneck(self):
-        self._update_curs('neck')
-
-    @on_trait_change('button4')
+    @on_trait_change('button_save')
     def _savecoords(self):
-        if self.base and self.tip and self.neck:
+        if self.base_pos and self.tip_pos and self.neck_pos:
             self._savecsv()
             self._save_transform_vtk('trans_obj')
         else:
             print "please finish selecting all three points!"
 
-    @on_trait_change('button5')
+    @on_trait_change('button_arrow')
     def _redraw_arrow(self):
-        if self.base and self.tip and self.neck:
+        if self.base_pos and self.tip_pos and self.neck_pos:
             self._drawarrow()
         else:
             print "please finish selecting all three points!"
 
-    @on_trait_change('transform')
+    @on_trait_change('button_transform')
     def _draw_transformed(self):
-        if self.base and self.tip and self.neck:
-            _, rot, _ = arrowvect(self.base, self.tip, self.neck)
+        if self.base_pos and self.tip_pos and self.neck_pos:
+            _, rot, _ = arrowvect(self.base_pos, self.tip_pos, self.neck_pos)
             tr_filt = tvtk.Transform()
             rot.transpose()
-            tr_filt.translate(np.negative(self.base))
+            tr_filt.translate(np.negative(self.base_pos))
             tr_filt.post_multiply()  # translate, THEN rotate
             tr_filt.concatenate(rot)
             tr_filt.translate([-1, 0, 0])
@@ -560,7 +584,7 @@ if __name__ == "__main__":
     mlab.close(all=True)
 #    vtkF = wr.swalk(datadir, '*csv', start=0, stop=-4)
     Dcells = {key: None for key in hasbuds.cell.values}
-    for i in hasbuds.cell.unique()[0:3]:
+    for i in hasbuds.cell.unique()[20:21]:
         filename = i
         # setup VTK input dataset
         vtkob = setup_data(op.join(datadir,

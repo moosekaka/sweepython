@@ -15,8 +15,7 @@ from tvtk.api import tvtk
 from seaborn import xkcd_palette as scolor
 import wrappers as wr
 from mombud.vtk_viz import vtkvizfuncs as vz
-from mombud.vtk_pick_mombud_GUI import \
-    arrowvect, getelipspar, setup_ellipsedata, getellipsesource, adjustellipse
+from mombud.vtk_pick_mombud_GUI import arrowvect, getelipspar, CellEllipse
 
 # pylint: disable=C0103
 datadir = op.join(os.getcwd(), 'mutants', 'transformedData3')
@@ -77,17 +76,14 @@ for key in vtkF.keys()[:]:
 
     # setup mom bud shell ellipse
     df_ellipse = getelipspar(key, df_celltracing)
-    Dmom = setup_ellipsedata('mom', df_ellipse)
-    Dbud = setup_ellipsedata('bud', df_ellipse)
-    for mb in [Dmom, Dbud]:
-        mb_glyph = mlab.pipeline.surface(getellipsesource(mb['major'],
-                                                          mb['minor']),
-                                         figure=figone)
-        adjustellipse(mb_glyph, mb)
-        x, y, _ = mb_glyph.actor.actor.position
-        mb_glyph.actor.actor.set(
+    for mb in ['mom', 'bud']:
+        mb_glyph = CellEllipse(name='%s' % mb, dataframe=df_ellipse)
+        mb_glyph.make_surf(figure=figone)
+        mb_glyph.adjust_ellipse()
+        x, y, _ = mb_glyph.surf.actor.actor.position
+        mb_glyph.surf.actor.actor.set(
             position=[x, y, df_cursorpts.ix['centerpt', 'x']])
-        mb_glyph.actor.actor.user_transform = tr_filt
+        mb_glyph.surf.actor.actor.user_transform = tr_filt
 
     # Dataframe to save parameters of transformed object
     df = pd.Series({}, name=key)

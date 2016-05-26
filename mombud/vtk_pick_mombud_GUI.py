@@ -217,6 +217,8 @@ class CellEllipse(HasTraits):
 
     def __init__(self, **traits):
         HasTraits.__init__(self, **traits)
+        # name splitting needs the name format to be as described above in
+        # order to select the right data
         self.data = setup_ellipsedata(self.name.split('_')[0], self.dataframe)
         self.src = getellipsesource(self.data['major'],
                                     self.data['minor'])
@@ -224,10 +226,10 @@ class CellEllipse(HasTraits):
     def make_surf(self, **kwargs):
         obj = mlab.pipeline.surface(self.src,
                                     name=self.name,)
-        setattr(self, 'surf_%s' % self.name, obj)
+        setattr(self, 'surf', obj)
 
     def adjust_ellipse(self):
-        actor = getattr(self, 'surf_%s' % self.name).actor
+        actor = getattr(self, 'surf').actor
         actor.property.opacity = .35
         actor.property.color = (.9, .9, .0)
         actor.mapper.scalar_visibility = False
@@ -240,7 +242,7 @@ class CellEllipse(HasTraits):
         actor.actor.orientation = np.array([0, 0, self.data['angle']])
 
     def update_zpos(self, zpos):
-        objactor = getattr(self, 'surf_%s' % self.name)
+        objactor = getattr(self, 'surf')
         x, y, _ = objactor.actor.actor.position
         objactor.actor.actor.set(position=[x, y, zpos])
 
@@ -381,33 +383,35 @@ class MombudPicker(HasTraits):
         self._labelscene('Transformed View', 'scene2')
         self.scene2.scene.background = (0, 0, 0)
 
-        # instanstiate a copy of mitoskel
+        # instanstiate a copy of mitoskel source data
         vtk_src_copy = VTKDataSource(data=self.data_src3d.data_src.data)
         # We will be transforming this copy!!
         self.src_copy = MitoSkel(data_src=vtk_src_copy)
         self.src_copy.viz_skel(figure=self.scene2.mayavi_scene)
 
-        # instanstiate a copy of ellipses
+        # instanstiate a copy of ellipses objects
         self.mom_t = CellEllipse(name='mom_t',
                                  dataframe=self.momellipse.dataframe)
         self.bud_t = CellEllipse(name='bud_t',
                                  dataframe=self.budellipse.dataframe)
         self.mom_t.make_surf(figure=self.scene2.mayavi_scene)
         self.mom_t.adjust_ellipse()
+        self.mom_t.update_zpos(self.z_position)
         self.bud_t.make_surf(figure=self.scene2.mayavi_scene)
         self.bud_t.adjust_ellipse()
+        self.bud_t.update_zpos(self.z_position)
 
+        #initialize sphere glyph markers
+        for key in self.cursors:
+            center = (0., 0., 0.)
+            src = tvtk.SphereSource(center=center, radius=.15)
+            surf = mlab.pipeline.surface(src.output,
+                                         color=palette[self.cur_col[key]],
+                                         name='%s_trnf' % key)
+            setattr(self,'%s_sphere' % key, surf)
         # Keep the view always pointing up
 #        self.scene2.scene.interactor.interactor_style = \
 #            tvtk.InteractorStyleTerrain()
-
-#    def _tubify(self, data, scene_name):
-#        datasrc = getattr(self, data)
-#        scene = getattr(self, scene_name)
-#        tube = mlab.pipeline.tube(datasrc, tube_sides=32,
-#                                  figure=scene.mayavi_scene)
-#        surfTube = mlab.pipeline.surface(tube)
-#        adjustlut(surfTube)
 
     def _labelscene(self, label, scene_name):
         scene = getattr(self, scene_name)
@@ -428,6 +432,8 @@ class MombudPicker(HasTraits):
         setattr(self, part, self.scene1.picker.pointpicker.pick_position)
         array = getattr(self, '%s' % part)
         self.cursors[part].actor.actor.set(position=array)
+        sph = getattr(self, '%s_sphere' % part)
+        sph.actor.actor.position = array
 
     def _drawarrow(self):
         tr, _, _ = arrowvect(self.base, self.tip, self.neck)
@@ -502,29 +508,29 @@ class MombudPicker(HasTraits):
             tr_filt.post_multiply()  # translate, THEN rotate
             tr_filt.concatenate(rot)
             tr_filt.translate([-1, 0, 0])
-#            skel_polydata = self.data_src3d.outputs[0]
             # this is the transformed VTK object of interest
             self.trans_obj = tvtk.TransformPolyDataFilter(
-                input=self.src_copy.data_src.data, transform=tr_filt).output
+                input=self.src_copy.data_src.data,
+                transform=tr_filt).output
             vtkactor = self.src_copy.skelsurf.actor.actor
             vtkactor.user_transform = tr_filt
-#            mlab.clf(figure=self.scene2.mayavi_scene)
-#            self._tubify('trans_obj', 'scene2')
 
             # transf mom bud shells
-            self.mom_t.surf_mom_t.actor.actor.user_transform = tr_filt
+            self.mom_t.surf.actor.actor.user_transform = tr_filt
             self.mom_t.update_zpos(self.z_position)
-            self.bud_t.surf_bud_t.actor.actor.user_transform = tr_filt
+            self.bud_t.surf.actor.actor.user_transform = tr_filt
             self.bud_t.update_zpos(self.z_position)
 
             # transf cursor pts
+#            for key in self.cursors:
+#                center = getattr(self, key)
+#                src = tvtk.SphereSource(center=center, radius=.15)
+#                surf = mlab.pipeline.surface(src.output,
+#                                             color=palette[self.cur_col[key]],
+#                                             name='%s_trnf' % key)
             for key in self.cursors:
-                center = getattr(self, key)
-                src = tvtk.SphereSource(center=center, radius=.15)
-                surf = mlab.pipeline.surface(src.output,
-                                             color=palette[self.cur_col[key]],
-                                             name='%s_trnf' % key)
-                surf.actor.actor.user_transform = tr_filt
+                sphere = getattr(self, '%s_sphere' % key)
+                sphere.actor.actor.user_transform = tr_filt
             self.scene2.mayavi_scene.scene.reset_zoom()
         else:
             print "please finish selecting all three points!"
@@ -540,7 +546,7 @@ if __name__ == "__main__":
 
     mlab.close(all=True)
 #    vtkF = wr.swalk(datadir, '*csv', start=0, stop=-4)
-    Dcells = {key:None for key in hasbuds.cell.values}
+    Dcells = {key: None for key in hasbuds.cell.values}
     for i in hasbuds.cell.unique()[0:1]:
         filename = i
         # setup VTK input dataset

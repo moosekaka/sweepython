@@ -580,6 +580,7 @@ if __name__ == "__main__":
         mom = CellEllipse(name='mom', dataframe=df2)
         bud = CellEllipse(name='bud', dataframe=df2)
 
+        # setup VTK skel data
         mitoskel = MitoSkel(data_src=vtkob)
 
         # instanstiate the GUI

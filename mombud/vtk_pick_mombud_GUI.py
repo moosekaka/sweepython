@@ -272,9 +272,9 @@ class MombudPicker(HasTraits):
     neck_pos = None
     base_pos = None
     tip_pos = None
-    picktype = Trait( 'mom', {'mom': 'base',
-                              'neck': 'neck',
-                              'bud': 'tip'})
+    picktype = Trait('mom', {'mom': 'base',
+                             'neck': 'neck',
+                             'bud': 'tip'})
 
     button_save = Button('SaveOutput')
     button_arrow = Button('Arrow')
@@ -303,7 +303,9 @@ class MombudPicker(HasTraits):
                              width=600),
                         Group('_','_',
                              Item('z_position'),
-                             Item('picktype', style = 'custom',   label = 'Picker Type')),
+                             Item('picktype',
+                                  style='custom',
+                                  label='Picker Type')),
                         show_labels=False
                         ),
                   Group(
@@ -420,14 +422,8 @@ class MombudPicker(HasTraits):
         self.scene1.mayavi_scene.on_mouse_pick(self.pickcb)
 
     def pickcb(self, obj):
-        print self.picktype
-        x ,y, z = obj.pick_position
-#        self._update_curs(self.picktype)
         self._update_curs(self.picktype_)
         self._drawarrow()
-#        if self.tip and self.neck:
-
-#        print "%6.4f, %6.4f, %6.4f" % (x,y,z)
 
     @on_trait_change('scene2.activated')
     def _display_scene2(self):
@@ -504,7 +500,7 @@ class MombudPicker(HasTraits):
         f = open(output, 'w')
         f.write('%s\n' % self.name)
         for part in ['neck', 'base', 'tip']:
-            out = getattr(self, '%s_pos', part)
+            out = getattr(self, '%s_pos' % part)
             f.write('{},{},{},{}\n'.format(part, *tuple(out)))
         f.write('centerpt,{}\n'.format(self.z_position))
         f.close()
@@ -584,7 +580,7 @@ if __name__ == "__main__":
     mlab.close(all=True)
 #    vtkF = wr.swalk(datadir, '*csv', start=0, stop=-4)
     Dcells = {key: None for key in hasbuds.cell.values}
-    for i in hasbuds.cell.unique()[20:21]:
+    for i in hasbuds.cell.unique()[22:28]:
         filename = i
         # setup VTK input dataset
         vtkob = setup_data(op.join(datadir,

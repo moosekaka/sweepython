@@ -29,7 +29,7 @@ datadir = op.join(os.getcwd(), 'mutants')
 colors = ["medium green",
           "bright blue",
           "red"]
-palette = {col:rgb for col, rgb in zip(colors, scolor(colors))}
+palette = {col: rgb for col, rgb in zip(colors, scolor(colors))}
 
 
 def getelipspar(fname, dfin):
@@ -257,11 +257,13 @@ class MombudPicker(HasTraits):
     momellipse = Instance(CellEllipse)
     budellipse = Instance(CellEllipse)
 
-    scene1 = Instance(MlabSceneModel, args=())
-    scene2 = Instance(MlabSceneModel, args=())
-    arrow_actor = Instance(PipelineBase)
-    emom = Instance(PipelineBase)
-    ebud = Instance(PipelineBase)
+    # The first engine. As default arguments (an empty tuple) are given,
+    # traits initializes it.
+    engine1 = Instance(Engine, args=())
+    scene1 = Instance(MlabSceneModel)  # initiliazes _scene1_default
+    scene2 = Instance(MlabSceneModel)  # initiliazes _scene2_default
+    arrow_src = Instance(ArrowClass)   # initiliazes _arrow_src_default
+
     neck = None
     base = None
     tip = None
@@ -279,7 +281,6 @@ class MombudPicker(HasTraits):
 
     engine_view = Instance(EngineView)
 
-    engine1 = Instance(Engine, args=())
 
     # GUI layout
     # pylint: disable=C0330
@@ -319,10 +320,6 @@ class MombudPicker(HasTraits):
     def __init__(self, label='z_position', **traits):
         # init the parent class HasTraits
         HasTraits.__init__(self, **traits)
-        self.arrow_src = ArrowClass()
-        self.scene1.mayavi_scene.name = 'scene1'
-        self.engine_view = EngineView(engine=self.scene1.engine)
-        self.scene2.mayavi_scene.name = 'scene2'
 
         # set initial z-position of cell based on vtk bounds, also
         # initialize Range to this position
@@ -345,8 +342,13 @@ class MombudPicker(HasTraits):
         scene2 = MlabSceneModel(engine=self.engine1)
         return scene2
 
+    def _arrow_src_default(self):
+        return ArrowClass()
+
     @on_trait_change('scene1.activated')
     def _display_scene1(self):
+        self.scene1.mayavi_scene.name = 'scene1'
+        self.engine_view = EngineView(engine=self.scene1.engine)
         self.scene1.picker.show_gui = False
 
         # cursor to mark mom/neck/bud locations
@@ -356,6 +358,7 @@ class MombudPicker(HasTraits):
                                               scale_factor=.25,
                                               color=palette[self.cur_col[key]],
                                               name=key)
+            self.cursors[key].set(visible=False)
 
         # select which scalartype to show on the skeleton
         self.data_src3d.data_src.point_scalars_name = 'DY_raw'
@@ -366,6 +369,7 @@ class MombudPicker(HasTraits):
                                                  opacity=0.5,
                                                  figure=self.
                                                  scene1.mayavi_scene)
+        self.arrow_actor.set(visible=False)
 
         # draw and mom/bud ellipse surface and adjust the positions
         self.momellipse.make_surf(figure=self.scene1.mayavi_scene)
@@ -379,6 +383,7 @@ class MombudPicker(HasTraits):
 
     @on_trait_change('scene2.activated')
     def _display_scene2(self):
+        self.scene2.mayavi_scene.name = 'scene2'
         mlab.clf(figure=self.scene2.mayavi_scene)
         self._labelscene('Transformed View', 'scene2')
         self.scene2.scene.background = (0, 0, 0)
@@ -401,17 +406,17 @@ class MombudPicker(HasTraits):
         self.bud_t.adjust_ellipse()
         self.bud_t.update_zpos(self.z_position)
 
-        #initialize sphere glyph markers
+        # initialize sphere glyph markers
         for key in self.cursors:
             center = (0., 0., 0.)
             src = tvtk.SphereSource(center=center, radius=.15)
             surf = mlab.pipeline.surface(src.output,
                                          color=palette[self.cur_col[key]],
                                          name='%s_trnf' % key)
-            setattr(self,'%s_sphere' % key, surf)
+            setattr(self, '%s_sphere' % key, surf)
         # Keep the view always pointing up
-#        self.scene2.scene.interactor.interactor_style = \
-#            tvtk.InteractorStyleTerrain()
+        self.scene2.scene.interactor.interactor_style = \
+            tvtk.InteractorStyleTerrain()
 
     def _labelscene(self, label, scene_name):
         scene = getattr(self, scene_name)
@@ -425,6 +430,7 @@ class MombudPicker(HasTraits):
         """
         Logic to update the cursor points `part` based on mayavi point picker
         """
+        # if no cursors have been picked, the corres. attribute will be None
         if hasattr(self, 'part') is not None:
             setattr(self, '%s' % part,
                     Array(value=(0, 0, 0),
@@ -432,12 +438,17 @@ class MombudPicker(HasTraits):
         setattr(self, part, self.scene1.picker.pointpicker.pick_position)
         array = getattr(self, '%s' % part)
         self.cursors[part].actor.actor.set(position=array)
+        # initially cursors will be invisible, turn on after first picked
+        if self.cursors[part].visible is False:
+            self.cursors[part].set(visible=True)
+        # draw corresponding sphere glyph on the Transformed view
         sph = getattr(self, '%s_sphere' % part)
         sph.actor.actor.position = array
 
     def _drawarrow(self):
         tr, _, _ = arrowvect(self.base, self.tip, self.neck)
         self.arrow_actor.actor.actor.user_transform = tr
+        self.arrow_actor.set(visible=True)
 
     def _savecsv(self):
         output = op.join(datadir, '%s.csv' % self.name)
@@ -522,12 +533,6 @@ class MombudPicker(HasTraits):
             self.bud_t.update_zpos(self.z_position)
 
             # transf cursor pts
-#            for key in self.cursors:
-#                center = getattr(self, key)
-#                src = tvtk.SphereSource(center=center, radius=.15)
-#                surf = mlab.pipeline.surface(src.output,
-#                                             color=palette[self.cur_col[key]],
-#                                             name='%s_trnf' % key)
             for key in self.cursors:
                 sphere = getattr(self, '%s_sphere' % key)
                 sphere.actor.actor.user_transform = tr_filt
@@ -547,7 +552,7 @@ if __name__ == "__main__":
     mlab.close(all=True)
 #    vtkF = wr.swalk(datadir, '*csv', start=0, stop=-4)
     Dcells = {key: None for key in hasbuds.cell.values}
-    for i in hasbuds.cell.unique()[0:1]:
+    for i in hasbuds.cell.unique()[0:3]:
         filename = i
         # setup VTK input dataset
         vtkob = setup_data(op.join(datadir,

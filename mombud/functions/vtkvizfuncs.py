@@ -415,9 +415,9 @@ def getellipsesource(major, minor):
     return source
 
 
-def kernel(X, Y):
+def dircos_kernel(X, Y):
     """
-    Calculates an orthogonal vector from X, Y
+    Calculates direction cosines compononent Z from vectors X, Y
     """
     x1, x2, x3 = X
     t1, t2, t3 = Y
@@ -463,7 +463,7 @@ def arrowvect(base, tip, neck):
     normalizedX = normalizedX / length
     # another unit vector used to fix the local x-y plane
     AP = AP / np.linalg.norm(AP)
-    normalizedZ = kernel(normalizedX, AP)
+    normalizedZ = dircos_kernel(normalizedX, AP)
     normalizedY = np.cross(normalizedZ, normalizedX)
     matrix = tvtk.Matrix4x4()
     matrix.identity()

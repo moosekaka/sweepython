@@ -7,10 +7,12 @@ import vtk
 import numpy as np
 from mayavi import mlab
 from mayavi.sources.api import ParametricSurface
+from mayavi.sources.vtk_data_source import VTKDataSource
 from tvtk.api import tvtk
 import config
 import networkx as nx
 # pylint: disable=C0103
+
 
 def nicegrph(graph, axinput, grphtype='neato'):
     # ‘neato’|’dot’|’twopi’|’circo’|’fdp’|
@@ -249,11 +251,11 @@ def labelbpoints(graph, **kwargs):
     epts.glyph.glyph_source.glyph_source.theta_resolution = 16
 
 
-def getelipspar(filename, df):
-    """ parameters for ellipse from cell tracing """
-    dftemp = df[df.cell == filename]
-    dftemp.reset_index(1, drop=True, inplace=True)
-    return dftemp
+#def getelipspar(filename, df):
+#    """ parameters for ellipse from cell tracing """
+#    dftemp = df[df.cell == filename]
+#    dftemp.reset_index(1, drop=True, inplace=True)
+#    return dftemp
 
 
 def drawelips(strg, df2, zpos=0):
@@ -282,44 +284,44 @@ def drawelips(strg, df2, zpos=0):
     return ee, source
 
 
-def arrowvect(B, A, C):
-    """draws a vector based on base, B and tip, A.
-    calculates the transformation matrix trans and returns it along with the
-    rotation matrix
-    """
-    normalizedX = np.zeros(3)
-    normalizedY = np.zeros(3)
-    normalizedZ = np.zeros(3)
-    AP = np.zeros(3)
-    math = tvtk.Math()
-    math.subtract(A, B, normalizedX)  # normalizedX is the arrow unit vector
-    math.subtract(C, B, AP)
-    length = math.norm(normalizedX)
-    math.normalize(normalizedX)
-    math.normalize(AP)  # another unit vector used to fix the local x-y plane
-
-    x1, x2, x3 = normalizedX
-    t1, t2, t3 = AP
-    l3 = -t3/(t1+t2)
-    m3 = (t3*x1 - x3*t1 - x3*t2) / (x2*t1 + t2*x2)
-    D = np.sqrt((t3 / (t1 + t2))**2 +
-                ((t3*x1 - x3*t1 - x3*t2) / (x2*t1 + t2*x2))**2 + 1)
-    z1 = l3/D
-    z2 = m3/D
-    z3 = 1/D
-    normalizedZ = np.array([z1, z2, z3])
-    math.cross(normalizedZ, normalizedX, normalizedY)
-    matrix = tvtk.Matrix4x4()
-    matrix.identity()
-    for el in range(3):  # rotation matrix to x-axis
-        matrix.set_element(el, 0, normalizedX[el])
-        matrix.set_element(el, 1, normalizedY[el])
-        matrix.set_element(el, 2, normalizedZ[el])
-    trans = tvtk.Transform()
-    trans.translate(B)  # translate origin to base of arrow
-    trans.concatenate(matrix)  # rotate around the base of arrow
-    trans.scale(length, length, length)
-    return trans, matrix, length
+#def arrowvect(B, A, C):
+#    """draws a vector based on base, B and tip, A.
+#    calculates the transformation matrix trans and returns it along with the
+#    rotation matrix
+#    """
+#    normalizedX = np.zeros(3)
+#    normalizedY = np.zeros(3)
+#    normalizedZ = np.zeros(3)
+#    AP = np.zeros(3)
+#    math = tvtk.Math()
+#    math.subtract(A, B, normalizedX)  # normalizedX is the arrow unit vector
+#    math.subtract(C, B, AP)
+#    length = math.norm(normalizedX)
+#    math.normalize(normalizedX)
+#    math.normalize(AP)  # another unit vector used to fix the local x-y plane
+#
+#    x1, x2, x3 = normalizedX
+#    t1, t2, t3 = AP
+#    l3 = -t3/(t1+t2)
+#    m3 = (t3*x1 - x3*t1 - x3*t2) / (x2*t1 + t2*x2)
+#    D = np.sqrt((t3 / (t1 + t2))**2 +
+#                ((t3*x1 - x3*t1 - x3*t2) / (x2*t1 + t2*x2))**2 + 1)
+#    z1 = l3/D
+#    z2 = m3/D
+#    z3 = 1/D
+#    normalizedZ = np.array([z1, z2, z3])
+#    math.cross(normalizedZ, normalizedX, normalizedY)
+#    matrix = tvtk.Matrix4x4()
+#    matrix.identity()
+#    for el in range(3):  # rotation matrix to x-axis
+#        matrix.set_element(el, 0, normalizedX[el])
+#        matrix.set_element(el, 1, normalizedY[el])
+#        matrix.set_element(el, 2, normalizedZ[el])
+#    trans = tvtk.Transform()
+#    trans.translate(B)  # translate origin to base of arrow
+#    trans.concatenate(matrix)  # rotate around the base of arrow
+#    trans.scale(length, length, length)
+#    return trans, matrix, length
 
 
 def xcross(p, **kwargs):
@@ -330,3 +332,145 @@ def xcross(p, **kwargs):
                   scale_factor=.3,
                   color=(.5, .7, 0.),
                   **kwargs)
+
+
+def setup_vtk_source(fpath):
+    """
+    Given a VTK file name `fpath`, this creates a tvtk reader
+    and returns a mayavi pipeline ready source object.
+    created.
+
+    Parameters:
+    -----------
+    fname: Str
+        VTK file path
+
+    Returns:
+    --------
+    src: VTKDataSource
+        mayavi pipeline ready source object
+
+    """
+    dat = tvtk.PolyDataReader(file_name=fpath)
+    dat.update()   # very IMPORTANT!!!
+    src = VTKDataSource(data=dat.output)
+    return src
+
+
+def getelipspar(fname, dfin):
+    """
+    Return parameters for ellipse from cell tracing dataframe
+
+    Parameters:
+    -----------
+    fname: Str
+        cell name id, e.g. `MFB1_032016_002_RFPstack_000`
+    dfin: DataFrame
+        Dataframe file from pandas.csv read of a cell tracing data
+
+    Returns:
+    --------
+    dftemp
+    """
+    # selection returns a view by default, we want a copy!
+    dfout = dfin[dfin.cell == fname].copy()
+    dfout['Major'] = dfout.Major * .055/2
+    dfout['Minor'] = dfout.Minor * .055/2
+    dfout['vol'] =  \
+        4 / 3 * np.pi * dfout.Major * dfout.Minor
+    dfout = dfout.sort_values(by='vol')
+    dfout.index = ['bud', 'mom']
+    # reverse the y-coordinate system (VTK vs ImageJ)
+    dfout['center'] = zip((dfout.X) * .055, (250 - dfout.Y) * .055)
+    return dfout
+
+
+def setup_ellipsedata(mom_bud, dF):
+    """
+    Returns a dict, `D` of ellipse parameters of `cell_ID` from a
+    dataframe `dF`.
+    """
+    D = {}
+    D['major'] = dF.ix[mom_bud, 'Major']
+    D['minor'] = dF.ix[mom_bud, 'Minor']
+    D['angle'] = dF.ix[mom_bud, 'Angle']
+    D['xc'] = dF.ix[mom_bud, 'center'][0]
+    D['yc'] = dF.ix[mom_bud, 'center'][1]
+    D['zpos'] = 0
+    return D
+
+
+def getellipsesource(major, minor):
+    """
+    Convenience wrapper to generate a Mayavi Source object based on
+    `major` and `minor` radius of ellipse parameters
+    """
+    source = ParametricSurface()
+    source.function = 'ellipsoid'
+    source.parametric_function.set(x_radius=major,
+                                   y_radius=minor,
+                                   z_radius=minor)
+    return source
+
+
+def kernel(X, Y):
+    """
+    Calculates an orthogonal vector from X, Y
+    """
+    x1, x2, x3 = X
+    t1, t2, t3 = Y
+    l3 = -t3 / (t1 + t2)
+    m3 = (t3 * x1 - x3 * t1 - x3 * t2) / (x2 * t1 + t2 * x2)
+    D = np.sqrt((t3 / (t1 + t2))**2 +
+                ((t3 * x1 - x3 * t1 - x3 * t2) / (x2 * t1 + t2 * x2))**2 + 1)
+    z1 = l3 / D
+    z2 = m3 / D
+    z3 = 1 / D
+    return np.array([z1, z2, z3])
+
+
+def arrowvect(base, tip, neck):
+    """
+    Draws a vector based on base (mom end) and tip (bud end) of cell.
+    Calculates the transformation matrix trans and returns it along with the
+    rotation matrix.
+
+    Parameters
+    ----------
+    base, tip, neck : float array with shape (3L,)
+        coordinates for the apical ends of mom and bud cells
+
+    Returns
+    -------
+    trans : vtkTransform
+        Transform filter
+
+    matrix : vtkMatrix4x4
+        Rotation matrix
+
+    length : float
+      scale factor for arrow length
+    """
+    normalizedX = np.zeros(3)
+    normalizedY = np.zeros(3)
+    normalizedZ = np.zeros(3)
+    AP = np.zeros(3)
+    normalizedX = np.subtract(tip, base)   # normalizedX = arrow unit vector
+    AP = np.subtract(neck, base)
+    length = np.linalg.norm(normalizedX)
+    normalizedX = normalizedX / length
+    # another unit vector used to fix the local x-y plane
+    AP = AP / np.linalg.norm(AP)
+    normalizedZ = kernel(normalizedX, AP)
+    normalizedY = np.cross(normalizedZ, normalizedX)
+    matrix = tvtk.Matrix4x4()
+    matrix.identity()
+    for el in range(3):  # rotation matrix to x-axis
+        matrix.set_element(el, 0, normalizedX[el])
+        matrix.set_element(el, 1, normalizedY[el])
+        matrix.set_element(el, 2, normalizedZ[el])
+    trans = tvtk.Transform()
+    trans.translate(base)  # translate origin to base of arrow
+    trans.concatenate(matrix)  # rotate around the base of arrow
+    trans.scale(length, length, length)
+    return trans, matrix, length

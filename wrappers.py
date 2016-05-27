@@ -8,7 +8,7 @@ import os
 import os.path as op
 import fnmatch
 from collections import defaultdict
-import mombud.vtk_viz.vtk_mbfuncs as vf
+import mombud.functions.vtk_mbfuncs as vf
 
 
 def swalk(ddir, txt, start=None, stop=None):

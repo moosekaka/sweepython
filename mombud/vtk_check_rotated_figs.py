@@ -14,8 +14,8 @@ import numpy as np
 from tvtk.api import tvtk
 from seaborn import xkcd_palette as scolor
 import wrappers as wr
-from mombud.vtk_viz import vtkvizfuncs as vz
-from mombud.vtk_pick_mombud_class import arrowvect, getelipspar, CellEllipse
+from mombud.functions import vtkvizfuncs as vz
+from mombud.classes.vtk_pick_mombud_class import CellEllipse
 
 # pylint: disable=C0103
 datadir = op.join(os.getcwd(), 'mutants', 'transformedData3')
@@ -69,7 +69,7 @@ if __name__ == "__main__":
         D['neck'] = np.array(df_cursorpts.ix['neck'])
 
         # get rotation matrix transform
-        _, rot, scale1 = arrowvect(D['base'], D['tip'], D['neck'])
+        _, rot, scale1 = vz.arrowvect(D['base'], D['tip'], D['neck'])
         tr_filt = tvtk.Transform()
         rot.transpose()
         tr_filt.translate(np.negative(D['base']))
@@ -78,7 +78,7 @@ if __name__ == "__main__":
         tr_filt.translate([-1, 0, 0])
 
         # setup mom bud shell ellipse
-        df_ellipse = getelipspar(key, df_celltracing)
+        df_ellipse = vz.getelipspar(key, df_celltracing)
         for mb in ['mom', 'bud']:
             mb_glyph = CellEllipse(name='%s' % mb, dataframe=df_ellipse)
             mb_glyph.make_surf(figure=figone)

@@ -14,144 +14,20 @@ import numpy as np
 from tvtk.api import tvtk
 from tvtk.tvtk_classes.arrow_source import ArrowSource
 from mayavi.sources.vtk_data_source import VTKDataSource
-from mayavi.sources.api import ParametricSurface
 from mayavi import mlab
 from mayavi.core.api import Source, Engine
 from mayavi.core.ui.api import SceneEditor, MlabSceneModel, EngineView, \
                                MayaviScene
 from seaborn import xkcd_palette as scolor
 import wrappers as wr
+from mombud.functions import vtkvizfuncs as vz
 # pylint: disable=C0103, E1136
 datadir = op.join(os.getcwd(), 'mutants')
-#xkcd palette colors
+# xkcd palette colors
 colors = ["medium green",
           "light blue",
           "red"]
 palette = {col: rgb for col, rgb in zip(colors, scolor(colors))}
-
-
-def setup_data(fname):
-    """Given a VTK file name `fname`, this creates a mayavi2 reader
-    for it and adds it to the pipeline.  It returns the reader
-    created.
-    """
-    dat = tvtk.PolyDataReader(file_name=fname)
-    dat.update()   # very IMPORTANT!!!
-    src = VTKDataSource(data=dat.output)
-    return src
-
-
-def getelipspar(fname, dfin):
-    """
-    Return parameters for ellipse from cell tracing dataframe
-
-    Parameters:
-    -----------
-    fname: Str
-        cell name id, e.g. `MFB1_032016_002_RFPstack_000`
-    dfin: DataFrame
-        Dataframe file from pandas.csv read of a cell tracing data
-
-    Returns:
-    --------
-    dftemp
-    """
-    # selection returns a view by default, we want a copy!
-    dfout = dfin[dfin.cell == fname].copy()
-    dfout['Major'] = dfout.Major * .055/2
-    dfout['Minor'] = dfout.Minor * .055/2
-    dfout['vol'] =  \
-        4 / 3 * np.pi * dfout.Major * dfout.Minor
-    dfout = dfout.sort_values(by='vol')
-    dfout.index = ['bud', 'mom']
-    # reverse the y-coordinate system (VTK vs ImageJ)
-    dfout['center'] = zip((dfout.X) * .055, (250 - dfout.Y) * .055)
-    return dfout
-
-
-def setup_ellipsedata(mom_bud, dF):
-    """
-    Returns a dict, `D` of ellipse parameters of `cell_ID` from a
-    dataframe `dF`.
-    """
-    D = {}
-    D['major'] = dF.ix[mom_bud, 'Major']
-    D['minor'] = dF.ix[mom_bud, 'Minor']
-    D['angle'] = dF.ix[mom_bud, 'Angle']
-    D['xc'] = dF.ix[mom_bud, 'center'][0]
-    D['yc'] = dF.ix[mom_bud, 'center'][1]
-    D['zpos'] = 0
-    return D
-
-
-def getellipsesource(major, minor):
-    """
-    Convenience wrapper to generate a Mayavi Source object based on
-    `major` and `minor` radius of ellipse parameters
-    """
-    source = ParametricSurface()
-    source.function = 'ellipsoid'
-    source.parametric_function.set(x_radius=major,
-                                   y_radius=minor,
-                                   z_radius=minor)
-    return source
-
-
-def arrowvect(base, tip, neck):
-    """
-    Draws a vector based on base (mom end) and tip (bud end) of cell.
-    Calculates the transformation matrix trans and returns it along with the
-    rotation matrix.
-
-    Parameters
-    ----------
-    base, tip, neck : float array with shape (3L,)
-        coordinates for the apical ends of mom and bud cells
-
-    Returns
-    -------
-    trans : vtkTransform
-        Transform filter
-
-    matrix : vtkMatrix4x4
-        Rotation matrix
-
-    length : float
-      scale factor for arrow length
-    """
-    normalizedX = np.zeros(3)
-    normalizedY = np.zeros(3)
-    normalizedZ = np.zeros(3)
-    AP = np.zeros(3)
-    math = tvtk.Math()
-    math.subtract(tip, base, normalizedX)  # normalizedX = arrow unit vector
-    math.subtract(neck, base, AP)
-    length = math.norm(normalizedX)
-    math.normalize(normalizedX)
-    math.normalize(AP)  # another unit vector used to fix the local x-y plane
-
-    x1, x2, x3 = normalizedX
-    t1, t2, t3 = AP
-    l3 = -t3 / (t1 + t2)
-    m3 = (t3 * x1 - x3 * t1 - x3 * t2) / (x2 * t1 + t2 * x2)
-    D = np.sqrt((t3 / (t1 + t2))**2 +
-                ((t3 * x1 - x3 * t1 - x3 * t2) / (x2 * t1 + t2 * x2))**2 + 1)
-    z1 = l3 / D
-    z2 = m3 / D
-    z3 = 1 / D
-    normalizedZ = np.array([z1, z2, z3])
-    math.cross(normalizedZ, normalizedX, normalizedY)
-    matrix = tvtk.Matrix4x4()
-    matrix.identity()
-    for el in range(3):  # rotation matrix to x-axis
-        matrix.set_element(el, 0, normalizedX[el])
-        matrix.set_element(el, 1, normalizedY[el])
-        matrix.set_element(el, 2, normalizedZ[el])
-    trans = tvtk.Transform()
-    trans.translate(base)  # translate origin to base of arrow
-    trans.concatenate(matrix)  # rotate around the base of arrow
-    trans.scale(length, length, length)
-    return trans, matrix, length
 
 
 class ArrowClass(HasTraits):
@@ -230,9 +106,10 @@ class CellEllipse(HasTraits):
         HasTraits.__init__(self, **traits)
         # name splitting needs the name format to be as described above in
         # order to select the right data
-        self.data = setup_ellipsedata(self.name.split('_')[0], self.dataframe)
-        self.src = getellipsesource(self.data['major'],
-                                    self.data['minor'])
+        self.data = vz.setup_ellipsedata(self.name.split('_')[0],
+                                         self.dataframe)
+        self.src = vz.getellipsesource(self.data['major'],
+                                       self.data['minor'])
 
     def make_surf(self, **kwargs):
         """
@@ -323,8 +200,8 @@ class MombudPicker(HasTraits):
                         Item('scene1',
                              editor=SceneEditor(scene_class=MayaviScene),
                              height=600,
-                             width=600),
-                        Group('_', '_',
+                             width=700),
+                        Group('_',
                              Item('z_position'),
                              Item('picktype',
                                   style='custom',
@@ -334,8 +211,7 @@ class MombudPicker(HasTraits):
                         Group(
                             Item('scene2',
                                  editor=SceneEditor(), height=600,
-                                 width=600, show_label=False),
-                            '_',
+                                 width=500, show_label=False),
                             'button_save',
                             'button_transform',
                             show_labels=False,
@@ -469,7 +345,8 @@ class MombudPicker(HasTraits):
 
     def _update_curs(self, part):
         """
-        Logic to update the cursor points `part` based on mayavi point picker
+        Logic to update the cursor points `part` and the corres. sphere glyph
+        on the transformed view, using the mouse Spoint picker
         """
         # if no cursors have been picked, the xxx_pos. attribute will be None
         setattr(self, '%s_pos' % part,
@@ -483,7 +360,9 @@ class MombudPicker(HasTraits):
     def _drawarrow(self):
         # only draws an arrow when all three points are picked
         if self.base_pos and self.tip_pos and self.neck_pos:
-            tr, _, _ = arrowvect(self.base_pos, self.tip_pos, self.neck_pos)
+            tr, _, _ = vz.arrowvect(self.base_pos,
+                                    self.tip_pos,
+                                    self.neck_pos)
             self.arrow_src.transform(tr)
             self.arrow_src.surf.set(visible=True)
 
@@ -523,7 +402,9 @@ class MombudPicker(HasTraits):
     def _draw_transformed(self):
         # allows transformation only when three points picked
         if self.base_pos and self.tip_pos and self.neck_pos:
-            _, rot, _ = arrowvect(self.base_pos, self.tip_pos, self.neck_pos)
+            _, rot, _ = vz.arrowvect(self.base_pos,
+                                     self.tip_pos,
+                                     self.neck_pos)
             tr_filt = tvtk.Transform()
             rot.transpose()
             tr_filt.translate(np.negative(self.base_pos))
@@ -568,15 +449,15 @@ if __name__ == "__main__":
 
 #    vtkF = wr.swalk(datadir, '*csv', start=0, stop=-4)
     Dcells = {key: None for key in hasbuds.cell.values}
-    for i in hasbuds.cell.unique()[22:26]:
+    for i in hasbuds.cell.unique()[22:23]:
         filename = i
         # setup VTK input dataset
-        vtkob = setup_data(op.join(datadir,
-                                   'normalizedVTK/Norm_%s_skeleton.vtk' %
-                                   filename))
+        vtkob = vz.setup_vtk_source(op.join(datadir,
+                                    'normalizedVTK/Norm_%s_skeleton.vtk' %
+                                    filename))
 
         # setup cell ellipse objects
-        df2 = getelipspar(filename, df)
+        df2 = vz.getelipspar(filename, df)
         mom = CellEllipse(name='mom', dataframe=df2)
         bud = CellEllipse(name='bud', dataframe=df2)
 

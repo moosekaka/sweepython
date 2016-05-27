@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from mayavi import mlab
 from mayavi.sources.vtk_file_reader import VTKFileReader
 from pipeline.make_networkx import makegraph as mg
-from mombud.vtk_viz import vtkvizfuncs as vf
+from mombud.functions import vtkvizfuncs as vf
 import wrappers as wr
 # pylint: disable=C0103
 plt.close('all')

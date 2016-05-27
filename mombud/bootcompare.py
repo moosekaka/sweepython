@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from tvtk.api import tvtk
-from mombud.vtk_viz import vtk_mbfuncs as vf
+from mombud.functions import vtk_mbfuncs as vf
 import wrappers as wr
 # pylint: disable=C0103
 

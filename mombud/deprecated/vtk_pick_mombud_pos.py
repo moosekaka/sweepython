@@ -10,7 +10,7 @@ from mayavi import mlab
 import pandas as pd
 from tvtk.api import tvtk
 from collections import defaultdict
-from mombud.vtk_viz import vtkvizfuncs as vz
+from mombud.functions import vtkvizfuncs as vz
 import wrappers as wr
 # pylint: disable=C0103
 vtkF = defaultdict(dict)

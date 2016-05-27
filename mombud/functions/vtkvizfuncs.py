@@ -36,12 +36,37 @@ def nicegrph(graph, axinput, grphtype='neato'):
 def callreader(filepath):
     """
     Convenience wrapper for vtk reader call
+    ***THIS RETURNS A VTK version polydata, for a mayavi source, use
+    setup_vtk_source***
     """
     reader = vtk.vtkPolyDataReader()
     reader.SetFileName(filepath)
     reader.Update()
     polydata = reader.GetOutput()
     return polydata
+
+
+def setup_vtk_source(fpath):
+    """
+    Given a VTK file name `fpath`, this creates a tvtk reader
+    and returns a mayavi pipeline ready source object.
+    created.
+
+    Parameters:
+    -----------
+    fname: Str
+        VTK file path
+
+    Returns:
+    --------
+    src: VTKDataSource
+        mayavi pipeline ready source object
+
+    """
+    dat = tvtk.PolyDataReader(file_name=fpath)
+    dat.update()   # very IMPORTANT!!!
+    src = VTKDataSource(data=dat.output)
+    return src
 
 
 def labellines(vtksrc):
@@ -332,29 +357,6 @@ def xcross(p, **kwargs):
                   scale_factor=.3,
                   color=(.5, .7, 0.),
                   **kwargs)
-
-
-def setup_vtk_source(fpath):
-    """
-    Given a VTK file name `fpath`, this creates a tvtk reader
-    and returns a mayavi pipeline ready source object.
-    created.
-
-    Parameters:
-    -----------
-    fname: Str
-        VTK file path
-
-    Returns:
-    --------
-    src: VTKDataSource
-        mayavi pipeline ready source object
-
-    """
-    dat = tvtk.PolyDataReader(file_name=fpath)
-    dat.update()   # very IMPORTANT!!!
-    src = VTKDataSource(data=dat.output)
-    return src
 
 
 def getelipspar(fname, dfin):

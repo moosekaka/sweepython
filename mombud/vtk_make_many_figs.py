@@ -34,7 +34,7 @@ if __name__ == '__main__':
                 in sorted(vtkF.keys()) for item
                 in sorted(vtkF[media].keys())}
 
-    for key in sorted(filekeys.keys())[::]:
+    for key in sorted(filekeys.keys())[::10]:
         temp = key.partition("_")
         etype = temp[0]
         cellkey = temp[-1]
@@ -42,10 +42,9 @@ if __name__ == '__main__':
         node_data, edge_data, nxgrph = mg(data, key)
         figone = mlab.figure(figure=key,
                              size=(800, 600),
-                             bgcolor=(.15, .15, .15))
+                             bgcolor=(.1, .1, .1))
         vtkobj, _ = vf.cellplot(figone, filekeys[key])
         vf.rendsurf(vtkS[etype][cellkey])
         vf.labelbpoints(nxgrph, bsize=0.08, esize=0.08)
-        mlab.savefig(op.join(rawdir, '%s.png' % key))
-        mlab.close()
-
+#        mlab.savefig(op.join(rawdir, '%s.png' % key))
+#        mlab.close()

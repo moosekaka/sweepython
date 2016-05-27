@@ -452,9 +452,9 @@ if __name__ == "__main__":
     for i in hasbuds.cell.unique()[22:23]:
         filename = i
         # setup VTK input dataset
-        vtkob = vz.setup_vtk_source(op.join(datadir,
-                                    'normalizedVTK/Norm_%s_skeleton.vtk' %
-                                    filename))
+        vtkob = vz.setup_vtk_source(
+            op.join(datadir,
+                    'normalizedVTK/Norm_%s_skeleton.vtk' % filename))
 
         # setup cell ellipse objects
         df2 = vz.getelipspar(filename, df)

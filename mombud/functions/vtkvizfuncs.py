@@ -11,7 +11,24 @@ from mayavi.sources.vtk_data_source import VTKDataSource
 from tvtk.api import tvtk
 import config
 import networkx as nx
+from seaborn import xkcd_palette as scolor
 # pylint: disable=C0103
+
+
+def generate_color_labels(**kwargs):
+    """
+    Generates rgb values when passed a dictionary of xkcd color list
+    and labels list."""
+
+    if 'colors' in kwargs:
+        colors_list = kwargs['colors']
+    if 'labels' in kwargs:
+        labels_list = kwargs['labels']
+
+    dic_label_colors = dict(zip(labels_list, colors_list))
+    rgb_vals = dict(zip(colors_list, scolor(colors_list)))
+
+    return dic_label_colors, rgb_vals
 
 
 def nicegrph(graph, axinput, grphtype='neato'):
@@ -359,7 +376,7 @@ def xcross(p, **kwargs):
                   **kwargs)
 
 
-def getelipspar(fname, dfin):
+def getelipspar(fname, dfin, **kwargs):
     """
     Return parameters for ellipse from cell tracing dataframe
 
@@ -369,6 +386,9 @@ def getelipspar(fname, dfin):
         cell name id, e.g. `MFB1_032016_002_RFPstack_000`
     dfin: DataFrame
         Dataframe file from pandas.csv read of a cell tracing data
+    useold: Str
+        switch to specify the coordinate transform between VTK and
+        imageJ for BF cell tracings, default=False
 
     Returns:
     --------
@@ -382,8 +402,14 @@ def getelipspar(fname, dfin):
         4 / 3 * np.pi * dfout.Major * dfout.Minor
     dfout = dfout.sort_values(by='vol')
     dfout.index = ['bud', 'mom']
-    # reverse the y-coordinate system (VTK vs ImageJ)
-    dfout['center'] = zip((dfout.X) * .055, (250 - dfout.Y) * .055)
+    useold = kwargs.pop('useold', False)
+    # reverse the y-coordinate system (VTK vs ImageJ), note for new data,
+    # assumes 250 x 250 pixel BF
+    if not useold:
+        dfout['center'] = zip((dfout.X) * .055, (250 - dfout.Y) * .055)
+    # old dataset, used different centering scheme for BF
+    else:
+        dfout['center'] = zip((dfout.X - 25) * .055, (225 - dfout.Y) * .055)
     return dfout
 
 
@@ -431,7 +457,7 @@ def dircos_kernel(X, Y):
     return np.array([z1, z2, z3])
 
 
-def arrowvect(base, tip, neck):
+def arrowvect(base, tip, neck, inverse=False):
     """
     Draws a vector based on base (mom end) and tip (bud end) of cell.
     Calculates the transformation matrix trans and returns it along with the
@@ -476,3 +502,17 @@ def arrowvect(base, tip, neck):
     trans.concatenate(matrix)  # rotate around the base of arrow
     trans.scale(length, length, length)
     return trans, matrix, length
+
+
+def inverse_tr(rotmatrix, dist):
+    """
+    returns the inverse of arrowvect transform, i.e. transform the original
+    orientation of arrowvect back to a x-axis unit vector
+    """
+    tr_filt = tvtk.Transform()
+    rotmatrix.transpose()
+    tr_filt.translate(np.negative(dist))
+    tr_filt.post_multiply()  # translate, THEN rotate
+    tr_filt.concatenate(rotmatrix)
+    tr_filt.translate([-1., 0, 0])  # account for lenght of unit vector
+    return tr_filt

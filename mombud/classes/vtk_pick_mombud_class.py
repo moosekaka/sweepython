@@ -18,16 +18,10 @@ from mayavi import mlab
 from mayavi.core.api import Source, Engine
 from mayavi.core.ui.api import SceneEditor, MlabSceneModel, EngineView, \
                                MayaviScene
-from seaborn import xkcd_palette as scolor
 import wrappers as wr
 from mombud.functions import vtkvizfuncs as vz
 # pylint: disable=C0103, E1136
 datadir = op.join(os.getcwd(), 'mutants')
-# xkcd palette colors
-colors = ["medium green",
-          "light blue",
-          "red"]
-palette = {col: rgb for col, rgb in zip(colors, scolor(colors))}
 
 
 class ArrowClass(HasTraits):
@@ -158,13 +152,13 @@ class MombudPicker(HasTraits):
     A Traits and Mayavi based object for picking moms and bud and setting
     orientation to the cell axis
     """
-    name = Str()
+    name = Str
     data_src3d = Instance(MitoSkel)
     momellipse = Instance(CellEllipse)
     budellipse = Instance(CellEllipse)
+
     # The first engine. As default arguments (an empty tuple) are given,
     # traits initializes it.
-
     engine1 = Instance(Engine, args=())
     scene1 = Instance(MlabSceneModel)  # initiliazes _scene1_default
     scene2 = Instance(MlabSceneModel)  # initiliazes _scene2_default
@@ -182,9 +176,10 @@ class MombudPicker(HasTraits):
     # TraitsUI buttons interface
     button_save = Button('SaveOutput')
     button_transform = Button('Transform')
-    # colors defined from xkcd pallete
-    cur_col = Dict(
-        {part: col for col, part in zip(colors, ['tip', 'base', 'neck'])})
+
+    #default colors for labels
+    def_cols = dict(colors=['light blue', 'bright green', 'red'],
+                    labels=['base', 'tip', 'neck'])
 
     engine_view = Instance(EngineView)
     # GUI layout
@@ -225,6 +220,7 @@ class MombudPicker(HasTraits):
         # init the parent class HasTraits
         HasTraits.__init__(self, **traits)
         self.arrow_src = ArrowClass()
+        self.cur_col, self.palette = vz.generate_color_labels(**self.def_cols)
 
         # set initial z-position of cell based on vtk bounds, also
         # initialize Range to this position
@@ -262,10 +258,11 @@ class MombudPicker(HasTraits):
 
         # cursor to mark mom/neck/bud locations
         for key in self.cursors:
+            label = self.cur_col[key]
             self.cursors[key] = mlab.points3d(0, 0, 0,
                                               mode='2dcross',
                                               scale_factor=.25,
-                                              color=palette[self.cur_col[key]],
+                                              color=self.palette[label],
                                               name=key)
             self.cursors[key].set(visible=False)
 
@@ -287,8 +284,8 @@ class MombudPicker(HasTraits):
 
         # scene formating
         self._labelscene(self.name, 'scene1')
-        self.scene1.mlab.view(0, 0)
         self.scene1.scene.background = (0, 0, 0)
+        self.scene1.mlab.view(0, 0)
         self.scene1.mayavi_scene.on_mouse_pick(self._pickcb)
 
     def _pickcb(self, obj):
@@ -325,7 +322,7 @@ class MombudPicker(HasTraits):
             src = tvtk.SphereSource(center=center, radius=.15)
             self.spheres[key] = mlab.pipeline.surface(
                 src.output,
-                color=palette[self.cur_col[key]],
+                color=self.palette[self.cur_col[key]],
                 name='%s_trnf' % key)
             self.spheres[key].set(visible=False)
 
@@ -405,12 +402,9 @@ class MombudPicker(HasTraits):
             _, rot, _ = vz.arrowvect(self.base_pos,
                                      self.tip_pos,
                                      self.neck_pos)
-            tr_filt = tvtk.Transform()
-            rot.transpose()
-            tr_filt.translate(np.negative(self.base_pos))
-            tr_filt.post_multiply()  # translate, THEN rotate
-            tr_filt.concatenate(rot)
-            tr_filt.translate([-1., 0., 0.])
+
+            # this filter transforms the cell-axis to the x-axis unit vector
+            tr_filt = vz.inverse_tr(rot, self.base_pos)
 
             # this is the transformed VTK object of interest
             self.trans_obj = tvtk.TransformPolyDataFilter(
@@ -432,16 +426,14 @@ class MombudPicker(HasTraits):
                 self.spheres[key].set(visible=True)
         else:
             print "please finish selecting all three points!"
-        mlab.view(0, 0, figure=self.scene1.mayavi_scene)
-        mlab.view(0, 0, figure=self.scene2.mayavi_scene)
-        self.scene1.reset_zoom()
-        self.scene2.reset_zoom()
+        mlab.view(0, 0, distance='auto', figure=self.scene1.mayavi_scene)
+        mlab.view(0, 0, distance='auto', figure=self.scene2.mayavi_scene)
 
 ##############################################################################
 if __name__ == "__main__":
     mlab.close(all=True)
     # Read in the celltracing data into a Pandas Dataframe
-    DataSize = pd.read_table(op.join(datadir, 'Results.txt'))
+    DataSize = pd.read_table(op.join(datadir, 'csv', 'Results.txt'))
     df = DataSize.ix[:, 1:]
     df['cell'] = df.ix[:, 'Label'].apply(lambda x: x.partition(':')[2])
     counter = df.groupby('cell').Label.count()
@@ -449,7 +441,7 @@ if __name__ == "__main__":
 
 #    vtkF = wr.swalk(datadir, '*csv', start=0, stop=-4)
     Dcells = {key: None for key in hasbuds.cell.values}
-    for i in hasbuds.cell.unique()[22:23]:
+    for i in hasbuds.cell.unique()[25:27]:
         filename = i
         # setup VTK input dataset
         vtkob = vz.setup_vtk_source(

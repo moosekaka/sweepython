@@ -12,7 +12,6 @@ from mayavi import mlab
 import pandas as pd
 import numpy as np
 from tvtk.api import tvtk
-from seaborn import xkcd_palette as scolor
 import wrappers as wr
 from mombud.functions import vtkvizfuncs as vz
 from mombud.classes.vtk_pick_mombud_class import CellEllipse
@@ -21,15 +20,13 @@ from mombud.classes.vtk_pick_mombud_class import CellEllipse
 datadir = op.join(os.getcwd(), 'mutants', 'transformedData3')
 rawdir = op.join(os.getcwd(), 'mutants', 'transformedData3')
 
-# xkcd palette colors
-colors = ["medium green",
-          "bright blue",
-          "red"]
-cur_col = {part: col for col, part in zip(colors, ['tip', 'base', 'neck'])}
-palette = {col: rgb for col, rgb in zip(colors, scolor(colors))}
+# xkcd palette colors for labels
+def_cols = dict(colors=['medium blue', 'bright green', 'red'],
+                labels=['base', 'tip', 'neck'])
+cur_col, palette = vz.generate_color_labels(**def_cols)
 
 # cell tracing info
-DataSize = pd.read_table(op.join(datadir, op.pardir, 'Results.txt'))
+DataSize = pd.read_table(op.join(datadir, op.pardir, 'csv', 'Results.txt'))
 df_celltracing = DataSize.ix[:, 1:]
 df_celltracing['cell'] = \
     df_celltracing.ix[:, 'Label'].apply(lambda x: x.partition(':')[2])
@@ -69,16 +66,11 @@ if __name__ == "__main__":
         D['neck'] = np.array(df_cursorpts.ix['neck'])
 
         # get rotation matrix transform
-        _, rot, scale1 = vz.arrowvect(D['base'], D['tip'], D['neck'])
-        tr_filt = tvtk.Transform()
-        rot.transpose()
-        tr_filt.translate(np.negative(D['base']))
-        tr_filt.post_multiply()  # translate, THEN rotate
-        tr_filt.concatenate(rot)
-        tr_filt.translate([-1, 0, 0])
+        t, rot, scale1 = vz.arrowvect(D['base'], D['tip'], D['neck'])
+        tr_filt = vz.inverse_tr(rot, D['base'])
 
         # setup mom bud shell ellipse
-        df_ellipse = vz.getelipspar(key, df_celltracing)
+        df_ellipse = vz.getelipspar(key, df_celltracing, useold=False)
         for mb in ['mom', 'bud']:
             mb_glyph = CellEllipse(name='%s' % mb, dataframe=df_ellipse)
             mb_glyph.make_surf(figure=figone)

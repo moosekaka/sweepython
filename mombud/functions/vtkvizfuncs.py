@@ -9,7 +9,6 @@ from mayavi import mlab
 from mayavi.sources.api import ParametricSurface
 from mayavi.sources.vtk_data_source import VTKDataSource
 from tvtk.api import tvtk
-import config
 import networkx as nx
 from seaborn import xkcd_palette as scolor
 # pylint: disable=C0103
@@ -32,11 +31,14 @@ def generate_color_labels(**kwargs):
 
 
 def nicegrph(graph, axinput, grphtype='neato'):
+    """
+    Draw graph using graphviz, defaults is neato layout
     # ‘neato’|’dot’|’twopi’|’circo’|’fdp’|
+    """
     cols = []
     sizes = []
 
-    for n, attr in graph.nodes(data=True):
+    for _, attr in graph.nodes(data=True):
         if attr['degree'] == 1:
             cols.append('#3366FF')
             sizes.append(30)
@@ -138,27 +140,6 @@ def edgeplot(fig, vtksrc, cellid, scalartype='DY_raw'):
     mmgr.scalar_bar_representation.position = [.85, .25]
     mmgr.scalar_bar_representation.position2 = [.1, .4]
     tube.filter.number_of_sides = 32
-
-
-def countFuncCall():
-    """counter function
-    """
-    config.counter += 1
-    return config.counter
-
-
-def adjustlut(vtksurface):
-    """ adjust lut colormap
-    """
-    mmgr = vtksurface.module_manager.scalar_lut_manager
-    mmgr.show_legend = True
-    mmgr.reverse_lut = True
-    mmgr.lut_mode = 'RdBu'
-    mmgr.number_of_labels = 5
-    mmgr.scalar_bar.label_format = '%4.f'
-    mmgr.label_text_property.font_size = 12
-    mmgr.scalar_bar_representation.position = [.85, .25]
-    mmgr.scalar_bar_representation.position2 = [.1, .4]
 
 
 def cellplot(fig, filename, scalartype='DY_raw', **kwargs):
@@ -293,13 +274,6 @@ def labelbpoints(graph, **kwargs):
     epts.glyph.glyph_source.glyph_source.theta_resolution = 16
 
 
-#def getelipspar(filename, df):
-#    """ parameters for ellipse from cell tracing """
-#    dftemp = df[df.cell == filename]
-#    dftemp.reset_index(1, drop=True, inplace=True)
-#    return dftemp
-
-
 def drawelips(strg, df2, zpos=0):
     """draw ellipsoid based on getelipspar
     """
@@ -324,56 +298,6 @@ def drawelips(strg, df2, zpos=0):
     actor.actor.position = np.array([x, y, zpos])
     actor.actor.orientation = np.array([0, 0, df2.ix[strg, 'Angle']])
     return ee, source
-
-
-#def arrowvect(B, A, C):
-#    """draws a vector based on base, B and tip, A.
-#    calculates the transformation matrix trans and returns it along with the
-#    rotation matrix
-#    """
-#    normalizedX = np.zeros(3)
-#    normalizedY = np.zeros(3)
-#    normalizedZ = np.zeros(3)
-#    AP = np.zeros(3)
-#    math = tvtk.Math()
-#    math.subtract(A, B, normalizedX)  # normalizedX is the arrow unit vector
-#    math.subtract(C, B, AP)
-#    length = math.norm(normalizedX)
-#    math.normalize(normalizedX)
-#    math.normalize(AP)  # another unit vector used to fix the local x-y plane
-#
-#    x1, x2, x3 = normalizedX
-#    t1, t2, t3 = AP
-#    l3 = -t3/(t1+t2)
-#    m3 = (t3*x1 - x3*t1 - x3*t2) / (x2*t1 + t2*x2)
-#    D = np.sqrt((t3 / (t1 + t2))**2 +
-#                ((t3*x1 - x3*t1 - x3*t2) / (x2*t1 + t2*x2))**2 + 1)
-#    z1 = l3/D
-#    z2 = m3/D
-#    z3 = 1/D
-#    normalizedZ = np.array([z1, z2, z3])
-#    math.cross(normalizedZ, normalizedX, normalizedY)
-#    matrix = tvtk.Matrix4x4()
-#    matrix.identity()
-#    for el in range(3):  # rotation matrix to x-axis
-#        matrix.set_element(el, 0, normalizedX[el])
-#        matrix.set_element(el, 1, normalizedY[el])
-#        matrix.set_element(el, 2, normalizedZ[el])
-#    trans = tvtk.Transform()
-#    trans.translate(B)  # translate origin to base of arrow
-#    trans.concatenate(matrix)  # rotate around the base of arrow
-#    trans.scale(length, length, length)
-#    return trans, matrix, length
-
-
-def xcross(p, **kwargs):
-    """ draw a X cursor at p
-    """
-    mlab.points3d(p[0], p[1], p[2],
-                  mode='2dcross',
-                  scale_factor=.3,
-                  color=(.5, .7, 0.),
-                  **kwargs)
 
 
 def getelipspar(fname, dfin, **kwargs):
@@ -457,7 +381,7 @@ def dircos_kernel(X, Y):
     return np.array([z1, z2, z3])
 
 
-def arrowvect(base, tip, neck, inverse=False):
+def arrowvect(base, tip, neck):
     """
     Draws a vector based on base (mom end) and tip (bud end) of cell.
     Calculates the transformation matrix trans and returns it along with the

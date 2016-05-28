@@ -48,12 +48,11 @@ except Exception:
     print "Error: check your filepaths"
     sys.exit()
 
-D = {}  # holder for original bud,neck, tip points
-dfmb = pd.DataFrame(columns=['base', 'neck', 'tip', 'media'])
-
 ##############################################################################
 if __name__ == "__main__":
-    for key in vtkF.keys()[:]:
+    D = {}  # holder for original bud,neck, tip points
+    dfmb = pd.DataFrame(columns=['base', 'neck', 'tip', 'media'])
+    for key in vtkF.keys()[:150]:
         mlab.clf(figure=figone)  # clear current figure
 
         # get original cursor points
@@ -83,7 +82,8 @@ if __name__ == "__main__":
         # Dataframe to save parameters of transformed object
         df = pd.Series({}, name=key)
 
-        # transform original bud, neck and tip points and writeout
+        # transform original bud, neck and tip points of arrow to be
+        # parallel to x-axis unit vector
         for part in D:
             center = D[part]
             src = tvtk.SphereSource(center=D[part], radius=.15)

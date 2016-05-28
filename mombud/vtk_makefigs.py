@@ -17,18 +17,17 @@ datadir = op.join(os.getcwd(), 'mutants')
 inptdir = op.join(os.getcwd(), 'mutants')
 outputdir = op.join(os.getcwd(), 'mutants')
 
-
 # filelist and graph list
 if __name__ == '__main__':
 
     filekey = 'NUM1_032016_011_RFPstack_030'
     try:
-#        vtkF = wr.swalk(op.join(outputdir, 'normalizedVTK'),
-#                        'N*Skeleton.vtk', start=5, stop=-13)
+ #        vtkF = wr.swalk(op.join(outputdir, 'normalizedVTK'),
+ #                        'N*Skeleton.vtk', start=5, stop=-13)
         vtkF = wr.swalk(os.getcwd(),
                         '*.vtk', start=0, stop=-4)
-#        vtkS = wr.swalk(op.join(inptdir, 'surfaceFiles'),
-#                        '*surface.vtk', stop=-12)
+        vtkS = wr.swalk(op.join(inptdir, 'surfaceFiles'),
+                        '*surface.vtk', stop=-4)
 
     except Exception:
         print "Check your filepaths\nSearch directory is %s\n" % inptdir
@@ -40,22 +39,23 @@ if __name__ == '__main__':
     figone = mlab.figure(figure=filekey,
                          size=(1200, 800),
                          bgcolor=(.0, .0, .0))
-    dic = {'DY_minmax',
-           'WidthEq',
-           'DY_raw',
-           'rRFP',
-           'rGFP',
-           'bkstRFP',
-           'bkstGFP'}
-    for i in dic:
+    scaltypes = ('DY_raw', 'DY_minmax', 'WidthEq', 'rRFP',
+                 'rGFP', 'bkstRFP', 'bkstGFP')
+    for i in scaltypes[:1]:
+        mlab.clf(figure=figone)
         vtkobj, vtktube = vz.cellplot(figone,
                                       vtkF[filekey],
                                       scalartype=i,
-                                      rad=.06)
-        vtktube.actor.mapper.scalar_visibility = True  # False for no heatmap
-        #    vf.rendsurf(vtkS[filekey[:3]][filekey[4:]])
-        vz.labelbpoints(nxgrph, bsize=.12, esize=0.06)
-#        mlab.savefig(op.join(datadir, 'pipelineFigs', i + '.png'))
+                                      scalar_visible=True,
+                                      rad=0.08,
+                                      legend=True)
+        vz.labelbpoints(nxgrph,
+                        bsize=.12, esize=0.06,
+                        bcol=vz.rgbcol('light magenta'))
+        vact = vz.rendsurf(vtkS['%s_surface' % filekey],
+                    color=vz.rgbcol('yellow orange'))
+#        vact.actor.actor.user_tranform =
+    #    mlab.savefig(op.join(datadir, 'pipelineFigs', i + '.png'))
 
     f, ax = plt.subplots()
     vz.nicegrph(nxgrph, ax)

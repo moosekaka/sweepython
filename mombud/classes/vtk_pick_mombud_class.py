@@ -121,7 +121,7 @@ class CellEllipse(HasTraits):
         """
         actor = getattr(self, 'surf').actor
         actor.property.opacity = .35
-        actor.property.color = (.9, .9, .0)
+        actor.property.color = vz.rgbcol('puke yellow')
         actor.mapper.scalar_visibility = False
         actor.property.backface_culling = True
         actor.property.specular = 0.1

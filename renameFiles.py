@@ -98,12 +98,14 @@ for dircell in dirs:
                 sh.copy(op.join(root, fil), op.join(P[0], P[1]))
 
 
-# for root, dirs, files in os.walk(os.getcwd()):
-#    for f in files:
-#        if fn.fnmatchcase(f, '*surface*'):
-#            old = op.join(root, f)
+ for root, dirs, files in os.walk(os.getcwd()):
+    for f in files:
+        if fn.fnmatchcase(f, '*surface*'):
+            folder = root.rsplit(os.sep)[-1]
+            old = op.join(root, f)
 #            new = old + ".vtk"
-#            os.rename(old, new)
+            new = op.join(root, '%s_%s' % (folder, f))
+            os.rename(old, new)
 
 # =============================================================================
 # rename BF stacks to be same name as RFP for mom bud tracing macros

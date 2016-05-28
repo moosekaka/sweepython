@@ -3,6 +3,7 @@
 functions to render vtk output from pipeline
 """
 import math
+from collections import defaultdict
 import vtk
 import numpy as np
 from mayavi import mlab
@@ -12,6 +13,13 @@ from tvtk.api import tvtk
 import networkx as nx
 from seaborn import xkcd_palette as scolor
 # pylint: disable=C0103
+
+
+def rgbcol(colorname):
+    """
+    returns RGB float values based on xkcd color name input string
+    """
+    return scolor([colorname])[0]
 
 
 def generate_color_labels(**kwargs):
@@ -30,20 +38,32 @@ def generate_color_labels(**kwargs):
     return dic_label_colors, rgb_vals
 
 
-def nicegrph(graph, axinput, grphtype='neato'):
+def nicegrph(graph, axinput, **kwargs):
     """
-    Draw graph using graphviz, defaults is neato layout
-    # ‘neato’|’dot’|’twopi’|’circo’|’fdp’|
+    Draw graph using graphviz
+
+    **kwargs
+    --------
+    bcol, ecol : str
+        branchpoint and endpoint colors
+
+    grphtype : str ("neato")
+        layout for graphviz, options:\n
+        `neato` | `dot` | `twopi` | `circo` | `fdp`
+
     """
     cols = []
     sizes = []
+    b_color = kwargs.pop('bcol', rgbcol('reddish pink'))
+    e_color = kwargs.pop('ecol', rgbcol('blue'))
+    grphtype = kwargs.pop('grphtype', 'neato')
 
     for _, attr in graph.nodes(data=True):
         if attr['degree'] == 1:
-            cols.append('#3366FF')
+            cols.append(e_color)
             sizes.append(30)
         else:
-            cols.append('#FF5050')
+            cols.append(b_color)
             sizes.append(50)
     nx.draw_graphviz(graph,
                      prog=grphtype,
@@ -73,18 +93,20 @@ def setup_vtk_source(fpath):
 
     Parameters:
     -----------
-    fname: Str
+    fname : Str
         VTK file path
 
     Returns:
     --------
-    src: VTKDataSource
+    src : VTKDataSource
         mayavi pipeline ready source object
 
     """
     dat = tvtk.PolyDataReader(file_name=fpath)
     dat.update()   # very IMPORTANT!!!
     src = VTKDataSource(data=dat.output)
+    if hasattr(src, 'point_scalars_name'):
+        src.point_scalars_name = 'DY_raw'  # make this default scalar
     return src
 
 
@@ -142,7 +164,7 @@ def edgeplot(fig, vtksrc, cellid, scalartype='DY_raw'):
     tube.filter.number_of_sides = 32
 
 
-def cellplot(fig, filename, scalartype='DY_raw', **kwargs):
+def cellplot(fig, filename, **kwargs):
     """
     Draw vtk one whole cell
 
@@ -151,54 +173,59 @@ def cellplot(fig, filename, scalartype='DY_raw', **kwargs):
     fig : str
         Name of cell
 
-    filelist : list
-        list of vtk files to iterate over and draw
-
     filename : str
         filename
 
-    scalartype : str
-        point data type to plot on skeleton, can be of type:
-        DY_minmax,
-        WidthEq,
-        DY_raw,
-        rRFP,
-        rGFP,
-        bkstRFP,
-        bkstGFP
+
+    **kwargs
+    --------
     rad : flt
-        tube radius
+        sets tube radius
+
+    scalartype : str (`DY_raw`)
+        point data type to plot on skeleton, can be of type:\n
+        `DY_minmax` | `WidthEq` | `DY_raw` | `rRFP` | `rGFP` | `bkstRFP` |\
+        `bkstGFP`
+
+    scalar_visible : Bool (True)
+        turns on/off heatmap scalars of vkt skel
+
+    legend : Bool (True)
+        turns on/off legend for heatmap
 
     Returns
     -------
-    src : vtk object
+    src: vtk object
         mayavi handle to the vtk obj
-    surfTube : mayavi surface object
+    surfTube: mayavi surface object
         mayavi pipeline surface
     """
-    rad = kwargs.pop('rad', .05)
-
+    # config switch
+    scalartype = kwargs.pop('scalartype', 'DY_raw')
+    scalar_visible = kwargs.pop('scalar_visible', True)
     src = mlab.pipeline.open(filename)
+    src.point_scalars_name = scalartype
+    # tube object
     tube = mlab.pipeline.tube(src, figure=fig)
-    tube.filter.radius = rad
+    tube.filter.radius = kwargs.pop('rad', .05)
+    tube.filter.number_of_sides = 32
+    # surface object
     surfTube = mlab.pipeline.surface(tube)
-    surfTube.actor.mapper.scalar_visibility = True
-    mod_mngr = tube.children[0]
-    mmgr = mod_mngr.scalar_lut_manager
+    surfTube.actor.mapper.scalar_visibility = scalar_visible
+    # LUT config
+    mmgr = surfTube.module_manager.scalar_lut_manager
     mmgr.scalar_bar.title = scalartype
     mmgr.data_name = scalartype
-    src.point_scalars_name = scalartype
-    # mmgr.show_legend = True
+    mmgr.show_legend = kwargs.pop('legend', True)
     mmgr.reverse_lut = True
     mmgr.lut_mode = 'RdBu'
-    mmgr.number_of_labels = 5
-    mmgr.scalar_bar.label_format = '%4.f'
-    mmgr.label_text_property.font_size = 12
-    mmgr.scalar_bar_representation.position = [.85, .25]
+    mmgr.number_of_labels = 4
+    mmgr.label_text_property.font_size = 10
+    mmgr.title_text_property.font_size = 10
+    mmgr.scalar_bar.label_format = '%4.1f'
+    mmgr.scalar_bar_representation.position = [.85, .2]
     mmgr.scalar_bar_representation.position2 = [.1, .4]
-    tube.filter.number_of_sides = 32
-    mlab.view(0, 0, 180)
-    mlab.view(distance='auto')
+    mlab.view(0, 0, distance='auto')
     return src, surfTube
 
 
@@ -207,13 +234,17 @@ def rendsurf(vtksrc, **kwargs):
 
     Parameters
     ----------
-    color: flt
+    color : flt
         color of surface
     alpha : flt
         opacity
+
+    Returns : surface1
+        mlab surface actor obj
     """
 
-    color = kwargs.pop('color', (0.9, .8, .1))
+#    color = kwargs.pop('color', (0.9, .8, .1))
+    color = kwargs.pop('color', rgbcol('yellow'))
     alpha = kwargs.pop('alpha', .15)
 
     src2 = mlab.pipeline.open(vtksrc)
@@ -221,6 +252,7 @@ def rendsurf(vtksrc, **kwargs):
     surface1.actor.property.opacity = alpha
     surface1.actor.mapper.scalar_visibility = False
     surface1.actor.property.color = color
+    return surface1
 
 
 def labelbpoints(graph, **kwargs):
@@ -238,10 +270,6 @@ def labelbpoints(graph, **kwargs):
         color of endpoint
 
     """
-    bcol = kwargs.pop('bcol', (1, .2, 1.0))
-    ecol = kwargs.pop('ecol', (.1, 1, 1.0))
-    bsize = kwargs.pop('bsize', .15)
-    esize = kwargs.pop('esize', .1)
 
     Nodes = [nattr['coord'] for _, nattr
              in graph.nodes(data=True)
@@ -250,54 +278,26 @@ def labelbpoints(graph, **kwargs):
             in graph.nodes(data=True)
             if nattr['degree'] == 1]
 
-    xyz = np.array(Nodes)
-    xyz2 = np.array(Ends)
-    points = mlab.pipeline.scalar_scatter(  # branchpoints
-        xyz[:, 0], xyz[:, 1], xyz[:, 2])
-    points2 = mlab.pipeline.scalar_scatter(  # end points
-        xyz2[:, 0], xyz2[:, 1], xyz2[:, 2])
-    bpts = mlab.pipeline.glyph(points)
-    bpts.glyph.glyph_source.glyph_source.radius = bsize
-    epts = mlab.pipeline.glyph(points2)
-    epts.glyph.glyph_source.glyph_source.radius = esize
+    D = defaultdict(lambda: defaultdict(dict))
+#    colors = ["burnt orange", "pale blue"]
+#    palette = dict(zip(colors, scolor(colors)))
 
-    bpts.actor.property.color = bcol
-    bpts.actor.mapper.scalar_visibility = 0
-    bpts.actor.property.opacity = 0.8
-    bpts.glyph.glyph_source.glyph_source.phi_resolution = 16
-    bpts.glyph.glyph_source.glyph_source.theta_resolution = 16
-
-    epts.actor.property.color = ecol
-    epts.actor.mapper.scalar_visibility = 0
-    epts.actor.property.opacity = 0.1
-    epts.glyph.glyph_source.glyph_source.phi_resolution = 16
-    epts.glyph.glyph_source.glyph_source.theta_resolution = 16
-
-
-def drawelips(strg, df2, zpos=0):
-    """draw ellipsoid based on getelipspar
-    """
-    x, y = df2.ix[strg, 'center']
-    mlab.points3d(np.array(x), np.array(y), np.array(zpos),
-                  mode='2dcross',
-                  scale_factor=.3,
-                  color=(.5, .7, 0.),)
-    source = ParametricSurface()
-    source.function = 'ellipsoid'
-    source.parametric_function.set(x_radius=df2.ix[strg, 'Major']*.055/2,
-                                   y_radius=df2.ix[strg, 'Minor']*.055/2,
-                                   z_radius=df2.ix[strg, 'Minor']*.055/2)
-    ee = mlab.pipeline.surface(source)
-    actor = ee.actor
-    actor.property.opacity = .35
-    actor.property.color = (.9, .9, .0)
-    actor.mapper.scalar_visibility = False
-    actor.property.backface_culling = True
-    actor.property.specular = 0.1
-    actor.property.frontface_culling = True
-    actor.actor.position = np.array([x, y, zpos])
-    actor.actor.orientation = np.array([0, 0, df2.ix[strg, 'Angle']])
-    return ee, source
+    D['bpts']['obj'] = Nodes
+    D['bpts']['size'] = kwargs.pop('bsize', .2)
+    D['bpts']['col'] = kwargs.pop('bcol', rgbcol('hot pink'))
+    D['epts']['obj'] = Ends
+    D['epts']['size'] = kwargs.pop('esize', .15)
+    D['epts']['col'] = kwargs.pop('ecol', rgbcol('pale blue'))
+    for key in D:
+        xyz = np.array(D[key]['obj'])
+        points = mlab.pipeline.scalar_scatter(  # branchpoints
+            xyz[:, 0], xyz[:, 1], xyz[:, 2])
+        D[key]['glyph'] = mlab.pipeline.glyph(points)
+        D[key]['glyph'].glyph.glyph_source.glyph_source.radius = D[key]['size']
+        D[key]['glyph'].actor.property.color = D[key]['col']
+        D[key]['glyph'].glyph.glyph_source.glyph_source.phi_resolution = 16
+        D[key]['glyph'].glyph.glyph_source.glyph_source.theta_resolution = 16
+        D[key]['glyph'].actor.mapper.scalar_visibility = 0
 
 
 def getelipspar(fname, dfin, **kwargs):
@@ -306,17 +306,18 @@ def getelipspar(fname, dfin, **kwargs):
 
     Parameters:
     -----------
-    fname: Str
+    fname : Str
         cell name id, e.g. `MFB1_032016_002_RFPstack_000`
-    dfin: DataFrame
+    dfin : DataFrame
         Dataframe file from pandas.csv read of a cell tracing data
-    useold: Str
+    useold : Str
         switch to specify the coordinate transform between VTK and
         imageJ for BF cell tracings, default=False
 
     Returns:
     --------
-    dftemp
+    dfout : DataFrame
+        dataframe of ellipse parameters (major, minor radius, center etc.)
     """
     # selection returns a view by default, we want a copy!
     dfout = dfin[dfin.cell == fname].copy()

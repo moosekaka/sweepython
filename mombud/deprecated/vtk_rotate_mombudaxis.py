@@ -1,8 +1,7 @@
-# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-s
 """
-Created on Mon Sep 28 00:51:20 2015
 module to transform raw vtk to rotated vtk along mom bud axis
-@author: sweel
+THIS IS FOR OLD DATASET (2015 , thesis YPD, YPE, YPL and YPR WT cells)
 """
 import os
 import os.path as op
@@ -47,6 +46,9 @@ mlab.close(all=True)
 
 ##############################################################################
 if __name__ == "__main__":
+    WRITE_PICKLE = True  # don't overwrite old pickle file by default
+    WRITE_VTK = True     # same for vtk
+
     D = {}  # holder for original bud,neck, tip points
     dfmb = pd.DataFrame(columns=['base', 'neck', 'tip', 'media'])
     # Draw cell using cellplot and edgeplot
@@ -55,7 +57,7 @@ if __name__ == "__main__":
                          bgcolor=(0., 0., 0.))
     figone.scene.off_screen_rendering = True
 
-    for key in sorted(mombud.keys())[:]:
+    for key in sorted(mombud.keys())[::]:
         mlab.clf(figure=figone)
         print "now on %s" % key
 
@@ -74,6 +76,7 @@ if __name__ == "__main__":
 
         # original vtk skel
         vtkob = vz.setup_vtk_source(op.join(filekeys[key]))
+#        vtkob.point_scalars_name = 'DY_raw'  # IMPORTANT
         mitoskel = MitoSkel(data_src=vtkob)
         trans_obj = tvtk.TransformPolyDataFilter(
                 input=mitoskel.data_src.data,
@@ -84,7 +87,7 @@ if __name__ == "__main__":
         mitoskel.transform(tr_filt)
 
         df_ellipse = vz.getelipspar(key, df_celltracing, useold=True)
-        if 'centerpt'  in df_cursorpts:
+        if 'centerpt' in df_cursorpts:
             zpos = df_cursorpts.ix['centerpt', 'x']
         else:
             zpos = np.mean(vtkob.data.bounds[4:])
@@ -119,12 +122,13 @@ if __name__ == "__main__":
         df['media'] = key.partition("_")[0]
         dfmb = dfmb.append(df)
 
-        w = tvtk.PolyDataWriter(input=trans_obj, file_name='%s.vtk' %
-                                op.join(datadir, 'transformedData', key))
+        if WRITE_VTK:
+            w = tvtk.PolyDataWriter(input=trans_obj, file_name='%s.vtk' %
+                                    op.join(datadir, 'transformedData', key))
+            w.write()
+            mlab.savefig(op.join(datadir, 'transformedData', '%s.png' % key))
 
-        w.write()
-        mlab.savefig(op.join(datadir, 'transformedData', '%s.png' % key))
-
-    with open(op.join(datadir, 'transformedData',
-                      'mombudtrans_new.pkl'), 'wb') as output:
-        pickle.dump(dfmb, output)
+    if WRITE_PICKLE:
+        with open(op.join(datadir, 'transformedData',
+                          'mombudtrans_new.pkl'), 'wb') as output:
+            pickle.dump(dfmb, output)

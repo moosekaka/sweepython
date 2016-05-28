@@ -17,9 +17,9 @@ from mombud.functions import vtkvizfuncs as vz
 from mombud.classes.vtk_pick_mombud_class import CellEllipse
 
 # pylint: disable=C0103
-datadir = op.join(os.getcwd(), 'mutants', 'transformedData3')
-rawdir = op.join(os.getcwd(), 'mutants', 'transformedData3')
-
+datadir = op.join(os.getcwd(), 'mutants', 'transformedData2')
+rawdir = op.join(os.getcwd(), 'mutants', 'transformedData2')
+surfdir = op.join(os.getcwd(), 'mutants', 'surfaceFiles')
 # xkcd palette colors for labels
 def_cols = dict(colors=['medium blue', 'bright green', 'red'],
                 labels=['base', 'tip', 'neck'])
@@ -36,12 +36,14 @@ hasbuds = \
 
 # Figure to render on
 figone = mlab.figure(size=(800, 600), bgcolor=(.1, .1, .1))
-figone.scene.off_screen_rendering = False
+figone.scene.off_screen_rendering = True
 
 # vtk data and picked bud, neck, tip inputs
 try:
     vtkF = wr.swalk(op.join(rawdir),
                     '*.vtk', start=0, stop=-4)
+    vtkS = wr.swalk(surfdir,
+                    '*.vtk', start=0, stop=-12)
     mombud = wr.swalk(op.join(datadir), '*.csv', stop=-4)
 
 except Exception:
@@ -50,9 +52,12 @@ except Exception:
 
 ##############################################################################
 if __name__ == "__main__":
+    WRITE_PICKLE = True  # don't overwrite old pickle file by default
+    WRITE_PNG = True
+
     D = {}  # holder for original bud,neck, tip points
     dfmb = pd.DataFrame(columns=['base', 'neck', 'tip', 'media'])
-    for key in vtkF.keys()[:150]:
+    for key in vtkF.keys()[:]:
         mlab.clf(figure=figone)  # clear current figure
 
         # get original cursor points
@@ -99,12 +104,18 @@ if __name__ == "__main__":
         df['media'] = key.partition("_")[0]
         dfmb = dfmb.append(df)
 
-        # plot the vtk skeleton
+        # plot the vtk skeleton, surface and ellipse objects
         vz.callreader(vtkF[key])
         vtkobj, _ = vz.cellplot(figone, vtkF[key])
-        mlab.savefig(op.join(rawdir, '%s.png' % key))
+        vact = vz.rendsurf(vtkS[key],
+                           color=vz.rgbcol("robin's egg blue"))
+        vact.actor.actor.user_transform = tr_filt
+
+        if WRITE_PNG:
+            mlab.savefig(op.join(rawdir, '%s.png' % key))
 
         # dump to pickle file for mom bud analysis
-        with open(op.join(datadir,
-                          'mombudtrans.pkl'), 'wb') as output:
-            pickle.dump(dfmb, output)
+        if WRITE_PICKLE:
+            with open(op.join(datadir,
+                              'mombudtrans.pkl'), 'wb') as output:
+                pickle.dump(dfmb, output)

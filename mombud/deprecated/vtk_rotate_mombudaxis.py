@@ -14,8 +14,8 @@ from mombud.functions import vtkvizfuncs as vz
 from mombud.classes.vtk_pick_mombud_class import MitoSkel, CellEllipse
 import wrappers as wr
 # pylint: disable=C0103
-datadir = op.join(os.getcwd(), 'data')
-rawdir = op.join(os.getcwd(), 'output')
+datadir = op.join(os.getcwd(), 'data')  # input folder
+rawdir = op.join(os.getcwd(), 'output')  # output folder
 
 # xkcd palette colors for labels
 def_cols = dict(colors=['medium blue', 'bright green', 'red'],
@@ -46,15 +46,13 @@ mlab.close(all=True)
 
 ##############################################################################
 if __name__ == "__main__":
-    WRITE_PICKLE = True  # don't overwrite old pickle file by default
-    WRITE_VTK = True     # same for vtk
+    WRITE_PICKLE = False  # don't overwrite old pickle file by default
+    WRITE_VTK = False     # same for vtk
 
     D = {}  # holder for original bud,neck, tip points
     dfmb = pd.DataFrame(columns=['base', 'neck', 'tip', 'media'])
-    # Draw cell using cellplot and edgeplot
-    figone = mlab.figure(figure='test',
-                         size=(800, 600),
-                         bgcolor=(0., 0., 0.))
+    # Figure to render on
+    figone = mlab.figure(size=(800, 600), bgcolor=(.1, .1, .1))
     figone.scene.off_screen_rendering = True
 
     for key in sorted(mombud.keys())[::]:
@@ -84,14 +82,15 @@ if __name__ == "__main__":
 
         # this is just to visualize the VTK actor
         mitoskel.viz_skel(figure=figone)
+        mitoskel.surf.module_manager.scalar_lut_manager.show_legend = True
         mitoskel.transform(tr_filt)
 
+        # draw ellipse shells
         df_ellipse = vz.getelipspar(key, df_celltracing, useold=True)
         if 'centerpt' in df_cursorpts:
             zpos = df_cursorpts.ix['centerpt', 'x']
-        else:
+        else:   # old csv might not have centerpt data
             zpos = np.mean(vtkob.data.bounds[4:])
-
         for mb in ['mom', 'bud']:
             mb_glyph = CellEllipse(name='%s' % mb, dataframe=df_ellipse)
             mb_glyph.make_surf(figure=figone)
@@ -100,14 +99,15 @@ if __name__ == "__main__":
             mb_glyph.surf.actor.actor.set(
                 position=[x, y, zpos])
             mb_glyph.surf.actor.actor.user_transform = tr_filt
-
         # Dataframe to save parameters of transformed object
         df = pd.Series({}, name=key)
 
         # transform original bud, neck and tip points and writeout
         for part in D:
             center = D[part]
-            src = tvtk.SphereSource(center=D[part], radius=.15)
+            src = tvtk.SphereSource(center=D[part], radius=.15,
+                                    theta_resolution=32,
+                                    phi_resolution=32)
             label = cur_col[part]
             pt_glyph = mlab.pipeline.surface(src.output,
                                              color=palette[label],
@@ -115,11 +115,10 @@ if __name__ == "__main__":
                                              figure=figone)
             pt_glyph.actor.actor.user_transform = tr_filt
             df[part] = pt_glyph.actor.actor.center
-        mlab.view(0, 0)
-
         df['mom'] = df_ellipse.ix['mom', 'vol']
         df['bud'] = df_ellipse.ix['bud', 'vol']
         df['media'] = key.partition("_")[0]
+        mlab.view(0, 0)
         dfmb = dfmb.append(df)
 
         if WRITE_VTK:

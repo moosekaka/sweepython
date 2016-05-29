@@ -34,10 +34,6 @@ counter = df_celltracing.groupby('cell').Label.count()
 hasbuds = \
     df_celltracing[df_celltracing.cell.isin(counter[counter > 1].index.values)]
 
-# Figure to render on
-figone = mlab.figure(size=(800, 600), bgcolor=(.1, .1, .1))
-figone.scene.off_screen_rendering = True
-
 # vtk data and picked bud, neck, tip inputs
 try:
     vtkF = wr.swalk(op.join(rawdir),
@@ -52,8 +48,12 @@ except Exception:
 
 ##############################################################################
 if __name__ == "__main__":
-    WRITE_PICKLE = True  # don't overwrite old pickle file by default
-    WRITE_PNG = True
+    WRITE_PICKLE = False  # don't overwrite old pickle file by default
+    WRITE_PNG = False
+
+    # Figure to render on
+    figone = mlab.figure(size=(800, 600), bgcolor=(.1, .1, .1))
+    figone.scene.off_screen_rendering = True
 
     D = {}  # holder for original bud,neck, tip points
     dfmb = pd.DataFrame(columns=['base', 'neck', 'tip', 'media'])
@@ -87,29 +87,31 @@ if __name__ == "__main__":
         # Dataframe to save parameters of transformed object
         df = pd.Series({}, name=key)
 
-        # transform original bud, neck and tip points of arrow to be
-        # parallel to x-axis unit vector
-        for part in D:
-            center = D[part]
-            src = tvtk.SphereSource(center=D[part], radius=.15)
-            pt_glyph = mlab.pipeline.surface(src.output,
-                                             color=palette[cur_col[part]],
-                                             name='%s_trnf' % part,
-                                             figure=figone)
-            pt_glyph.actor.actor.user_transform = tr_filt
-            df[part] = pt_glyph.actor.actor.center
-
-        df['mom'] = df_ellipse.ix['mom', 'vol']
-        df['bud'] = df_ellipse.ix['bud', 'vol']
-        df['media'] = key.partition("_")[0]
-        dfmb = dfmb.append(df)
-
         # plot the vtk skeleton, surface and ellipse objects
         vz.callreader(vtkF[key])
         vtkobj, _ = vz.cellplot(figone, vtkF[key])
         vact = vz.rendsurf(vtkS[key],
                            color=vz.rgbcol("robin's egg blue"))
         vact.actor.actor.user_transform = tr_filt
+
+        # transform original bud, neck and tip points of arrow to be
+        # parallel to x-axis unit vector
+        for part in D:
+            center = D[part]
+            src = tvtk.SphereSource(center=D[part], radius=.15,
+                                    theta_resolution=32,
+                                    phi_resolution=32)
+            pt_glyph = mlab.pipeline.surface(src.output,
+                                             color=palette[cur_col[part]],
+                                             name='%s_trnf' % part,
+                                             figure=figone)
+            pt_glyph.actor.actor.user_transform = tr_filt
+            df[part] = pt_glyph.actor.actor.center
+        df['mom'] = df_ellipse.ix['mom', 'vol']
+        df['bud'] = df_ellipse.ix['bud', 'vol']
+        df['media'] = key.partition("_")[0]
+        dfmb = dfmb.append(df)
+        mlab.view(0, 0)
 
         if WRITE_PNG:
             mlab.savefig(op.join(rawdir, '%s.png' % key))

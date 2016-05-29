@@ -225,7 +225,7 @@ def cellplot(fig, filename, **kwargs):
     mmgr.scalar_bar.label_format = '%4.1f'
     mmgr.scalar_bar_representation.position = [.85, .2]
     mmgr.scalar_bar_representation.position2 = [.1, .4]
-    mlab.view(0, 0, distance='auto')
+#    mlab.view(0, 0, distance='auto')
     return src, surfTube
 
 

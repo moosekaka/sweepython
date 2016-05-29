@@ -319,7 +319,9 @@ class MombudPicker(HasTraits):
         # initialize sphere glyph markers
         for key in self.spheres:
             center = (0., 0., 0.)
-            src = tvtk.SphereSource(center=center, radius=.15)
+            src = tvtk.SphereSource(center=center, radius=.15,
+                                    theta_resolution=32,
+                                    phi_resolution=32)
             self.spheres[key] = mlab.pipeline.surface(
                 src.output,
                 color=self.palette[self.cur_col[key]],

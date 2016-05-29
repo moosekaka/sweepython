@@ -91,7 +91,7 @@ if __name__ == "__main__":
         vz.callreader(vtkF[key])
         vtkobj, _ = vz.cellplot(figone, vtkF[key])
         vact = vz.rendsurf(vtkS[key],
-                           color=vz.rgbcol("robin's egg blue"))
+                           color="robin's egg blue")
         vact.actor.actor.user_transform = tr_filt
 
         # transform original bud, neck and tip points of arrow to be

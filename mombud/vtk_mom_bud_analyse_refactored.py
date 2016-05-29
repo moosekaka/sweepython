@@ -2,7 +2,7 @@
 """
 module to analyze mom bud asymmetry
 """
-#%%
+
 import sys
 import os
 import os.path as op
@@ -19,11 +19,18 @@ import wrappers as wr
 plt.rcParams['font.family'] = 'DejaVu Sans'
 plt.close('all')
 mlab.close(all=True)
+#datadir = op.join(os.getcwd(), 'mutants', 'transformedData2')
 datadir = op.join(os.getcwd(), 'mutants', 'transformedData')
-
+#datadir = op.join(os.getcwd(), 'data', 'transformedData')
 # filelist and graph list
+#with open(op.join(datadir, 'mombudtrans_new.pkl'), 'rb') as inpt:
+#    dfmb = pickle.load(inpt)  # has columns base, neck, tip, media, bud, mom
+#
+#with open(op.join(datadir, 'mombudtrans.pkl'), 'rb') as inpt:
+#    dfmb = pickle.load(inpt)  # has columns base, neck, tip, media, bud, mom
 with open(op.join(datadir, 'mombudtrans.pkl'), 'rb') as inpt:
     dfmb = pickle.load(inpt)  # has columns base, neck, tip, media, bud, mom
+
 
 try:
     filext = "*vtk"
@@ -34,7 +41,7 @@ except LookupError:
 filekeys = {item: vtkF[media][item] for media
             in sorted(vtkF.keys()) for item
             in sorted(vtkF[media].keys())}
-#%%
+#
 # compute 'z' positions  dyRaw
 cellall = pd.DataFrame(columns=['mom', 'bud'])
 cellposmom = pd.DataFrame()
@@ -105,7 +112,7 @@ cellposmom['momvol'] = cellall['momvol']
 
 cellposbud['binvol'] = vf.bincell(cellposbud, 'budvol', binsvolbud)
 cellposmom['binvol'] = vf.bincell(cellposmom, 'momvol', binsvolmom)
-#%%
+#
 # =============================================================================
 # cells binned by budding progression
 # =============================================================================
@@ -129,7 +136,7 @@ rejectlist = cellposmom.ix[(np.asarray(cellposmom.momvol) > 100) &
 cellall = cellall.ix[~ cellall.ix[:, 'index'].isin(rejectlist)]
 cellposmom = cellposmom.ix[~cellposmom.ix[:, 'index'].isin(rejectlist)]
 cellposbud = cellposbud.ix[~cellposbud.ix[:, 'index'].isin(rejectlist)]
-#%%
+#
 # =============================================================================
 # Progression of Δψ as move along the bud axis
 # =============================================================================
@@ -175,7 +182,7 @@ with sns.plotting_context('talk', font_scale=1.1):
     m.set_xticklabels(fontsize=14)
     m.set_xlabels("bud axis position")
     m.set(ylim=(0, 1.))
-#%%
+#
 # =============================================================================
 # frac Δψ as function of budratio
 # =============================================================================
@@ -217,7 +224,7 @@ with sns.plotting_context('talk'):
 A.dropna(inplace=True)
 with sns.plotting_context('talk', font_scale=1.4):
     sns.barplot(x='dist', y='value', hue='variable', data=A, ax=ax3a)
-#%%
+#
 #  ============================================================================
 #  frac Δψ violinplots by media
 #  ============================================================================
@@ -239,7 +246,7 @@ with sns.plotting_context('talk'):
                       ax=ax1)
 #    g.set_ylim(0.4, 2.0)
     g.get_legend().set_visible(False)
-#%%
+#
 # violinplot mom vs bud Δψ scaled
 # =============================================================================
 with sns.plotting_context('talk', font_scale=1.4):
@@ -258,7 +265,7 @@ with sns.plotting_context('talk', font_scale=1.4):
                   ax=ax3)
     h.set_ylim(0, 1.)
     h.get_legend().set_visible(False)
-#%%
+#
 # =============================================================================
 # frac Δψ as function of budvol
 # =============================================================================

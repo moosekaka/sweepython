@@ -225,7 +225,6 @@ def cellplot(fig, filename, **kwargs):
     mmgr.scalar_bar.label_format = '%4.1f'
     mmgr.scalar_bar_representation.position = [.85, .2]
     mmgr.scalar_bar_representation.position2 = [.1, .4]
-#    mlab.view(0, 0, distance='auto')
     return src, surfTube
 
 
@@ -234,8 +233,8 @@ def rendsurf(vtksrc, **kwargs):
 
     Parameters
     ----------
-    color : flt
-        color of surface
+    color : str
+        xkcd color of surface
     alpha : flt
         opacity
 
@@ -243,8 +242,7 @@ def rendsurf(vtksrc, **kwargs):
         mlab surface actor obj
     """
 
-#    color = kwargs.pop('color', (0.9, .8, .1))
-    color = kwargs.pop('color', rgbcol('yellow'))
+    color = rgbcol(kwargs.pop('color', 'yellow'))
     alpha = kwargs.pop('alpha', .15)
 
     src2 = mlab.pipeline.open(vtksrc)
@@ -260,15 +258,19 @@ def labelbpoints(graph, **kwargs):
 
     Parameters
     ----------
+    graph : network graph
+        graph object
+
+    kwargs:
+    ------
     bsize : flt
         size of branchpoint
     esize : flt
         size of endpoint
-    bcol: tuple
-        color of branchpoint
-    ecol : tuple
-        color of endpoint
-
+    bcol : str
+        xkcd color of branchpoint
+    ecol : str
+        xkcd color of endpoint
     """
 
     Nodes = [nattr['coord'] for _, nattr
@@ -284,10 +286,10 @@ def labelbpoints(graph, **kwargs):
 
     D['bpts']['obj'] = Nodes
     D['bpts']['size'] = kwargs.pop('bsize', .2)
-    D['bpts']['col'] = kwargs.pop('bcol', rgbcol('hot pink'))
+    D['bpts']['col'] = rgbcol(kwargs.pop('bcol', 'hot pink'))
     D['epts']['obj'] = Ends
     D['epts']['size'] = kwargs.pop('esize', .15)
-    D['epts']['col'] = kwargs.pop('ecol', rgbcol('pale blue'))
+    D['epts']['col'] = rgbcol(kwargs.pop('ecol', 'pale blue'))
     for key in D:
         xyz = np.array(D[key]['obj'])
         points = mlab.pipeline.scalar_scatter(  # branchpoints
@@ -324,7 +326,7 @@ def getelipspar(fname, dfin, **kwargs):
     dfout['Major'] = dfout.Major * .055/2
     dfout['Minor'] = dfout.Minor * .055/2
     dfout['vol'] =  \
-        4 / 3 * np.pi * dfout.Major * dfout.Minor
+        4 / 3 * np.pi * dfout.Major * dfout.Minor**2
     dfout = dfout.sort_values(by='vol')
     dfout.index = ['bud', 'mom']
     useold = kwargs.pop('useold', False)

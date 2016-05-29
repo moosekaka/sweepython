@@ -19,7 +19,7 @@ outputdir = op.join(os.getcwd(), 'mutants')
 
 # filelist and graph list
 if __name__ == '__main__':
-
+    WRITE_PNG = False
     filekey = 'NUM1_032016_011_RFPstack_030'
     try:
  #        vtkF = wr.swalk(op.join(outputdir, 'normalizedVTK'),
@@ -51,11 +51,12 @@ if __name__ == '__main__':
                                       legend=True)
         vz.labelbpoints(nxgrph,
                         bsize=.12, esize=0.06,
-                        bcol=vz.rgbcol('light magenta'))
-        vact = vz.rendsurf(vtkS['%s_surface' % filekey],
-                    color=vz.rgbcol('yellow orange'))
-#        vact.actor.actor.user_tranform =
-    #    mlab.savefig(op.join(datadir, 'pipelineFigs', i + '.png'))
+                        bcol='light magenta',
+                        ecol='cyan')
+        mlab.view(0, 0, distance='auto')
 
     f, ax = plt.subplots()
     vz.nicegrph(nxgrph, ax)
+
+    if WRITE_PNG:
+        mlab.savefig(op.join(datadir, 'pipelineFigs', i + '.png'))

@@ -57,6 +57,11 @@ def ddwalk(ddir, txt, start=None, stop=None):
 
     end : int
       end of slice
+
+    Returns
+    -------
+    vtk : defaultdict(dict)
+        default two level nested dict
     """
 
     vtf = defaultdict(dict)

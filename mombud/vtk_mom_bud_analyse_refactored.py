@@ -18,19 +18,13 @@ import wrappers as wr
 
 plt.rcParams['font.family'] = 'DejaVu Sans'
 plt.close('all')
-mlab.close(all=True)
 #datadir = op.join(os.getcwd(), 'mutants', 'transformedData2')
-datadir = op.join(os.getcwd(), 'mutants', 'transformedData')
-#datadir = op.join(os.getcwd(), 'data', 'transformedData')
-# filelist and graph list
-#with open(op.join(datadir, 'mombudtrans_new.pkl'), 'rb') as inpt:
-#    dfmb = pickle.load(inpt)  # has columns base, neck, tip, media, bud, mom
-#
-#with open(op.join(datadir, 'mombudtrans.pkl'), 'rb') as inpt:
-#    dfmb = pickle.load(inpt)  # has columns base, neck, tip, media, bud, mom
-with open(op.join(datadir, 'mombudtrans.pkl'), 'rb') as inpt:
+datadir = op.join(os.getcwd(), 'mutants', 'transformedData', 'filtered')
+with open(op.join(datadir, 'mombudtrans_new.pkl'), 'rb') as inpt:
     dfmb = pickle.load(inpt)  # has columns base, neck, tip, media, bud, mom
 
+with open(op.join(datadir, os.pardir, 'reject')) as inp:
+    reject = pickle.load(inp)
 
 try:
     filext = "*vtk"
@@ -41,6 +35,9 @@ except LookupError:
 filekeys = {item: vtkF[media][item] for media
             in sorted(vtkF.keys()) for item
             in sorted(vtkF[media].keys())}
+
+filekeys_f = [f for f in filekeys if f not in reject]
+
 #
 # compute 'z' positions  dyRaw
 cellall = pd.DataFrame(columns=['mom', 'bud'])

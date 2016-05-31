@@ -20,11 +20,16 @@ plt.rcParams['font.family'] = 'DejaVu Sans'
 plt.close('all')
 #datadir = op.join(os.getcwd(), 'mutants', 'transformedData2')
 datadir = op.join(os.getcwd(), 'mutants', 'transformedData', 'filtered')
+datadir_old = op.join(os.getcwd(), 'data', 'transformedData')
+
 with open(op.join(datadir, 'mombudtrans_new.pkl'), 'rb') as inpt:
     dfmb = pickle.load(inpt)  # has columns base, neck, tip, media, bud, mom
 
-with open(op.join(datadir, os.pardir, 'reject')) as inp:
-    reject = pickle.load(inp)
+with open(op.join(datadir_old, 'mombudtrans.pkl'), 'rb') as inpt:
+    dfmb_o = pickle.load(inpt)  # has columns base, neck, tip, media, bud, mom
+
+rejectfold = op.join(datadir, os.pardir, 'reject')
+reject = wr.swalk(rejectfold, '*png')
 
 try:
     filext = "*vtk"
@@ -32,12 +37,23 @@ try:
 except LookupError:
     sys.exit("error filetypes %s not found in %s" % (filext, datadir))
 
+try:
+    filext = "*vtk"
+    vtkF_old = wr.swalk(datadir_old, filext, stop=-4)
+except LookupError:
+    sys.exit("error filetypes %s not found in %s" % (filext, datadir))
+
+
+filekeys_old = {item: vtkF_old[item] for item
+                in sorted(vtkF_old.keys()) if item.split('_')[0]!='YPD'}
+
 filekeys = {item: vtkF[media][item] for media
             in sorted(vtkF.keys()) for item
             in sorted(vtkF[media].keys())}
 
-filekeys_f = [f for f in filekeys if f not in reject]
-
+filekeys_f = {f:filekeys[f] for f in filekeys if f not in reject}
+filekeys_f.update(filekeys_old)  # add YPE to dict
+dfmb = dfmb.append(dfmb_o[dfmb_o.media!='YPD'])
 #
 # compute 'z' positions  dyRaw
 cellall = pd.DataFrame(columns=['mom', 'bud'])
@@ -50,9 +66,9 @@ binsaxisbig = np.linspace(0, 1., 11)
 binsvolbud = np.linspace(0, 40, 5)
 binsvolmom = np.array([0, 30, 40, 80.])
 
-for key in sorted(filekeys)[:]:
+for key in sorted(filekeys_f)[:]:
     try:
-        cell = vf.safecall(key, filekeys, dfmb)
+        cell = vf.safecall(key, filekeys_f, dfmb)
     except LookupError:
         sys.exit("%s not in filekeys" % key)
     # pos along x-axis for inidivual mom or bud cell
@@ -133,7 +149,41 @@ rejectlist = cellposmom.ix[(np.asarray(cellposmom.momvol) > 100) &
 cellall = cellall.ix[~ cellall.ix[:, 'index'].isin(rejectlist)]
 cellposmom = cellposmom.ix[~cellposmom.ix[:, 'index'].isin(rejectlist)]
 cellposbud = cellposbud.ix[~cellposbud.ix[:, 'index'].isin(rejectlist)]
-#
+
+
+# =============================================================================
+# Distribution of bud and mom volumes
+# =============================================================================
+budvol = cellall.ix[:, ['budvol', 'type', 'N']]
+momvol = cellall.ix[:, ['momvol', 'type', 'N']]
+budvol['N'] = budvol.groupby("type").transform('count')
+momvol['N'] = budvol.groupby("type").transform('count')
+N = budvol.groupby("type").count()
+N = N.budvol.to_dict()  # dict to hold counts of each type
+col_ord = ['MFB1', 'NUM1', 'YPT11', 'WT', 'YPE', 'YPL', 'YPR']
+
+def label_n(handle, labeldic):
+    for ax in handle.axes.flat:
+        oldtitle = ax.get_title().split('=')[1].strip()
+        ax.set_title('%s, N=%d' % (oldtitle, labeldic[oldtitle]))
+
+with sns.plotting_context('talk', font_scale=1.1):
+    g = sns.FacetGrid(budvol,
+                      col="type",
+                      col_wrap=4,
+                      hue="type",
+                      col_order=col_ord)
+    g = g.map(sns.distplot, "budvol")
+    label_n(g, N)
+
+    h = sns.FacetGrid(momvol,
+                      col="type",
+                      col_wrap=4,
+                      hue="type",
+                      col_order=col_ord)
+    h = h.map(sns.distplot, "momvol")
+    label_n(h, N)
+
 # =============================================================================
 # Progression of Δψ as move along the bud axis
 # =============================================================================
@@ -155,7 +205,8 @@ with sns.plotting_context('talk', font_scale=1.1):
     h = sns.FacetGrid(bigbinsmom,
                       col="type",
                       hue='type',
-                      col_wrap=2)
+                      col_wrap=3,
+                      col_order=col_ord)
     h = h.map(sns.pointplot,
               'mom axis position',
               r'$\Delta\Psi$ scaled gradient')
@@ -171,7 +222,8 @@ with sns.plotting_context('talk', font_scale=1.1):
     m = sns.FacetGrid(bigbinsbud,
                       col="type",
                       hue='type',
-                      col_wrap=2)
+                      col_wrap=3,
+                      col_order=col_ord)
 
     m = m.map(sns.pointplot,
               'bud axis position',
@@ -231,6 +283,7 @@ with sns.plotting_context('talk'):
                        y='value',
                        hue='type',
                        data=BIG,
+                       order=col_ord,
                        ax=ax1)
     g.set_ylim(0, 3)
     g.get_legend().set_visible(False)
@@ -238,6 +291,7 @@ with sns.plotting_context('talk'):
                       split=True,
                       y='value',
                       hue='type',
+                      order=col_ord,
                       data=BIG,
                       jitter=.15,
                       ax=ax1)
@@ -251,6 +305,7 @@ with sns.plotting_context('talk', font_scale=1.4):
     h = sns.violinplot(x='type',
                        y='value',
                        hue='variable',
+                       order=col_ord,
                        data=BIG2,
                        ax=ax3)
     sns.stripplot(x='type',
@@ -258,6 +313,7 @@ with sns.plotting_context('talk', font_scale=1.4):
                   hue='variable',
                   jitter=.15,
                   size=4,
+                  order=col_ord,
                   data=BIG2,
                   ax=ax3)
     h.set_ylim(0, 1.)

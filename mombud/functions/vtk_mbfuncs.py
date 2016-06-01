@@ -49,8 +49,7 @@ def cellpos(cellname, df, **kwargs):
     Returns
     -------
     celldf : DataFrame
-        Columns `DY`, `x`, `posxcell`, `type`, `posx`, `pos`, `binposx`,
-        `binposxcell`
+        Columns `DY`, `x`, `wholecell_xaxis`, `type`, `indcell_xaxis`
     """
     cellkey = cellname.rsplit('\\', 1)[1][:-4]
     data = vtkopen(cellname)
@@ -70,12 +69,12 @@ def cellpos(cellname, df, **kwargs):
 
 #    xn_scaled = (xn - cell.ix[0, 'x']) / (xt - xb)
 
-    celldf['posxcell'] = (celldf.ix[:, 'x'] - celldf.ix[0, 'x']) / (xt - xb)
+    celldf['wholecell_xaxis'] = (celldf.ix[:, 'x'] - celldf.ix[0, 'x']) / (xt - xb)
     celldf['type'] = ''
     celldf.loc[celldf.x > xn, ['type']] = 'bud'
     celldf.loc[celldf.x <= xn, ['type']] = 'mom'
-    celldf.ix[celldf.type == 'bud', 'posx'] = (celldf.ix[:, 'x']-xn) / (xt-xn)
-    celldf.ix[celldf.type == 'mom', 'posx'] = (celldf.ix[:, 'x']-xb) / (xn-xb)
+    celldf.ix[celldf.type == 'bud', 'indcell_xaxis'] = (celldf.ix[:, 'x']-xn) / (xt-xn)
+    celldf.ix[celldf.type == 'mom', 'indcell_xaxis'] = (celldf.ix[:, 'x']-xb) / (xn-xb)
     celldf.reset_index(drop=True, inplace=True)
     celldf['neckpos'] = xn
 

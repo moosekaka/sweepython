@@ -10,7 +10,10 @@ from traits.api import HasTraits, Instance,\
 from traitsui.api import View, Item, Group, HSplit
 import pandas as pd
 from pandas import DataFrame
+import matplotlib.pyplot as plt
+import seaborn as sns
 import numpy as np
+import vtk
 from tvtk.api import tvtk
 from tvtk.tvtk_classes.arrow_source import ArrowSource
 from mayavi.sources.vtk_data_source import VTKDataSource
@@ -22,6 +25,60 @@ import wrappers as wr
 from mombud.functions import vtkvizfuncs as vz
 # pylint: disable=C0103, E1136
 datadir = op.join(os.getcwd(), 'mutants')
+
+
+def vtkopen(fpath):
+    """
+    wrapper to open polydata files
+    """
+    reader = tvtk.PolyDataReader(file_name=fpath)
+    reader.update
+    data = reader.output
+    return data
+
+
+def cellpos(vtkdata, base, tip, neck):
+    """
+    Return DataFrame of cell along mom-bud axis coords.
+
+    Parameters
+    ----------
+    cellname : str
+               Name of cell
+    df : dataFrame
+         Dataframe of mom,bud,neck coords
+
+    Returns
+    -------
+    celldf : DataFrame
+        Columns `DY`, `x`, `wholecell_xaxis`, `type`, `indcell_xaxis`
+    """
+    data = vtkdata
+#    data = tvtk.to_tvtk(data)
+    # is a column vec of R^3 (coordinates in the skel)
+    npx = data.points.to_array()
+    # indices of npx that would sort npx according to the x-axis
+    xind = npx[:, 0].argsort()
+    dy = data.point_data.get_array(u"DY_minmax").to_array()
+
+    #  individual skeletons xyz and Δψ
+    celldf = pd.DataFrame({'x': npx[:, 0][xind],
+                           'DY': dy[xind]})
+    xn, _, _ = neck
+    xb, _, _ = base
+    xt, _, _ = tip
+#    xn_scaled = (xn - cell.ix[0, 'x']) / (xt - xb)
+
+    celldf['wholecell_xaxis'] = (celldf.ix[:, 'x'] - celldf.ix[0, 'x']) / (xt - xb)
+    celldf['type'] = ''
+    celldf.loc[celldf.x > xn, ['type']] = 'bud'
+    celldf.loc[celldf.x <= xn, ['type']] = 'mom'
+    celldf.ix[celldf.type == 'bud', 'indcell_xaxis'] = (celldf.ix[:, 'x']-xn) / (xt-xn)
+    celldf.ix[celldf.type == 'mom', 'indcell_xaxis'] = (celldf.ix[:, 'x']-xb) / (xn-xb)
+    celldf.reset_index(drop=True, inplace=True)
+    celldf['neckpos'] = xn
+
+    return celldf
 
 
 class ArrowClass(HasTraits):
@@ -176,6 +233,7 @@ class MombudPicker(HasTraits):
     # TraitsUI buttons interface
     button_save = Button('SaveOutput')
     button_transform = Button('Transform')
+    button_graph = Button('Graph')
 
     #default colors for labels
     def_cols = dict(colors=['light blue', 'bright green', 'red'],
@@ -209,6 +267,7 @@ class MombudPicker(HasTraits):
                                  width=500, show_label=False),
                             'button_save',
                             'button_transform',
+                            'button_graph',
                             show_labels=False,
                             ),
                        ),
@@ -397,6 +456,23 @@ class MombudPicker(HasTraits):
         else:
             print "please finish selecting all three points!"
 
+    @on_trait_change('button_graph')
+    def _plotgraph(self):
+        if self.base_pos and self.tip_pos and self.neck_pos:
+            self.grph = cellpos(self.data_src3d.data_src.data,
+                                self.base_pos,
+                                self.tip_pos,
+                                self.neck_pos)
+            _g = self.grph
+            _, ax1 = plt.subplots(1, 1)
+            with sns.plotting_context('talk'):
+                j = sns.violinplot(x='type',
+                                   y='DY',
+                                   hue='type',
+                                   data=_g,
+                                   ax=ax1)
+
+
     @on_trait_change('button_transform')
     def _draw_transformed(self):
         # allows transformation only when three points picked
@@ -441,14 +517,18 @@ if __name__ == "__main__":
     counter = df.groupby('cell').Label.count()
     hasbuds = df[df.cell.isin(counter[counter > 1].index.values)]
 
-#    vtkF = wr.swalk(datadir, '*csv', start=0, stop=-4)
+#    vtkF = wr.ddalk(datadir, '*csv', start=0, stop=-4)
     Dcells = {key: None for key in hasbuds.cell.values}
-    for i in hasbuds.cell.unique()[25:27]:
+    for i in hasbuds.cell.unique()[70:72]:
         filename = i
+        foldername = filename.partition('_')[0]
+
         # setup VTK input dataset
         vtkob = vz.setup_vtk_source(
             op.join(datadir,
-                    'normalizedVTK/Norm_%s_skeleton.vtk' % filename))
+                    'normalizedVTK',
+                    foldername,
+                    'Norm_%s_skeleton.vtk' % filename))
 
         # setup cell ellipse objects
         df2 = vz.getelipspar(filename, df)

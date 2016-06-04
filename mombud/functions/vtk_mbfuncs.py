@@ -46,11 +46,23 @@ def cellpos(cellname, df, **kwargs):
     df : dataFrame
          Dataframe of mom,bud,neck coords
 
+    kwargs:
+    -------
+    dyscale : str
+        `DY_minmax` (default)
+
+    dyraw : str
+        `DY_raw` (default)
+
     Returns
     -------
     celldf : DataFrame
         Columns `DY`, `x`, `wholecell_xaxis`, `type`, `indcell_xaxis`
+
     """
+    dyscale = kwargs.pop("dyscale", "DY_minmax")
+    dyraw = kwargs.pop("dyraw", "DY_raw")
+
     cellkey = cellname.rsplit('\\', 1)[1][:-4]
     data = vtkopen(cellname)
     data = tvtk.to_tvtk(data)
@@ -58,16 +70,18 @@ def cellpos(cellname, df, **kwargs):
     npx = data.points.to_array()
     # indices of npx that would sort npx according to the x-axis
     xind = npx[:, 0].argsort()
-    dy = data.point_data.get_array(u"DY_minmax").to_array()
+    dy = data.point_data.get_array(dyscale).to_array()
+    dy_raw = data.point_data.get_array(dyraw).to_array()
 
     #  individual skeletons xyz and Δψ
     celldf = pd.DataFrame({'x': npx[:, 0][xind],
-                           'DY': dy[xind]})
+                           'DY': dy[xind],
+                           'DY_abs': dy_raw[xind]})
     xn, _, _ = df.ix[cellkey, 'neck']
     xb, _, _ = df.ix[cellkey, 'base']
     xt, _, _ = df.ix[cellkey, 'tip']
 
-#    xn_scaled = (xn - cell.ix[0, 'x']) / (xt - xb)
+    xn_scaled = (xn - celldf.ix[0, 'x']) / (xt - xb)
 
     celldf['wholecell_xaxis'] = (celldf.ix[:, 'x'] - celldf.ix[0, 'x']) / (xt - xb)
     celldf['type'] = ''
@@ -77,6 +91,7 @@ def cellpos(cellname, df, **kwargs):
     celldf.ix[celldf.type == 'mom', 'indcell_xaxis'] = (celldf.ix[:, 'x']-xb) / (xn-xb)
     celldf.reset_index(drop=True, inplace=True)
     celldf['neckpos'] = xn
+    celldf['neckpos_cellaxis'] = xn_scaled
 
     return celldf
 

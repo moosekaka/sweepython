@@ -46,7 +46,9 @@ except LookupError:
 
 
 filekeys_old = {item: vtkF_old[item] for item
-                in sorted(vtkF_old.keys()) if item.split('_')[0] != 'YPD'}
+                in sorted(vtkF_old.keys()) if item.split('_')[0] != 'YPD'
+                and item not in reject}
+
 
 filekeys = {item: vtkF[media][item] for media
             in sorted(vtkF.keys()) for item
@@ -73,7 +75,7 @@ cellall = pd.DataFrame(columns=['mom', 'bud'])
 # dataframe for Δψ distributino along mom/bud cell axis
 cellposmom = pd.DataFrame()
 cellposbud = pd.DataFrame()
-
+cellposmom_fp = pd.DataFrame()
 # dataframe for average Δψ around the neck region
 neckregion = pd.DataFrame()
 
@@ -92,22 +94,46 @@ for key in sorted(filekeys_f)[:]:
     # Series of average Δψ (scaled to cell minmax values, DY_minmax)
     Xmom = cell.ix[cell['type'] == 'mom'].groupby('ind_cell_pos').DY.mean()
     Xbud = cell.ix[cell['type'] == 'bud'].groupby('ind_cell_pos').DY.mean()
+    fp = cell[cell['type'] == 'bud'][:1]
 
     # pos along x-axis for the whole cell
     cell['whole_cell_pos'] = vf.bincell(cell, 'wholecell_xaxis', binsaxisbig)
+    Xcell = cell.groupby('whole_cell_pos').DY.mean()
+    Xcell = Xcell[Xcell<cell.neckpos_cellaxis.max()].reset_index()
+    if len(fp.DY.values):
+        Xcell = Xcell.append(pd.Series({'DY':fp.DY.values[0]}), ignore_index=True)
+    else:
+        Xcell = Xcell.append(pd.Series({'DY':0}), ignore_index=True)
+    g = Xcell.whole_cell_pos.cat.add_categories('fp')
+    g.fillna('fp', inplace=True)
+    Xcell['cellaxis_mom_budfp'] = g
 
     # Series of Δψ scaled to min-max of the MOM-BUD cell AXIS
     scaled_dy_wholecell = cell.groupby('whole_cell_pos').DY.mean()
+    dy_wholecell_mean = cell.DY.mean()
+    dy_wholecell_abs = cell.DY_abs.mean()
+    dy_budmom_abs = cell.groupby('type').DY_abs.mean()
+    dy_budmom_abs.rename({'bud':'bud_abs_dy',
+                          'mom':'mom_abs_dy'}, inplace=True)
+    dy_wholecell = cell.ix[:,['DY', 'DY_abs']].mean()
+    dy_wholecell.rename({'DY':'whole_cell_mean',
+                         'DY_abs':'whole_cell_abs'}, inplace=True)
 
-    Xmom = vf.scaleminmax(Xmom, scaled_dy_wholecell)
-    Xbud = vf.scaleminmax(Xbud, scaled_dy_wholecell)
+#    Xmom = vf.scaleminmax(Xmom, scaled_dy_wholecell)
+#    Xbud = vf.scaleminmax(Xbud, scaled_dy_wholecell)
+
+    Xmom = Xmom / dy_wholecell_mean
+    Xbud = Xbud / dy_wholecell_mean
+
     Xbud.name = key
     Xmom.name = key
-    medianDY = cell.groupby('type').median().DY
-    medianDY.name = key
-    cellall = cellall.append(medianDY)
+    DYseries = cell.groupby('type').median().DY
+    DYseries = DYseries.append([dy_wholecell, dy_budmom_abs])
+    DYseries.name = key
+    cellall = cellall.append(DYseries)
     cellposbud = cellposbud.append(Xbud)
     cellposmom = cellposmom.append(Xmom)
+    cellposmom_fp = cellposmom_fp.append(Xcell)  # momcell + first bud point
     # temp dict of mean Δψ at +- range of dist from budneck
     tempdic = {dist: vf.neckDY(cell, cell.neckpos, dist)
                for dist in [.15, .3, .5]}
@@ -125,8 +151,10 @@ cellall = cellall.reset_index()
 cellall['type'] = cellall['index'].apply(lambda x: x.split('_')[0])
 cellposbud = cellposbud.reset_index()
 cellposmom = cellposmom.reset_index()
+cellposmom_fp = cellposmom_fp.reset_index()
 cellposbud = pd.concat([cellposbud, cellall.ix[:, ['type']]], axis=1)
 cellposmom = pd.concat([cellposmom, cellall.ix[:, ['type']]], axis=1)
+cellposmom_fp = pd.concat([cellposmom_fp, cellall.ix[:, ['type']]], axis=1)
 
 cellall['frac'] = cellall.ix[:, 'bud'] / cellall.ix[:, 'mom']
 Q = cellall.groupby('type').quantile(.90)  # 90th percentile of each cols
@@ -165,9 +193,29 @@ budvol = cellall.ix[:, ['budvol', 'type', 'N']]
 momvol = cellall.ix[:, ['momvol', 'type', 'N']]
 budvol['N'] = budvol.groupby("type").transform('count')
 momvol['N'] = budvol.groupby("type").transform('count')
-N = budvol.groupby("type").count()
-N = N.budvol.to_dict()  # dict to hold counts of each type
+
+
+def stripc(s):
+    if s.startswith('c'):
+        snew = s.replace(s[0],'0')
+    else:
+        snew = s
+    return snew
+
+cellall['date'] = cellall['index'].apply(lambda x:x.split('_')[1])
+cellall['date'] = cellall.date.apply(lambda x:stripc(x))
+YPE = cellall[(cellall.type=='YPE') | (cellall.type=='WT')].copy()
+YPL = cellall[(cellall.type=='YPL')].copy()
+YPE = YPE.reset_index()
+
+cellall = cellall.ix[~(((cellall.type=='YPE') & (cellall.date=='052315')) |
+                       ((cellall.type=='WT') & (cellall.date=='032716')))]
+
+Nype = YPE.groupby('date').index.count().to_dict()
+N = cellall.groupby('type').index.count()
+N = N.to_dict()  # dict to hold counts of each type
 col_ord = ['MFB1', 'NUM1', 'YPT11', 'WT', 'YPE', 'YPL', 'YPR']
+hue_ord = ['mom_abs_dy', 'bud_abs_dy', 'whole_cell_abs']
 
 def label_n(handle, labeldic):
     """
@@ -183,33 +231,20 @@ def label_n(handle, labeldic):
         dictionary of text labels to be added to handle's title
 
     """
-    for ax in handle.axes.flat:
-        oldtitle = ax.get_title().split('=')[1].strip()
-        ax.set_title('%s, N=%d' % (oldtitle, labeldic[oldtitle]))
+    if hasattr(handle.axes, 'flat'):
+        for ax in handle.axes.flat:
+            oldtitle = ax.get_title()
+            if oldtitle.find('|') > -1:
+                oldtitle = oldtitle.split('|')[0].split('=')[1].strip()
+            else:
+                oldtitle = oldtitle.split('=')[1].strip()
+            ax.set_title('%s, N=%d' % (oldtitle, labeldic[oldtitle]))
+    else:
 
-sns.set_style('whitegrid')
-with sns.plotting_context('talk', font_scale=1.1):
-    g = sns.FacetGrid(budvol,
-                      col="type",
-                      col_wrap=4,
-                      hue="type",
-                      col_order=col_ord)
-    g = (g.map(sns.distplot, "budvol")).set(xlim=(0.))
-    label_n(g, N)
-    g.savefig(op.join(datadir, 'budsize_dist.png'))
+        labels = [xl.get_text().strip() for xl in  handle.axes.get_xticklabels()]
+        new_labels = ['%s\n N=%d'% (old_lab, labeldic[old_lab]) for old_lab in labels]
+        handle.axes.set_xticklabels(new_labels)
 
-    h = sns.FacetGrid(momvol,
-                      col="type",
-                      col_wrap=4,
-                      hue="type",
-                      col_order=col_ord)
-    h = (h.map(sns.distplot, "momvol")).set(xlim=(0.))
-    label_n(h, N)
-    h.savefig(op.join(datadir, 'momsize_dist.png'))
-
-# =============================================================================
-# Progression of Δψ as move along the bud axis
-# =============================================================================
 bigbinsmom = pd.melt(cellposmom,
                      id_vars=['type', 'binvol'],
                      var_name='mom axis position',
@@ -223,205 +258,259 @@ bigbinsbud = pd.melt(cellposbud,
                      value_vars=binsaxis.tolist())
 bigbinsbud = bigbinsbud.dropna()
 
-with sns.plotting_context('talk', font_scale=1.):
-    h = sns.FacetGrid(bigbinsmom,
-                      col="type",
-                      hue='type',
-                      col_wrap=4,
-                      sharex=True,
-                      col_order=col_ord)
-    h = h.map(sns.pointplot,
-              'mom axis position',
-              r'$\Delta\Psi$ scaled gradient').set(ylim=(0, 1.))
-    h.savefig(op.join(datadir, 'mom_cell_dy.png'))
-
-    m0 = sns.FacetGrid(bigbinsbud,
-                       row="type",
-                       col="binvol",
-                       hue='type',
-                       row_order=col_ord,
-                       col_order=binsvolbud[1:])
-
-    m0 = m0.map(sns.pointplot,
-                'bud axis position',
-                r'$\Delta\Psi$ scaled gradient').set(ylim=(0, 1.), )
-    m0.savefig(op.join(datadir, 'bud_cell_dy_facetted.png'))
-    # without facetting by budvol
-    m1 = sns.FacetGrid(bigbinsbud,
-                       col="type",
-                       hue='type',
-                       col_wrap=4,
-                       col_order=col_ord)
-
-    m1 = m1.map(sns.pointplot,
-              'bud axis position',
-              r'$\Delta\Psi$ scaled gradient').set(ylim=(0, 1.))
-    m1.savefig(op.join(datadir, 'bud_cell_dy.png'))
-# =============================================================================
-# frac Δψ as function of budratio
-# =============================================================================
-with sns.plotting_context('talk'):
-    _, ax2 = plt.subplots(1, 1)
-    h = (sns.pointplot(x='bin_budprog',
-                      y='frac',
-                      hue='type',
-                      data=cellall.dropna(),
-                      ax=ax2))
-    h.set(ylim=(0,3),
-          title=u"Δψ vs bud progression\n ",
-          xlabel="bud progression",
-          ylabel=u"Δψ bud/Δψ mom")
-    leg = h.get_legend()
-    plt.setp(leg, bbox_to_anchor=(0.85,0.7, .3,.3))
-    plt.savefig(op.join(datadir, "DY vs bud progression.png"))
 
 
-    p = sns.FacetGrid(cellall.dropna(),
-                      col="type",
-                      hue='type',
-                      col_wrap=4,
-                      col_order=col_ord)
-    p = p.map(sns.pointplot, 'bin_budprog', 'frac')
-    p.savefig(op.join(datadir, "DY_bud_prog_facetted.png"))
-# =============================================================================
-#     Δψ at the bud neck region
-# =============================================================================
-with sns.plotting_context('talk'):
-    A = pd.melt(neckregion,
-                id_vars=['dist'],
-                value_vars=['bud', 'mom'])
-A.dropna(inplace=True)
-with sns.plotting_context('talk', font_scale=1.4):
-    _, ax1 = plt.subplots(1, 1)
-    q1 = sns.barplot(x='dist', y='value',
-                    hue='variable',
-                    data=A,
-                    ax=ax1)
-    leg = q1.get_legend()
-    plt.setp(leg, bbox_to_anchor=(0.85,0.7, .3,.3))
-    plt.savefig(op.join(datadir, "neckregionDY.png"))
 
-#  ============================================================================
-#  frac Δψ violinplots by media
-#  ============================================================================
-BIG = pd.melt(cellall,
-              id_vars=['type'],
-              value_vars=['frac'])
-groups = BIG.groupby('type')
+def plot(save=False):
+    sns.set_style('whitegrid')
+    with sns.plotting_context('talk', font_scale=1.1):
+        g = sns.FacetGrid(budvol,
+                          col="type",
+                          col_wrap=4,
+                          hue="type",
+                          col_order=col_ord)
+        g = (g.map(sns.distplot, "budvol")).set(xlim=(0.))
+        label_n(g, N)
+        if save:
+            g.savefig(op.join(datadir, 'budsize_dist.png'))
 
-with sns.plotting_context('talk'):
-    _, ax4 = plt.subplots(1, 1)
-    j = sns.violinplot(x='type',
-                       y='value',
-                       hue='type',
-                       data=BIG,
-                       order=col_ord,
-                       ax=ax4)
-    j.set_ylim(0, 2.5)
-    j.get_legend().set_visible(False)
+        h = sns.FacetGrid(momvol,
+                          col="type",
+                          col_wrap=4,
+                          hue="type",
+                          col_order=col_ord)
+        h = (h.map(sns.distplot, "momvol")).set(xlim=(0.))
+        label_n(h, N)
+        if save:
+            h.savefig(op.join(datadir, 'momsize_dist.png'))
+        # =================================================================
+        # Progression of Δψ as move along the bud axis
+        # =================================================================
 
-    g = sns.stripplot(x='type',
-                      split=True,
-                      y='value',
-                      hue='type',
-                      order=col_ord,
-                      data=BIG,
-                      jitter=.15,
-                      ax=ax4)
-    g.get_legend().set_visible(False)
-    labels = [xl.get_text().strip() for xl in  j.axes.get_xticklabels()]
-    new_labels = ['%s\n N=%d'% (old_lab, N[old_lab]) for old_lab in labels]
-    j.axes.set_xticklabels(new_labels)
-    plt.savefig(op.join(datadir, "violin_fracDY.png"))
-# ============================================================================
-# violinplot mom vs bud Δψ scaled
+        h = sns.FacetGrid(bigbinsmom,
+                          col="type",
+                          hue='type',
+                          col_wrap=4,
+                          sharex=True,
+                          col_order=col_ord)
+        h = h.map(sns.pointplot,
+                  'mom axis position',
+                  r'$\Delta\Psi$ scaled gradient').set(ylim=(0.7, 1.5))
+        label_n(h, N)
+        if save:
+            h.savefig(op.join(datadir, 'mom_cell_dy.png'))
 
-BIG2 = pd.melt(cellall,
-               id_vars=['type'],
-               value_vars=['mom', 'bud'])
+        m1 = sns.FacetGrid(bigbinsbud,
+                           col="type",
+                           hue='type',
+                           col_wrap=4,
+                           col_order=col_ord)
 
-with sns.plotting_context('talk', font_scale=1.):
-    _, ax3 = plt.subplots(1, 1)
-    h = sns.violinplot(x='type',
-                       y='value',
-                       hue='variable',
-                       order=col_ord,
-                       data=BIG2,
-                       ax=ax3)
-    sns.stripplot(x='type',
-                  y='value',
-                  hue='variable',
-                  jitter=.15,
-                  size=4,
-                  order=col_ord,
-                  data=BIG2,
-                  ax=ax3)
-    h.set_ylim(0, 1.)
-    h.get_legend().set_visible(False)
+        m1 = m1.map(sns.pointplot,
+                   'bud axis position',
+                   r'$\Delta\Psi$ scaled gradient').set(ylim=(0.7,1.5))
+        label_n(m1, N)
+        if save:
+            m1.savefig(op.join(datadir, 'bud_cell_dy.png'))
 
-    labels = [xl.get_text().strip() for xl in  h.axes.get_xticklabels()]
-    new_labels = ['%s\n N=%d'% (old_lab, N[old_lab]) for old_lab in labels]
-    h.axes.set_xticklabels(new_labels)
-    plt.savefig(op.join(datadir, "Violin Mom_Bud_DY.png"))
-# =============================================================================
-# frac Δψ as function of budvol
-# =============================================================================
-# with sns.plotting_context('talk', font_scale=1.4):
-##    _, ax10 = plt.subplots(1, 1)
-###    g = sns.FacetGrid(cellall.dropna(), col="type")
-###    g = g.map(sns.regplot, "budvol", "frac")
-##    datacell = cellall[cellall.bud <= bins2[-1]]
-# h = sns.pointplot(x='binbudratio',
-# y='bud',
-# hue='type',
-# data=datacell.dropna(),
-# ax=ax10)
-# h.get_legend().set_visible(False)
-##
-# for i in ['YPD', 'YPE', 'YPL', 'YPR']:
-##        data = cellall[(cellall.type == i) & (cellall.frac < 2)]
-# slope, _, r, p, _ = sp.linregress(data['budvol'],
-# data['frac'])
-# print 'slope= %6.4f r=%6.4f p=%6.4f' % (slope, r, p)
-#
-# =============================================================================
-# Dy as budneckregion and budratio
-# =============================================================================
-# with sns.plotting_context('talk', font_scale=1.4):
-##    _, ax2 = plt.subplots(1, 1)
-# h = sns.pointplot(x='bin_budprog',
-# y='DYneck',
-# hue='type',
-# data=cellall.dropna(),
-# ax=ax2)
-# h.get_legend().set_visible(False)
-#
-#
-# with sns.plotting_context('talk', font_scale=1.4):
-##    _, ax1 = plt.subplots(1, 1)
-# h = sns.pointplot(x='posx',
-# y='DY',
-# ci=None,
-# markers='o',
-# join=False,
-# hue='type',
-# data=cell,
-# size=1,
-# ax=ax1)
-# h.get_legend().set_visible(False)
-##    h.set_xticks(np.linspace(cell.pos.min(), cell.pos.max(),11))
-##    h.set_xticklabels(np.arange(0, 1.1 ,.1))
-#
-# ==============================================================================
-# budratio
-# ==============================================================================
-##c2 = cellall.drop(cellall.index[[5, 15, 63, 46]])
-# slope, _, r, p, std_err = sp.linregress(c2.ix[:, 'budratio'],
-# c2.ix[:, 'neck'])
-# with sns.plotting_context('talk', font_scale=1.4):
-##    _, ax5 = plt.subplots(1, 1)
-# h = sns.regplot(x='budratio',
-# y='neck',
-# data=c2[c2.neck>0.505],
-# ax=ax5)
-# h.get_legend().set_visible(False)
+    # with facetting by budvol
+    with sns.plotting_context('talk', font_scale=.9):
+        m0 = sns.FacetGrid(bigbinsbud,
+                           row="type",
+                           col="binvol",
+                           hue='type',
+                           row_order=col_ord,
+                           col_order=binsvolbud[1:])
+
+        m0 = m0.map(sns.pointplot,
+                    'bud axis position',
+                    r'$\Delta\Psi$ scaled gradient'
+                    ).set(yticks=np.arange(0.5, 1.9, 0.25),
+                          ylim=(0.65, 2.))
+        label_n(m0, N)
+
+        if save:
+            m0.savefig(op.join(datadir, 'bud_cell_dy_facetted.png'))
+    # =========================================================================
+    # frac Δψ as function of budratio
+    # =========================================================================
+    with sns.plotting_context('talk'):
+        _, ax2 = plt.subplots(1, 1)
+        h = (sns.pointplot(x='bin_budprog',
+                           y='frac',
+                           hue='type',
+                           data=cellall.dropna(),
+                           ax=ax2))
+        h.set(ylim=(0, 3),
+              title=u"Δψ vs bud progression\n ",
+              xlabel="bud progression",
+              ylabel=u"Δψ bud/Δψ mom")
+        leg = h.get_legend()
+        plt.setp(leg, bbox_to_anchor=(0.85, 0.7, .3,.3))
+        if save:
+            plt.savefig(op.join(datadir, "DY vs bud progression.png"))
+
+        p = sns.FacetGrid(cellall.dropna(),
+                          col="type",
+                          hue='type',
+                          col_wrap=4,
+                          col_order=col_ord)
+        p = p.map(sns.pointplot, 'bin_budprog', 'frac')
+        if save:
+            p.savefig(op.join(datadir, "DY_bud_prog_facetted.png"))
+
+    # ========================================================================
+    #     Δψ at the bud neck region
+    # ========================================================================
+    with sns.plotting_context('talk'):
+        A = pd.melt(neckregion,
+                    id_vars=['dist'],
+                    value_vars=['bud', 'mom'])
+    A.dropna(inplace=True)
+    with sns.plotting_context('talk', font_scale=1.4):
+        _, ax1 = plt.subplots(1, 1)
+        q1 = sns.barplot(x='dist',
+                         y='value',
+                         hue='variable',
+                         data=A,
+                         ax=ax1)
+        leg = q1.get_legend()
+        plt.setp(leg, bbox_to_anchor=(0.85,0.7, .3,.3))
+        if save:
+            plt.savefig(op.join(datadir, "neckregionDY.png"))
+
+    #  ========================================================================
+    #  frac Δψ violinplots by media
+    #  ========================================================================
+    BIG = pd.melt(cellall,
+                  id_vars=['type'],
+                  value_vars=['frac'])
+
+    with sns.plotting_context('talk'):
+        _, ax4 = plt.subplots(1, 1)
+        j = sns.violinplot(x='type',
+                           y='value',
+                           hue='type',
+                           data=BIG.dropna(),
+                           order=col_ord,
+                           inner=None,
+                           ax=ax4)
+        j.set_ylim(0, 2.5)
+        j.get_legend().set_visible(False)
+
+        k = sns.boxplot(x='type',
+                        y='value',
+                        hue='type',
+                        data=BIG.dropna(),
+                        order=col_ord,
+                        showmeans=True,
+                        showbox=False,
+                        showcaps=False,
+                        showfliers=False,
+                        medianprops={'linewidth':0},
+                        whiskerprops={'linewidth':0},
+                        meanprops={'marker':'_',
+                                   'c':'w',
+                                   'ms':5,
+                                   'markeredgewidth':2},
+                        ax=ax4)
+        k.get_legend().set_visible(False)
+        label_n(j, N)
+        if save:
+            plt.savefig(op.join(datadir, "violin_fracDY.png"))
+
+    # ========================================================================
+    # violinplot mom vs bud Δψ scaled
+
+    BIG2 = pd.melt(cellall,
+                   id_vars=['type'],
+                   value_vars=['mom', 'bud'])
+
+    with sns.plotting_context('talk', font_scale=1.):
+        _, ax3 = plt.subplots(1, 1)
+        h = sns.violinplot(x='type',
+                           y='value',
+                           hue='variable',
+                           order=col_ord,
+                           data=BIG2.dropna(),
+                           ax=ax3)
+        h.set_ylim(0, 1.)
+        h.get_legend().set_visible(False)
+        label_n(h, N)
+        if save:
+            plt.savefig(op.join(datadir, "Violin Mom_Bud_DY.png"))
+
+    with sns.plotting_context('talk', font_scale=1.):
+        BIG4 = pd.melt(cellall,
+                       id_vars=['type'],
+                       value_vars=['whole_cell_abs'])
+
+        g = sns.FacetGrid(BIG4,
+                          col="type",
+                          col_wrap=4,
+                          hue="type",
+                          col_order=col_ord,
+                          )
+        g = (g.map(sns.distplot, "value")).set(xlim=(0.))
+        label_n(g, N)
+
+    # ========================================================================
+    # violinplot mom vs bud Δψ raw by date for YPE
+    # =====================================================================
+    with sns.plotting_context('talk', font_scale=1.):
+        BIG5 = pd.melt(YPE,
+                       id_vars=['date'],
+                       value_vars=['whole_cell_abs',
+                                   'bud_abs_dy',
+                                   'mom_abs_dy'])
+
+        _, ax7 = plt.subplots(1, 1)
+        g = sns.violinplot(x='date',
+                           y='value',
+                           hue='variable',
+                           hue_order=hue_ord,
+                           data=BIG5,
+                           ax=ax7)
+        leg = g.get_legend()
+        plt.setp(leg,
+                 bbox_to_anchor=(.75, .85, .1,.2))
+        g.set_ylim(0, 4000)
+        label_n(g, Nype)
+
+        if save:
+            plt.savefig(op.join(datadir, "Violin-DY_raw_ype_date.png"))
+
+
+
+    # ========================================================================
+    # violinplot raw by date for all types
+    # =====================================================================
+    with sns.plotting_context('talk', font_scale=1.):
+        BIG6 = pd.melt(cellall,
+                       id_vars=['type'],
+                       value_vars=['whole_cell_abs',
+                                   'bud_abs_dy',
+                                   'mom_abs_dy'])
+
+        _, ax8 = plt.subplots(1, 1)
+        g = sns.violinplot(x='type',
+                           y='value',
+                           bw='scott',
+                           hue='variable',
+                           order=col_ord,
+                           hue_order=hue_ord,
+                           data=BIG6,
+                           ax=ax8)
+        leg = g.get_legend()
+        plt.setp(leg,
+                 bbox_to_anchor=(.75, .85, .1,.2))
+        g.set_ylim(0, 2000)
+        label_n(g, N)
+
+        if save:
+            plt.savefig(op.join(datadir, "Violin-DY_raw_ype_date.png"))
+
+#==============================================================================
+if __name__ == '__main__':
+#    pass
+    plot(save=False)

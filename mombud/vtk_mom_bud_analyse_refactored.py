@@ -49,19 +49,18 @@ filekeys_old = {item: vtkF_old[item] for item
                 in sorted(vtkF_old.keys()) if item.split('_')[0] != 'YPD'
                 and item not in reject}
 
-
 filekeys = {item: vtkF[media][item] for media
             in sorted(vtkF.keys()) for item
             in sorted(vtkF[media].keys())}
 
-filekeys_f = {f:filekeys[f] for f in filekeys if f not in reject}
+filekeys_f = {f: filekeys[f] for f in filekeys if f not in reject}
 filekeys_f.update(filekeys_old)  # add YPE to dict
 # dataframe of neck, mom and bud tip positions, bud and mom volumes
 dfmb = dfmb.append(dfmb_o[dfmb_o.media != 'YPD'])
 
- #=============================================================================
- # Dataframe and binning setup
- #=============================================================================
+#=============================================================================
+# Dataframe and binning setup
+#=============================================================================
 # bins for binning the bud progression ratio
 binsbudprog = np.r_[np.arange(0, 1.1, .1), 2]
 binsaxis = np.linspace(0., 1., 6)  # pos. along mom/bud cell
@@ -79,10 +78,10 @@ cellposmom_fp = pd.DataFrame()
 # dataframe for average Δψ around the neck region
 neckregion = pd.DataFrame()
 
- #=============================================================================
- # compute Δψ distrbution along cellaxis for each ind cell and collect/append
- # to the dataframes
- #=============================================================================
+#=============================================================================
+# compute Δψ distrbution along cellaxis for each ind cell and collect/append
+# to the dataframes
+#=============================================================================
 for key in sorted(filekeys_f)[:]:
 
     # returns Dataframe of pos along x-axis for inidivual mom and bud cell
@@ -99,11 +98,12 @@ for key in sorted(filekeys_f)[:]:
     # pos along x-axis for the whole cell
     cell['whole_cell_pos'] = vf.bincell(cell, 'wholecell_xaxis', binsaxisbig)
     Xcell = cell.groupby('whole_cell_pos').DY.mean()
-    Xcell = Xcell[Xcell<cell.neckpos_cellaxis.max()].reset_index()
+    Xcell = Xcell[Xcell < cell.neckpos_cellaxis.max()].reset_index()
     if len(fp.DY.values):
-        Xcell = Xcell.append(pd.Series({'DY':fp.DY.values[0]}), ignore_index=True)
+        Xcell = Xcell.append(
+            pd.Series({'DY': fp.DY.values[0]}), ignore_index=True)
     else:
-        Xcell = Xcell.append(pd.Series({'DY':0}), ignore_index=True)
+        Xcell = Xcell.append(pd.Series({'DY': 0}), ignore_index=True)
     g = Xcell.whole_cell_pos.cat.add_categories('fp')
     g.fillna('fp', inplace=True)
     Xcell['cellaxis_mom_budfp'] = g
@@ -113,11 +113,11 @@ for key in sorted(filekeys_f)[:]:
     dy_wholecell_mean = cell.DY.mean()
     dy_wholecell_abs = cell.DY_abs.mean()
     dy_budmom_abs = cell.groupby('type').DY_abs.mean()
-    dy_budmom_abs.rename({'bud':'bud_abs_dy',
-                          'mom':'mom_abs_dy'}, inplace=True)
-    dy_wholecell = cell.ix[:,['DY', 'DY_abs']].mean()
-    dy_wholecell.rename({'DY':'whole_cell_mean',
-                         'DY_abs':'whole_cell_abs'}, inplace=True)
+    dy_budmom_abs.rename({'bud': 'bud_abs_dy',
+                          'mom': 'mom_abs_dy'}, inplace=True)
+    dy_wholecell = cell.ix[:, ['DY', 'DY_abs']].mean()
+    dy_wholecell.rename({'DY': 'whole_cell_mean',
+                         'DY_abs': 'whole_cell_abs'}, inplace=True)
 
 #    Xmom = vf.scaleminmax(Xmom, scaled_dy_wholecell)
 #    Xbud = vf.scaleminmax(Xbud, scaled_dy_wholecell)
@@ -167,6 +167,18 @@ cellall['mean90'] = cellall.type.apply(lambda x: meangt90.ix[x])
 
 #  budvolratio is based on the largest 10% cells
 cellall['budvolratio'] = cellall.budvol / cellall.q90
+
+
+cellall['date'] = cellall['index'].apply(lambda x: x.split('_')[1])
+cellall['date'] = cellall.date.apply(lambda x: stripc(x))
+YPE = cellall[(cellall.type == 'YPE') | (cellall.type == 'WT')].copy()
+YPL = cellall[(cellall.type == 'YPL')].copy()
+YPE = YPE.reset_index()
+
+cellall = cellall.ix[~(((cellall.type == 'YPE') & (cellall.date == '052315')) |
+                       ((cellall.type == 'WT') & (cellall.date == '032716')))]
+
+
 cellposbud['budvol'] = cellall['budvol']
 cellposmom['momvol'] = cellall['momvol']
 
@@ -197,25 +209,18 @@ momvol['N'] = budvol.groupby("type").transform('count')
 
 def stripc(s):
     if s.startswith('c'):
-        snew = s.replace(s[0],'0')
+        snew = s.replace(s[0], '0')
     else:
         snew = s
     return snew
 
-cellall['date'] = cellall['index'].apply(lambda x:x.split('_')[1])
-cellall['date'] = cellall.date.apply(lambda x:stripc(x))
-YPE = cellall[(cellall.type=='YPE') | (cellall.type=='WT')].copy()
-YPL = cellall[(cellall.type=='YPL')].copy()
-YPE = YPE.reset_index()
-
-cellall = cellall.ix[~(((cellall.type=='YPE') & (cellall.date=='052315')) |
-                       ((cellall.type=='WT') & (cellall.date=='032716')))]
-
 Nype = YPE.groupby('date').index.count().to_dict()
+Nbud = cellall.groupby(['type', 'binbudvol']).size()
 N = cellall.groupby('type').index.count()
 N = N.to_dict()  # dict to hold counts of each type
 col_ord = ['MFB1', 'NUM1', 'YPT11', 'WT', 'YPE', 'YPL', 'YPR']
 hue_ord = ['mom_abs_dy', 'bud_abs_dy', 'whole_cell_abs']
+
 
 def label_n(handle, labeldic):
     """
@@ -234,15 +239,25 @@ def label_n(handle, labeldic):
     if hasattr(handle.axes, 'flat'):
         for ax in handle.axes.flat:
             oldtitle = ax.get_title()
+            print oldtitle
             if oldtitle.find('|') > -1:
-                oldtitle = oldtitle.split('|')[0].split('=')[1].strip()
+                media = oldtitle.split('|')[0].split('=')[1].strip()
+                budv = oldtitle.split('=')[-1].strip()
+                newtitle = '{}, N = {}'.format(media,
+                    labeldic.xs(media).get([float(budv)])[0])
+
+                print "{} ,{}, {}".format(media, budv, newtitle)
+                ax.set_title(newtitle)
             else:
                 oldtitle = oldtitle.split('=')[1].strip()
-            ax.set_title('%s, N=%d' % (oldtitle, labeldic[oldtitle]))
+                ax.set_title('%s, N=%d' % (oldtitle, labeldic[oldtitle]))
     else:
 
-        labels = [xl.get_text().strip() for xl in  handle.axes.get_xticklabels()]
-        new_labels = ['%s\n N=%d'% (old_lab, labeldic[old_lab]) for old_lab in labels]
+        labels = [xl.get_text().strip()
+                  for xl in handle.axes.get_xticklabels()]
+        new_labels = [
+            '%s\n N=%d' %
+            (old_lab, labeldic[old_lab]) for old_lab in labels]
         handle.axes.set_xticklabels(new_labels)
 
 bigbinsmom = pd.melt(cellposmom,
@@ -257,8 +272,6 @@ bigbinsbud = pd.melt(cellposbud,
                      value_name=r'$\Delta\Psi$ scaled gradient',
                      value_vars=binsaxis.tolist())
 bigbinsbud = bigbinsbud.dropna()
-
-
 
 
 def plot(save=False):
@@ -307,8 +320,8 @@ def plot(save=False):
                            col_order=col_ord)
 
         m1 = m1.map(sns.pointplot,
-                   'bud axis position',
-                   r'$\Delta\Psi$ scaled gradient').set(ylim=(0.7,1.5))
+                    'bud axis position',
+                    r'$\Delta\Psi$ scaled gradient').set(ylim=(0.7, 1.5))
         label_n(m1, N)
         if save:
             m1.savefig(op.join(datadir, 'bud_cell_dy.png'))
@@ -323,11 +336,10 @@ def plot(save=False):
                            col_order=binsvolbud[1:])
 
         m0 = m0.map(sns.pointplot,
-                    'bud axis position',
-                    r'$\Delta\Psi$ scaled gradient'
+                    'bud axis position', r'$\Delta\Psi$ scaled gradient'
                     ).set(yticks=np.arange(0.5, 1.9, 0.25),
                           ylim=(0.65, 2.))
-        label_n(m0, N)
+        label_n(m0, Nbud)
 
         if save:
             m0.savefig(op.join(datadir, 'bud_cell_dy_facetted.png'))
@@ -346,7 +358,7 @@ def plot(save=False):
               xlabel="bud progression",
               ylabel=u"Δψ bud/Δψ mom")
         leg = h.get_legend()
-        plt.setp(leg, bbox_to_anchor=(0.85, 0.7, .3,.3))
+        plt.setp(leg, bbox_to_anchor=(0.85, 0.7, .3, .3))
         if save:
             plt.savefig(op.join(datadir, "DY vs bud progression.png"))
 
@@ -375,7 +387,7 @@ def plot(save=False):
                          data=A,
                          ax=ax1)
         leg = q1.get_legend()
-        plt.setp(leg, bbox_to_anchor=(0.85,0.7, .3,.3))
+        plt.setp(leg, bbox_to_anchor=(0.85, 0.7, .3, .3))
         if save:
             plt.savefig(op.join(datadir, "neckregionDY.png"))
 
@@ -407,21 +419,21 @@ def plot(save=False):
                         showbox=False,
                         showcaps=False,
                         showfliers=False,
-                        medianprops={'linewidth':0},
-                        whiskerprops={'linewidth':0},
-                        meanprops={'marker':'_',
-                                   'c':'w',
-                                   'ms':5,
-                                   'markeredgewidth':2},
+                        medianprops={'linewidth': 0},
+                        whiskerprops={'linewidth': 0},
+                        meanprops={'marker': '_',
+                                   'c': 'w',
+                                   'ms': 5,
+                                   'markeredgewidth': 2},
                         ax=ax4)
         k.get_legend().set_visible(False)
         label_n(j, N)
         if save:
             plt.savefig(op.join(datadir, "violin_fracDY.png"))
 
-    # ========================================================================
+    # =====================================================================
     # violinplot mom vs bud Δψ scaled
-
+    # =====================================================================
     BIG2 = pd.melt(cellall,
                    id_vars=['type'],
                    value_vars=['mom', 'bud'])
@@ -473,14 +485,12 @@ def plot(save=False):
                            ax=ax7)
         leg = g.get_legend()
         plt.setp(leg,
-                 bbox_to_anchor=(.75, .85, .1,.2))
+                 bbox_to_anchor=(.75, .85, .1, .2))
         g.set_ylim(0, 4000)
         label_n(g, Nype)
 
         if save:
             plt.savefig(op.join(datadir, "Violin-DY_raw_ype_date.png"))
-
-
 
     # ========================================================================
     # violinplot raw by date for all types
@@ -503,7 +513,7 @@ def plot(save=False):
                            ax=ax8)
         leg = g.get_legend()
         plt.setp(leg,
-                 bbox_to_anchor=(.75, .85, .1,.2))
+                 bbox_to_anchor=(.75, .85, .1, .2))
         g.set_ylim(0, 2000)
         label_n(g, N)
 
@@ -512,5 +522,5 @@ def plot(save=False):
 
 #==============================================================================
 if __name__ == '__main__':
-#    pass
-    plot(save=False)
+    pass
+    plot(save=True)

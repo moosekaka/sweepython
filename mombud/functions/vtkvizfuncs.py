@@ -322,7 +322,8 @@ def getelipspar(fname, dfin, **kwargs):
         dataframe of ellipse parameters (major, minor radius, center etc.)
     """
     # selection returns a view by default, we want a copy!
-    dfout = dfin[dfin.cell == fname].copy()
+    dfout = dfin[dfin.cell == fname]
+    dfout = dfout.reset_index(drop=True)
     dfout['Major'] = dfout.Major * .055/2
     dfout['Minor'] = dfout.Minor * .055/2
     dfout['vol'] =  \

@@ -13,7 +13,6 @@ from pandas import DataFrame
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
-import vtk
 from tvtk.api import tvtk
 from tvtk.tvtk_classes.arrow_source import ArrowSource
 from mayavi.sources.vtk_data_source import VTKDataSource
@@ -69,12 +68,15 @@ def cellpos(vtkdata, base, tip, neck):
     xt, _, _ = tip
 #    xn_scaled = (xn - cell.ix[0, 'x']) / (xt - xb)
 
-    celldf['wholecell_xaxis'] = (celldf.ix[:, 'x'] - celldf.ix[0, 'x']) / (xt - xb)
+    celldf['wholecell_xaxis'] = ((celldf.ix[:, 'x'] -
+                                  celldf.ix[0, 'x']) / (xt - xb))
     celldf['type'] = ''
     celldf.loc[celldf.x > xn, ['type']] = 'bud'
     celldf.loc[celldf.x <= xn, ['type']] = 'mom'
-    celldf.ix[celldf.type == 'bud', 'indcell_xaxis'] = (celldf.ix[:, 'x']-xn) / (xt-xn)
-    celldf.ix[celldf.type == 'mom', 'indcell_xaxis'] = (celldf.ix[:, 'x']-xb) / (xn-xb)
+    celldf.ix[celldf.type == 'bud',
+              'indcell_xaxis'] = (celldf.ix[:, 'x']-xn) / (xt-xn)
+    celldf.ix[celldf.type == 'mom',
+              'indcell_xaxis'] = (celldf.ix[:, 'x']-xb) / (xn-xb)
     celldf.reset_index(drop=True, inplace=True)
     celldf['neckpos'] = xn
 
@@ -235,7 +237,7 @@ class MombudPicker(HasTraits):
     button_transform = Button('Transform')
     button_graph = Button('Graph')
 
-    #default colors for labels
+    # default colors for labels
     def_cols = dict(colors=['light blue', 'bright green', 'red'],
                     labels=['base', 'tip', 'neck'])
 
@@ -466,12 +468,11 @@ class MombudPicker(HasTraits):
             _g = self.grph
             _, ax1 = plt.subplots(1, 1)
             with sns.plotting_context('talk'):
-                j = sns.violinplot(x='type',
-                                   y='DY',
-                                   hue='type',
-                                   data=_g,
-                                   ax=ax1)
-
+                sns.violinplot(x='type',
+                               y='DY',
+                               hue='type',
+                               data=_g,
+                               ax=ax1)
 
     @on_trait_change('button_transform')
     def _draw_transformed(self):

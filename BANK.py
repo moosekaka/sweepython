@@ -54,7 +54,6 @@ df1 = pd.pivot_table(spend,
                      aggfunc='sum')
 MthlySpd = df1.resample('M').sum()
 
-
 # =============================================================================
 #       item breakdowns
 # =============================================================================
@@ -130,6 +129,7 @@ netgro = pd.DataFrame(  # grocery items minus cashback
 total = pd.concat([spend, cashback, netgro], ignore_index=True)
 uncat = total[total.Category.apply(lambda x: x == '')]
 total = total.set_value(uncat.index, 'Category', 'Uncat')
+
 # =============================================================================
 #    Pivot to group by cat and months and plot
 # =============================================================================
@@ -143,11 +143,12 @@ df = pd.pivot_table(total,
                     values='Amount',
                     aggfunc='sum')
 byMonth = df.resample('M').sum()
-cols = sorted([c for c in pd.unique(total.Category.values) if c!='Uncat'])
+cols = sorted([c for c in pd.unique(total.Category.values) if c !='Uncat'])
 Filt = -byMonth.ix[date_range:, :]
 
-#    Plot
-#fig = plt.plot(figsize=(11, 8.5))
+# =============================================================================
+#     Plot
+# =============================================================================
 f1, ax = plt.subplots()
 ax.set_ylim(0, MthlySpd.max() + dollar_lim)
 ax.set_axis_bgcolor(rgbcol('grey'))
@@ -159,7 +160,6 @@ MthlySpd.plot(ax=ax)
 ax.set_ylim(0, dollar_lim)
 ax.axhline(1000, c=rgbcol('hot pink'))
 
-#fig2 = plt.plot(figsize=(11, 8.5))
 f2, ax2 = plt.subplots()
 ax2 = Filt.ix[:, cols].plot(kind='bar',
                             colormap=plt.cm.Paired,
@@ -171,7 +171,9 @@ ax2.set_xticklabels(
 ax2.set_ylim(0, mth_lim)
 plt.xticks(rotation=0)
 
-#
+# =============================================================================
+# Pivot table
+# =============================================================================
 x = total[(total.Date > '2015-01-30')].reset_index(drop=True)
 y = x.groupby(['Date', 'Category']).sum()
 y1 = y.reset_index()
@@ -193,9 +195,9 @@ print '\n{}\nNumber of occur. of \n{}\n{}\n'.format('='*79, '='*79, z_count)
 # ============================================================================
 print '\n{}\nSpending by category to \n{}\n{}\n'.format('='*79, '='*79, z)
 
-#==============================================================================
+# =============================================================================
 # Write out to file
-#==============================================================================
+# =============================================================================
 with open('total.txt', 'w') as output:
     output.write('\n{}\nNumber of occur.\
     of \n{}\n{}\n'.format('='*79, '='*79, z_count))

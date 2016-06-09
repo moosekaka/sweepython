@@ -83,12 +83,13 @@ def cellpos(cellname, df, **kwargs):
 
     xn_scaled = (xn - celldf.ix[0, 'x']) / (xt - xb)
 
-    celldf['wholecell_xaxis'] = (celldf.ix[:, 'x'] - celldf.ix[0, 'x']) / (xt - xb)
+    celldf['whole_cell_axis'] = (celldf.ix[:, 'x'] - celldf.ix[0, 'x']) / (xt - xb)
     celldf['type'] = ''
     celldf.loc[celldf.x > xn, ['type']] = 'bud'
     celldf.loc[celldf.x <= xn, ['type']] = 'mom'
-    celldf.ix[celldf.type == 'bud', 'indcell_xaxis'] = (celldf.ix[:, 'x']-xn) / (xt-xn)
-    celldf.ix[celldf.type == 'mom', 'indcell_xaxis'] = (celldf.ix[:, 'x']-xb) / (xn-xb)
+    #
+    celldf.ix[celldf.type == 'bud', 'ind_cell_axis'] = (celldf.ix[:, 'x']-xn) / (xt-xn)
+    celldf.ix[celldf.type == 'mom', 'ind_cell_axis'] = (celldf.ix[:, 'x']-xb) / (xn-xb)
     celldf.reset_index(drop=True, inplace=True)
     celldf['neckpos'] = xn
     celldf['neckpos_cellaxis'] = xn_scaled

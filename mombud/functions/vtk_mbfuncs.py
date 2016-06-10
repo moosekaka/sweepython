@@ -97,15 +97,6 @@ def cellpos(cellname, df, **kwargs):
     return celldf
 
 
-def neckDY(celldf, neckloc, dist=0.3):
-    """
-    Return two Series of points within a range of +-dist from neck
-    """
-    gtneck = celldf.loc[(celldf.x >= neckloc) & (celldf.x < (neckloc+dist))]
-    ltneck = celldf.loc[(celldf.x < neckloc) & (celldf.x >= (neckloc-dist))]
-    return gtneck.DY.mean(), ltneck.DY.mean()
-
-
 def bincell(cellname, col, bins):
     """
     Return a cell DataFrame  and `col` according to `bins`.

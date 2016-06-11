@@ -76,91 +76,7 @@ def label_n(handle, labeldic, Rsqr=False):
         handle.axes.set_xticklabels(new_labels)
 
 
-def xcell(x, f):
-    """
-    return DataFrame of mom binned Δψ + first point of bud
-    """
-    x['temp'] = x.index.astype('float')
-
-    if len(f.DY.values):
-        x = x.append(pd.Series({'DY': f.get_value(0, 'DY')}),
-                     ignore_index=True)
-    else:
-        x = x.append(pd.Series({'DY': 0}),
-                     ignore_index=True)
-
-    x.loc[max(x.index), 'temp'] = 'fp'
-    x['cellaxis_mom_budfp'] = x.temp.astype('category', ordered=True)
-    return x
-
-
-def dyseries(df, fname):
-    """
-    Return cols of bud and mom agg. Δψ values per cell
-    """
-    dy_wholecell = df.mean()[['DY', 'DY_abs']]
-    dy_wholecell.rename({'DY': 'whole_cell_mean',
-                         'DY_abs': 'whole_cell_abs'}, inplace=True)
-    groups = ['DY_median_bud',
-              'DY_median_mom',
-              'DY_abs_mean_bud',
-              'DY_abs_mean_mom']
-    dy_series = df.groupby('type')[['DY', 'DY_abs']].agg(
-        [np.mean, np.median]).unstack().reset_index()
-    dy_series = dy_series.reset_index(drop=True)
-    dy_series.columns = ['dy', 'agg', 'type', 'val']
-    dy_series['lab'] = dy_series.apply(lambda x: '_'.join(
-        [x.ix[i] for i in dy_series.columns[:3]]), axis=1)
-
-    dy_series = dy_series[['val', 'lab']].set_index('lab')
-    dy_series = dy_series.ix[groups]
-    dy_series = dy_series.append(dy_wholecell.to_frame(name='val'))
-    dy_series = dy_series['val']
-    dy_series.name = fname
-
-    return dy_series, dy_wholecell
-
-
-def mombudscale(df, fname, cellmean):
-    """
-    create mom/bud Series of average Δψ, scaled to cell minmax values,
-    DY_minmax on MOM-BUD cell AXIS.
-    """
-    D = dict()
-    for t in ['mom', 'bud']:
-        D[t] = df.ix[df['type'] == t].groupby('ind_cell_binpos').DY.mean()
-        D[t] = D[t] / cellmean
-        D[t].name = fname
-        # scale by minmax of whole cell
-        # D['mom'] = lambda x, y :(x-y.min()) / (x.max()-y.min())
-        # Xbud = vf.scaleminmax(Xbud, scaled_dy_wholecell)
-    return D
-
-
-def neckDY(fname, celldf, dist=None):
-    """
-    Return two Series of points within a range of +-dist from neck
-    """
-    if dist is None:
-        dist = [.15, .3, .5]
-    tempdic = {}
-    for d in dist:
-        gtneck = celldf.loc[(celldf.x >= celldf.neckpos) &
-                            (celldf.x < (celldf.neckpos + d))]
-        ltneck = celldf.loc[(celldf.x < celldf.neckpos) &
-                            (celldf.x >= (celldf.neckpos - d))]
-        tempdic[d] = (gtneck.DY.mean(), ltneck.DY.mean())
-    data = pd.DataFrame({'bud':
-                         pd.Series({k: tempdic[k][0] for k in tempdic}),
-                         'mom':
-                         pd.Series({k: tempdic[k][1] for k in tempdic}),
-                         'cellname': fname})
-    data['dist'] = data.index
-    data.set_index('cellname', inplace=True)
-    return data
-
-
-def mungedata(filepaths,  **kwargs):
+def mungedata(filepaths, **kwargs):
     """
     compute Δψ distrbution along cellaxis for each ind. cell and append
     to the resepective DataFrames
@@ -193,20 +109,20 @@ def mungedata(filepaths,  **kwargs):
 #        Xcell = Xcell[Xcell < cell.neckpos_cellaxis.max()].reset_index()
         Xcell[Xcell > cell.neckpos_cellaxis.max()] = np.nan
         Xcell = Xcell.reset_index()
-#        xc = xcell(Xcell, fp)
+#        xc = vf.xcell(Xcell, fp)
 #        cellposmom_fp = cellposmom_fp.append(xc)  # momcell + first bud point
 
         # DY Series data to DataFrames
-        DYseries, dy_wholecell = dyseries(cell, k)
+        DYseries, dy_wholecell = vf.dyseries(cell, k)
         dfcell = dfcell.append(DYseries)
 
         # DY mom - bud axis data
-        X = mombudscale(cell, k, dy_wholecell.whole_cell_mean)
+        X = vf.mombudscale(cell, k, dy_wholecell.whole_cell_mean)
         dfbud = dfbud.append(X['bud'])
         dfmom = dfmom.append(X['mom'])
 
         # neckregion analy.
-        neckreg = neckDY(k, cell)
+        neckreg = vf.neckDY(k, cell)
         dfneck = dfneck.append(neckreg, ignore_index=False)
     return dfcell, dfmom, dfbud, dfneck
 
@@ -616,13 +532,10 @@ if __name__ == '__main__':
 
     cellall['frac'] = (cellall.ix[:, 'DY_median_bud'] /
                        cellall.ix[:, 'DY_median_mom'])
-    Q = cellall.groupby('type').quantile(.90)  # 90th percentile of each cols
 
     #  90th percentile bud volume of each media type
+    Q = cellall.groupby('type').quantile(.90)
     cellall['q90'] = cellall.type.apply(lambda x: Q.ix[x].budvol)
-#    gt90 = cellall[cellall['budvol'] > cellall['q90']]
-#    meangt90 = gt90.groupby('type').budvol.mean()
-#    cellall['mean90'] = cellall.type.apply(lambda x: meangt90.ix[x])
 
     #  budvolratio is based on the largest 10% cells
     cellall['budvolratio'] = cellall.budvol / cellall.q90

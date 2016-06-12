@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-module to analyze mom bud asymmetry
+Main module to analyze mom bud asymmetry
 """
 import sys
 import os
@@ -9,74 +9,13 @@ import cPickle as pickle
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
 from mombud.functions import vtk_mbfuncs as vf
+from mombud.functions import vtk_mbplots as vp
 import wrappers as wr
-
 # pylint: disable=C0103
-plt.rcParams['font.family'] = 'DejaVu Sans'
-plt.close('all')
 
 
-def getrval(df, x, y, labeldic):
-    """
-    return a subset DataFrame and R^2 values for columns x, y in original df
-    """
-    df = df.ix[:, [x, y, 'date']].reset_index(drop=True)
-    df.rename(columns=labeldic, inplace=True)
-    pear = df.groupby('date').corr().xs(labeldic[y],
-                                        level=1).raw.to_dict()
-    r_sqr = {key: value**2 for key, value in pear.iteritems()}
-
-    return df, r_sqr
-
-
-def label_n(handle, labeldic, Rsqr=False):
-    """
-    modifies title on facetgrid to include labeldic
-
-    Parameters
-    ----------
-
-    handle : FacetGrid ref
-        handle to FacetGrid obj
-
-    labeldic : dict
-        dictionary of text labels to be added to handle's title
-    Rsqr : Bool
-        if True, labels R^2 instead of N counts
-    """
-
-    if hasattr(handle.axes, 'flat'):
-        for ax in handle.axes.flat:
-            oldtitle = ax.get_title()
-
-            if oldtitle.find('|') > -1:
-                media = oldtitle.split('|')[0].split('=')[1].strip()
-                budv = oldtitle.split('=')[-1].strip()
-                newtitle = '{}, N = {}'.format(
-                    media, labeldic.xs(media).get([float(budv)])[0])
-                ax.set_title(newtitle)
-            else:
-                oldtitle = oldtitle.split('=')[1].strip()
-                if not Rsqr:
-                    ax.set_title('{}, N={}'
-                                 .format(oldtitle,
-                                         labeldic[oldtitle]))
-                else:
-                    ax.set_title('{}, R^2={:5.3f}'
-                                 .format(oldtitle,
-                                         labeldic[oldtitle]))
-    else:
-
-        labels = [xl.get_text().strip()
-                  for xl in handle.axes.get_xticklabels()]
-        new_labels = ['{}\n N={}'.format(
-            old_lab, labeldic[old_lab]) for old_lab in labels]
-        handle.axes.set_xticklabels(new_labels)
-
-
-def mungedata(filepaths, **kwargs):
+def mungedata(filepaths, df, **kwargs):
     """
     compute Δψ distrbution along cellaxis for each ind. cell and append
     to the resepective DataFrames
@@ -92,19 +31,20 @@ def mungedata(filepaths, **kwargs):
 #    cellposmom_fp = pd.DataFrame()  # for Δψ distributino mom + fp of bud
     dfneck = pd.DataFrame()  # for average Δψ around the neck region
     for k in sorted(filepaths):
-        # returns Dataframe of pos along x-axis for inidivual mom and bud cell
-        cell = vf.cellpos(filekeys_f[k], dfmb)
+
+        # returns Dataframe of pos along x-axis for inidivual mom/bud cells
+        cell = vf.cellpos(filekeys_f[k], df)
 
         # bin the dataframe according to individual (mom/bud) axis
         cell['ind_cell_binpos'] = vf.bincell(cell, 'ind_cell_axis', mbax)
 
-    #  first point on bud
-#        fp = cell[cell['type'] == 'bud'][:1].reset_index(drop=True)
 
         # bin the dataframe according to individual entire cell axis
         cell['whole_cell_binpos'] = vf.bincell(cell,
                                                'whole_cell_axis',
                                                cellax)
+    #  first point on bud
+#        fp = cell[cell['type'] == 'bud'][:1].reset_index(drop=True)
         Xcell = cell.groupby('whole_cell_binpos').DY.mean()
 #        Xcell = Xcell[Xcell < cell.neckpos_cellaxis.max()].reset_index()
         Xcell[Xcell > cell.neckpos_cellaxis.max()] = np.nan
@@ -126,323 +66,7 @@ def mungedata(filepaths, **kwargs):
         dfneck = dfneck.append(neckreg, ignore_index=False)
     return dfcell, dfmom, dfbud, dfneck
 
-
-def plotSizeDist(df, save=False):
-    """
-    Distribution of bud and mom volumes
-    """
-    budvol = df.ix[:, ['budvol', 'type']]
-    momvol = df.ix[:, ['momvol', 'type']]
-    budvol['N'] = budvol.groupby("type").transform('count')
-    momvol['N'] = momvol.groupby("type").transform('count')
-    sns.set_style('whitegrid')
-    with sns.plotting_context('talk', font_scale=1.1):
-        g = sns.FacetGrid(budvol,
-                          col="type",
-                          col_wrap=4,
-                          hue="type",
-                          col_order=col_ord)
-        g = (g.map(sns.distplot, "budvol")).set(xlim=(0.))
-        label_n(g, N)
-        if save:
-            g.savefig(op.join(datadir, 'budsize_dist.png'))
-
-        h = sns.FacetGrid(momvol,
-                          col="type",
-                          col_wrap=4,
-                          hue="type",
-                          col_order=col_ord)
-        h = (h.map(sns.distplot, "momvol")).set(xlim=(0.))
-        label_n(h, N)
-        if save:
-            h.savefig(op.join(datadir, 'momsize_dist.png'))
-
-
-def plotDyAxisDist(dfmom, dfbud, save=False):
-    """
-    Progression of Δψ as move along the bud axis
-    """
-    bigbinsmom = pd.melt(dfmom,
-                         id_vars=['type', 'binvol'],
-                         var_name='mom axis position',
-                         value_name=r'$\Delta\Psi$ scaled gradient',
-                         value_vars=bins['binsaxis'].tolist())
-    bigbinsmom = bigbinsmom.dropna()
-    bigbinsbud = pd.melt(dfbud,
-                         id_vars=['type', 'binvol'],
-                         var_name='bud axis position',
-                         value_name=r'$\Delta\Psi$ scaled gradient',
-                         value_vars=bins['binsaxis'].tolist())
-    bigbinsbud = bigbinsbud.dropna()
-    sns.set_style('whitegrid')
-    with sns.plotting_context('talk', font_scale=1.):
-        h = sns.FacetGrid(bigbinsmom,
-                          col="type",
-                          hue='type',
-                          col_wrap=4,
-                          sharex=True,
-                          col_order=col_ord)
-        h = h.map(sns.pointplot,
-                  'mom axis position',
-                  r'$\Delta\Psi$ scaled gradient').set(ylim=(0.7, 1.5))
-        label_n(h, N)
-        if save:
-            h.savefig(op.join(datadir, 'mom_cell_dy.png'))
-
-        m1 = sns.FacetGrid(bigbinsbud,
-                           col="type",
-                           hue='type',
-                           col_wrap=4,
-                           col_order=col_ord)
-
-        m1 = m1.map(sns.pointplot,
-                    'bud axis position',
-                    r'$\Delta\Psi$ scaled gradient').set(ylim=(0.7, 1.5))
-        label_n(m1, N)
-        if save:
-            m1.savefig(op.join(datadir, 'bud_cell_dy.png'))
-
-    # with facetting by budvol
-    with sns.plotting_context('talk', font_scale=.9):
-        m0 = sns.FacetGrid(bigbinsbud,
-                           row="type",
-                           col="binvol",
-                           hue='type',
-                           row_order=col_ord,
-                           col_order=bins['binsvolbud'][1:])
-
-        m0 = m0.map(sns.pointplot,
-                    'bud axis position',
-                    r'$\Delta\Psi$ scaled gradient').set(
-                        yticks=np.arange(0.5, 1.9, 0.25), ylim=(0.65, 2.))
-        label_n(m0, Nbud)
-
-        if save:
-            m0.savefig(op.join(datadir, 'bud_cell_dy_facetted.png'))
-
-
-def plotBudProgr(save=False):
-    """
-    frac Δψ as function of budratio
-    """
-    sns.set_style('whitegrid')
-    with sns.plotting_context('talk'):
-        _, ax2 = plt.subplots(1, 1)
-        h = (sns.pointplot(x='bin_budprog',
-                           y='frac',
-                           hue='type',
-                           data=cellall,
-                           ax=ax2))
-        h.set(ylim=(0, 3),
-              title=u"Δψ vs bud progression\n ",
-              xlabel="bud progression",
-              ylabel=u"Δψ bud/Δψ mom")
-        leg = h.get_legend()
-        plt.setp(leg, bbox_to_anchor=(0.85, 0.7, .3, .3))
-        if save:
-            plt.savefig(op.join(datadir, "DY vs bud progression.png"))
-
-        p = sns.FacetGrid(cellall,
-                          col="type",
-                          hue='type',
-                          col_wrap=4,
-                          col_order=col_ord)
-        p = p.map(sns.pointplot, 'bin_budprog', 'frac')
-        if save:
-            p.savefig(op.join(datadir, "DY_bud_prog_facetted.png"))
-
-
-def plotNeck(save=False):
-    """
-    Δψ at the bud neck region
-    """
-    sns.set_style('whitegrid')
-    with sns.plotting_context('talk'):
-        A = pd.melt(neckregion,
-                    id_vars=['dist'],
-                    value_vars=['bud', 'mom'])
-    A.dropna(inplace=True)
-    with sns.plotting_context('talk', font_scale=1.4):
-        _, ax1 = plt.subplots(1, 1)
-        q1 = sns.barplot(x='dist',
-                         y='value',
-                         hue='variable',
-                         data=A,
-                         ax=ax1)
-        leg = q1.get_legend()
-        plt.setp(leg, bbox_to_anchor=(0.85, 0.7, .3, .3))
-        if save:
-            plt.savefig(op.join(datadir, "neckregionDY.png"))
-
-
-def plotViolins(save=False):
-    """
-    Violinplots for frac DY, mom vs bud scaled and DY abs distr
-    """
-    BIG = pd.melt(cellall,
-                  id_vars=['type'],
-                  value_vars=['frac'])
-
-    BIG2 = pd.melt(cellall,
-                   id_vars=['type'],
-                   value_vars=['DY_median_mom', 'DY_median_bud'])
-
-    sns.set_style('whitegrid')
-    with sns.plotting_context('talk'):
-        _, ax4 = plt.subplots(1, 1)
-        j = sns.violinplot(x='type',
-                           y='value',
-                           hue='type',
-                           data=BIG.dropna(),
-                           order=col_ord,
-                           inner=None,
-                           ax=ax4)
-        j.set_ylim(0, 2.5)
-        j.get_legend().set_visible(False)
-
-        k = sns.boxplot(x='type',
-                        y='value',
-                        hue='type',
-                        data=BIG.dropna(),
-                        order=col_ord,
-                        showmeans=True,
-                        showbox=False,
-                        showcaps=False,
-                        showfliers=False,
-                        medianprops={'linewidth': 0},
-                        whiskerprops={'linewidth': 0},
-                        meanprops={'marker': '_',
-                                   'c': 'w',
-                                   'ms': 5,
-                                   'markeredgewidth': 2},
-                        ax=ax4)
-        k.get_legend().set_visible(False)
-        label_n(j, N)
-        if save:
-            plt.savefig(op.join(datadir, "violin_fracDY.png"))
-
-        _, ax3 = plt.subplots(1, 1)
-        h = sns.violinplot(x='type',
-                           y='value',
-                           hue='variable',
-                           order=col_ord,
-                           data=BIG2.dropna(),
-                           ax=ax3)
-        h.set_ylim(0, 1.)
-        h.get_legend().set_visible(False)
-        label_n(h, N)
-        if save:
-            plt.savefig(op.join(datadir, "Violin Mom_Bud_DY.png"))
-
-        BIG4 = pd.melt(cellall,
-                       id_vars=['type'],
-                       value_vars=['whole_cell_abs'])
-
-        g = sns.FacetGrid(BIG4,
-                          col="type",
-                          col_wrap=4,
-                          hue="type",
-                          col_order=col_ord,
-                          size=3,
-                          aspect=1.5)
-        g = (g.map(sns.distplot, "value")).set(xlim=(0.))
-        label_n(g, N)
-
-        if save:
-            plt.savefig(op.join(datadir, "DY_abs_dist.png"))
-
-
-def plotYPE(save=False):
-    """
-    Violinplots for YPE subdataset
-    """
-
-    with sns.plotting_context('talk', font_scale=1.):
-        BIG5 = pd.melt(YPE,
-                       id_vars=['date'],
-                       value_vars=['whole_cell_abs',
-                                   'DY_abs_mean_bud',
-                                   'DY_abs_mean_mom'])
-
-        _, ax7 = plt.subplots(1, 1)
-        g = sns.violinplot(x='date',
-                           y='value',
-                           hue='variable',
-                           hue_order=hue_ord,
-                           data=BIG5,
-                           ax=ax7)
-        leg = g.get_legend()
-        plt.setp(leg,
-                 bbox_to_anchor=(.75, .85, .1, .2))
-        g.set_ylim(0, 4000)
-        label_n(g, Nype)
-
-        if save:
-            plt.savefig(op.join(datadir, "Violin-DY_raw_ype_date.png"))
-
-        BIG6 = pd.melt(cellall,
-                       id_vars=['type'],
-                       value_vars=['whole_cell_abs',
-                                   'DY_abs_mean_bud',
-                                   'DY_abs_mean_mom'])
-
-        _, ax8 = plt.subplots(1, 1)
-        g = sns.violinplot(x='type',
-                           y='value',
-                           bw='scott',
-                           hue='variable',
-                           order=col_ord,
-                           hue_order=hue_ord,
-                           data=BIG6,
-                           ax=ax8)
-        leg = g.get_legend()
-        plt.setp(leg,
-                 bbox_to_anchor=(.75, .85, .1, .2))
-        g.set_ylim(0, 2000)
-        label_n(g, N)
-
-        if save:
-            plt.savefig(op.join(datadir, "Violin-DY_raw_ype_date.png"))
-
-
-def plotRegr(save=False):
-    """
-    plot regression coeff of DY raw vs scaled
-    """
-    labeldic = {'whole_cell_abs': 'raw',
-                'whole_cell_mean': 'scaled cell mean',
-                'DY_median_mom': 'scaled mom mean',
-                'DY_median_bud': 'scaled bud mean'}
-
-    with sns.plotting_context('talk', font_scale=1.):
-        for p in ['whole_cell_mean', 'DY_median_mom', 'DY_median_bud']:
-            a, r2 = getrval(YPE, 'whole_cell_abs', p, labeldic)
-            x, y, _ = a.columns
-            sns.lmplot(x, y,
-                       fit_reg=False,
-                       legend_out=False,
-                       data=a,
-                       hue='date',
-                       size=8,
-                       aspect=1.5).set(xlim=(0, 2000))
-            if save:
-                plt.savefig(op.join(datadir,
-                                    "{} vs raw.png".format(labeldic[p])))
-
-            g = sns.lmplot(x, y,
-                           fit_reg=False,
-                           data=a,
-                           col='date',
-                           hue='date',
-                           col_wrap=3).set(xlim=(0, 2000), ylim=(0., 1.))
-            label_n(g, r2, Rsqr=True)
-
-            if save:
-                plt.savefig(op.join(datadir,
-                                    "{} vs raw by date.png".format(
-                                        labeldic[p])))
-
-# =============================================================================
+# _____________________________________________________________________________
 if __name__ == '__main__':
     plt.close('all')
     bins = {'binsaxis': np.linspace(0., 1., 6),  # pos. along mom/bud cell
@@ -500,7 +124,7 @@ if __name__ == '__main__':
 # =============================================================================
 #    Call mungedata()
 # =============================================================================
-    cellall, cellposmom, cellposbud, neckregion = mungedata(filekeys_f,
+    cellall, cellposmom, cellposbud, neckregion = mungedata(filekeys_f, dfmb,
                                                             **bins)
 
 # =============================================================================
@@ -548,9 +172,7 @@ if __name__ == '__main__':
         dic[key]['binvol'] = vf.bincell(
             dic[key], '%svol' % key, bins['binsvol%s' % key])
 
-# =============================================================================
-#    bins used for plotting budding progression
-# =============================================================================
+    # Add bins used for plotting budding progression
     # add the 2. cat. for cells that are larger than the 90th percentile
     binsaxisbig = bins['binsaxisbig']
     cellall['bin_budprog'] = vf.bincell(cellall,
@@ -569,13 +191,22 @@ if __name__ == '__main__':
     Nype = YPE.groupby('date').size().to_dict()
     Nbud = cellall.groupby(['type', 'binbudvol']).size()
     N = cellall.groupby('type').size().to_dict()  # counts for each type
-    col_ord = ['MFB1', 'NUM1', 'YPT11', 'WT', 'YPE', 'YPL', 'YPR']
-    hue_ord = ['DY_abs_mean_mom', 'DY_abs_mean_bud', 'whole_cell_abs']
 
-#    plotSizeDist(cellall)
-#    plotBudProgr()
-#    plotDyAxisDist(cellposmom, cellposbud)
-    plotNeck()
-#    plotYPE()
-#    plotViolins()
-#    plotRegr()
+# =============================================================================
+#     Plot using seaborn
+# =============================================================================
+    plotfuncs = ['plotSizeDist',
+                 'plotBudProgr',
+                 'plotDyAxisDist',
+                 'plotNeck',
+                 'plotYPE',
+                 'plotRegr']
+    params = {'data': cellall, 'neckdata': neckregion, 'data_ype': YPE,
+              'counts': N, 'counts_buds': Nbud, 'counts_ype': Nype,
+              'dfmom': cellposmom, 'dfbud': cellposbud,
+              'savefolder': datadir, 'save': False}
+    params.update(bins)
+    plt.close('all')
+
+    for f in plotfuncs[:-1]:
+        getattr(vp, f)(**params)

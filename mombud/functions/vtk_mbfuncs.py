@@ -14,17 +14,6 @@ vtkF = defaultdict(dict)
 mombud = defaultdict(dict)
 
 
-def safecall(key, fkys, df0):
-    """
-    wrapper caller for iterators
-    """
-    try:
-        cell = cellpos(fkys.get(key, None), df0)
-    except KeyError:
-        print "File with cellname not found"
-    return cell
-
-
 def vtkopen(fpath):
     """
     wrapper to open polydata files

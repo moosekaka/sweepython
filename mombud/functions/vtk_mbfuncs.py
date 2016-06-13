@@ -79,14 +79,11 @@ def cellpos(cellname, df, **kwargs):
     celldf.loc[celldf.x > xn, ['type']] = 'bud'
     celldf.loc[celldf.x <= xn, ['type']] = 'mom'
     #
-    celldf.ix[celldf.type == 'bud',
-              'ind_cell_axis'] = (celldf.ix[:, 'x']-xn) / (xt-xn)
-    celldf.ix[celldf.type ==
-              'mom', 'ind_cell_axis'] = (celldf.ix[:, 'x']-xb) / (xn-xb)
-    celldf.reset_index(drop=True, inplace=True)
-    celldf['neckpos'] = xn
-    celldf['neckpos_cellaxis'] = xn_scaled
-    return celldf
+    celldf.loc[celldf.type == 'bud',
+               'ind_cell_axis'] = (celldf.ix[:, 'x']-xn) / (xt-xn)
+    celldf.loc[celldf.type ==
+               'mom', 'ind_cell_axis'] = (celldf.ix[:, 'x']-xb) / (xn-xb)
+    return dict(df=celldf, neckpos=xn, neckpos_s=xn_scaled)
 
 
 def bincell(cellname, col, bins):
@@ -113,29 +110,25 @@ def bincell(cellname, col, bins):
     return binnedcell
 
 
-def dyseries(df, fname):
+def dyseries(df, fname, **kwargs):
     """
     Return cols of bud and mom agg. Δψ values per cell
     """
     dy_wholecell = df.mean()[['DY', 'DY_abs']]
     dy_wholecell.rename({'DY': 'whole_cell_mean',
                          'DY_abs': 'whole_cell_abs'}, inplace=True)
-    groups = ['DY_median_bud',
-              'DY_median_mom',
-              'DY_abs_mean_bud',
-              'DY_abs_mean_mom']
+#    groups = ['DY_median_bud',
+#              'DY_median_mom',
+#              'DY_abs_mean_bud',
+#              'DY_abs_mean_mom']
     dy_series = df.groupby('type')[['DY', 'DY_abs']].agg(
         [np.mean, np.median]).unstack().reset_index()
-    dy_series = dy_series.reset_index(drop=True)
-    dy_series.columns = ['dy', 'agg', 'type', 'val']
-    dy_series['lab'] = dy_series.apply(lambda x: '_'.join(
-        [x.ix[i] for i in dy_series.columns[:3]]), axis=1)
+    dy_series['lab'] = dy_series['level_0'].str.cat([dy_series['level_1'],
+                                                     dy_series['type']],
+                                                    sep='_')
 
-    dy_series = dy_series[['val', 'lab']].set_index('lab')
-    dy_series = dy_series.ix[groups]
-    dy_series = dy_series.append(dy_wholecell.to_frame(name='val'))
-    dy_series = dy_series['val']
-    dy_series.name = fname
+    dy_series = dy_series[[0, 'lab']].set_index('lab')
+    dy_series = dy_series[0].to_dict()
 
     return dy_series, dy_wholecell
 
@@ -156,27 +149,24 @@ def mombudscale(df, fname, cellmean):
     return D
 
 
-def neckDY(fname, celldf, dist=None):
+def neckDY(fname, celldf, neck_position, outdic, dist=None):
     """
     Return two Series of points within a range of +-dist from neck
     """
     if dist is None:
         dist = [.15, .3, .5]
-    tempdic = {}
+    tempdic = defaultdict(dict)
+    tempdic[fname]['bud'] = {}
+    tempdic[fname]['mom'] = {}
+
     for d in dist:
-        gtneck = celldf.loc[(celldf.x >= celldf.neckpos) &
-                            (celldf.x < (celldf.neckpos + d))]
-        ltneck = celldf.loc[(celldf.x < celldf.neckpos) &
-                            (celldf.x >= (celldf.neckpos - d))]
-        tempdic[d] = (gtneck.DY.mean(), ltneck.DY.mean())
-    data = pd.DataFrame({'bud':
-                         pd.Series({k: tempdic[k][0] for k in tempdic}),
-                         'mom':
-                         pd.Series({k: tempdic[k][1] for k in tempdic}),
-                         'cellname': fname})
-    data['dist'] = data.index
-    data.set_index('cellname', inplace=True)
-    return data
+        tempdic[fname]['bud'][d] = celldf.loc[(celldf.x >= neck_position) &
+                                              (celldf.x <
+                                              (neck_position + d))].DY.mean()
+        tempdic[fname]['mom'][d] = celldf.loc[(celldf.x < neck_position) &
+                                              (celldf.x >=
+                                              (neck_position - d))].DY.mean()
+    return outdic.update(tempdic)
 
 
 def xcell(x, f):

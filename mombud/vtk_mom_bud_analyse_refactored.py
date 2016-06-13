@@ -15,7 +15,27 @@ import wrappers as wr
 # pylint: disable=C0103
 
 
-def mungedata(filepaths, df, **kwargs):
+def wrapper(regen=False, **kwargs):
+    """
+    wrapper func to call mungedata, pass default params in kwargs and
+    regenerate individual vtk DataFrames via vf.cellpos()
+    """
+    fpath = kwargs.pop('pkldatpath')
+    if regen:
+        F = {}
+        filekeys = kwargs.pop('fkeys')
+        for k in sorted(filekeys):
+            F[k] = vf.cellpos(filekeys[k], dfmb)
+        with open(fpath, 'wb') as outpt:
+            pickle.dump(F, outpt)
+
+    with open(fpath, 'rb') as inpt:
+        F = pickle.load(inpt)
+
+    return mungedata(F, dfmb, **kwargs)
+
+
+def mungedata(vtkdf, dfvols, **kwargs):
     """
     compute Δψ distrbution along cellaxis for each ind. cell and append
     to the resepective DataFrames
@@ -25,22 +45,25 @@ def mungedata(filepaths, df, **kwargs):
     cellax = kwargs.pop('binsaxisbig', 0)  # whole cell bins
 
     # DataFrames for budding progression and budratio, size distr., frac Δψ
-    dfcell = pd.DataFrame()
-    dfmom = pd.DataFrame()  # for Δψ dist. along mom-bud cell axis
-    dfbud = pd.DataFrame()
     dfmom_fp = pd.DataFrame()
 
 #    dfmom_fp = pd.DataFrame()  # for Δψ distributino mom + fp of bud
-    dfneck = pd.DataFrame()  # for average Δψ around the neck region
-    for k in sorted(filepaths):
+    dic_cell = {}
+    dic_bud = {}
+    dic_mom = {}
+    dic_neck = {}
+
+    for k in sorted(vtkdf.keys()):
         celltype = k.split('_')[0]
         celldate = k.split('_')[1]
-        # returns Dataframe of pos along x-axis for inidivual mom/bud cells
-        cell = vf.cellpos(filekeys_f[k], df)
+
+        # get Dataframe of pos along x-axis for inidivual mom/bud cells
+        cell, npos, npos_scaled = (vtkdf[k]['df'],
+                                   vtkdf[k]['neckpos'],
+                                   vtkdf[k]['neckpos_s'])
 
         # bin the dataframe according to individual (mom/bud) axis
         cell['ind_cell_binpos'] = vf.bincell(cell, 'ind_cell_axis', mbax)
-
 
         # bin the dataframe according to individual entire cell axis
         cell['whole_cell_binpos'] = vf.bincell(cell,
@@ -48,28 +71,46 @@ def mungedata(filepaths, df, **kwargs):
                                                cellax)
 
         #  DataFrame for mom bin points + first point on bud
-        fp = cell[cell['type'] == 'bud'][:1].reset_index(drop=True)
-        Xcell = cell.groupby('whole_cell_binpos').DY.mean()
-        Xcell[Xcell > cell.neckpos_cellaxis.max()] = np.nan
-        Xcell = Xcell.reset_index()
-        dfXcell = vf.xcell(Xcell, fp)
-        dfXcell['type'] = celltype
-        dfmom_fp = dfmom_fp.append(dfXcell)  # DataFrame output
+#        fp = cell[cell['type'] == 'bud'][:1].reset_index(drop=True)
+#        Xcell = cell.groupby('whole_cell_binpos').DY.mean()
+#        Xcell[Xcell > cell.neckpos_cellaxis.max()] = np.nan
+#        Xcell = Xcell.reset_index()
+#        dfXcell = vf.xcell(Xcell, fp)
+#        dfXcell['type'] = celltype
+#        dfmom_fp = dfmom_fp.append(dfXcell)  # DataFrame output
 
         # Δψ Series data to DataFrames
         DYseries, dy_wholecell = vf.dyseries(cell, k)
-        DYseries = DYseries.append(
-            pd.Series({'type': celltype, 'date': celldate}, name=k))
-        dfcell = dfcell.append(DYseries)
+        dic_cell[k] = DYseries
+        dic_cell[k].update({'type': celltype,
+                            'date': celldate,
+                            'neckpos': npos,
+                            'neckpos_cellaxis': npos_scaled})
+        dic_cell[k].update(dy_wholecell)
 
         # Δψ mom-bud axis data
         X = vf.mombudscale(cell, k, dy_wholecell.whole_cell_mean)
-        dfbud = dfbud.append(X['bud'])
-        dfmom = dfmom.append(X['mom'])
+        dic_bud[k] = X['bud']
+        dic_mom[k] = X['mom']
 
         # neckregion analy.
-        neckreg = vf.neckDY(k, cell)
-        dfneck = dfneck.append(neckreg, ignore_index=False)
+        vf.neckDY(k, cell, npos, outdic=dic_neck)
+
+    dfcell = pd.DataFrame.from_dict(dic_cell, orient='index')
+    dfbud = pd.DataFrame.from_dict(dic_bud, orient='index')
+    dfmom = pd.DataFrame.from_dict(dic_mom, orient='index')
+
+    # concatenate neckregion data to DataFrame
+    cell_id = []
+    frames = []
+    for ids, d in dic_neck.iteritems():
+        cell_id.append(ids)
+        frames.append(pd.DataFrame.from_dict(d, orient='columns'))
+    pd.concat(frames, keys=cell_id)
+    dfneck = pd.concat(frames, keys=cell_id)
+    dfneck.index.names = ['cellname', 'dist']
+    dfneck = dfneck.reset_index(level='dist')
+
     return dfcell, dfmom, dfbud, dfneck, dfmom_fp
 
 # _____________________________________________________________________________
@@ -126,13 +167,16 @@ if __name__ == '__main__':
 # =============================================================================
 #    Call mungedata(), set bins dict first
 # =============================================================================
-    bins = {'binsaxis': np.linspace(0., 1., 6),  # pos. along mom/bud cell
+    bins = {'pkldatpath': 'celldata.pkl',
+            'fkeys': filekeys_f,
+            'dfvoldata': dfmb,
+            'binsaxis': np.linspace(0., 1., 6),  # pos. along mom/bud cell
             'binsaxisbig': np.linspace(0, 1., 7),  # position along whole cell
             'binsvolbud': np.linspace(0, 40, 5),  # vol binning for bud
             'binsvolmom': np.array([0, 30, 40, 80.])}  # vol binning for mom
-    cellall, cellposmom, cellposbud, neckregion, dfmfp = mungedata(filekeys_f,
-                                                                   dfmb,
-                                                                   **bins)
+
+    cellall, cellposbud, cellposmom, neckregion, dfmfp = wrapper(regen=False,
+                                                                 **bins)
 
 # =============================================================================
 #    cleanup and add. labels for dataframes, calculate aggr measures etc.
@@ -208,9 +252,9 @@ if __name__ == '__main__':
               'data_ype': YPE, 'data_mfp': dfmfp,
               'counts': N, 'counts_buds': Nbud, 'counts_ype': Nype,
               'dfmom': cellposmom, 'dfbud': cellposbud,
-              'savefolder': datadir, 'save': True}
+              'savefolder': datadir, 'save': False}
     params.update(bins)
     plt.close('all')
 
-    for f in plotfuncs[1:2]:
+    for f in plotfuncs[0:1]:
         getattr(vp, f)(**params)

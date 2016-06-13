@@ -243,7 +243,7 @@ def plotNeck(**kwargs):
 
 def plotViolins(**kwargs):
     """
-    Violinplots for frac DY, mom vs bud scaled and DY abs distr
+    Violinplots for frac Δψ, mom vs bud scaled and Δψ abs distr
     """
     df = kwargs.get('data')
     datadir = kwargs.get('savefolder')
@@ -384,7 +384,7 @@ def plotYPE(**kwargs):
 
 def plotRegr(**kwargs):
     """
-    plot regression coeff of DY raw vs scaled
+    plot regression coeff of Δψ raw vs scaled
     """
     df = kwargs.get('data_ype')
     datadir = kwargs.get('savefolder')
@@ -422,3 +422,30 @@ def plotRegr(**kwargs):
                 plt.savefig(op.join(datadir,
                                     "{} vs raw by date.png".format(
                                         labeldic[p])))
+
+
+def plotmom_budfp(**kwargs):
+    """
+    plot regression coeff of Δψ raw vs scaled
+    """
+    df = kwargs.get('data_mfp')
+    datadir = kwargs.get('savefolder')
+    save = kwargs.get('save', False)
+    sns.set_style('whitegrid')
+    colnames = {'cellaxis_mom_budfp': 'mom position'}
+#                'DY': u'Δψ scaled'}
+    df = df.rename(columns=colnames)
+    with sns.plotting_context('talk'):
+        p = sns.FacetGrid(df,
+                          col="type",
+                          hue='type',
+                          col_wrap=4,
+                          col_order=COL_ODR,
+                          size=3,
+                          aspect=1.4)
+        p = p.map(sns.pointplot, 'mom position', 'DY')
+        s = df['mom position'].cat.categories.astype('str').tolist()
+        s[:-1] = [str(float(i)/10.) for i in s[:-1]]
+        p.set_xticklabels(labels=s)
+        if save:
+            p.savefig(op.join(datadir, "DY_mom_firstbud_facetted.png"))

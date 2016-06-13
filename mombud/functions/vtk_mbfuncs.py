@@ -110,7 +110,7 @@ def bincell(cellname, col, bins):
     return binnedcell
 
 
-def dyseries(df, fname, **kwargs):
+def dyseries(df, **kwargs):
     """
     Return cols of bud and mom agg. Δψ values per cell
     """

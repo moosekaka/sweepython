@@ -80,7 +80,7 @@ def mungedata(vtkdf, dfvols, **kwargs):
 #        dfmom_fp = dfmom_fp.append(dfXcell)  # DataFrame output
 
         # Δψ Series data to DataFrames
-        DYseries, dy_wholecell = vf.dyseries(cell, k)
+        DYseries, dy_wholecell = vf.dyseries(cell)
         dic_cell[k] = DYseries
         dic_cell[k].update({'type': celltype,
                             'date': celldate,
@@ -175,7 +175,7 @@ if __name__ == '__main__':
             'binsvolbud': np.linspace(0, 40, 5),  # vol binning for bud
             'binsvolmom': np.array([0, 30, 40, 80.])}  # vol binning for mom
 
-    cellall, cellposbud, cellposmom, neckregion, dfmfp = wrapper(regen=False,
+    cellall, cellposmom, cellposbud, neckregion, dfmfp = wrapper(regen=False,
                                                                  **bins)
 
 # =============================================================================
@@ -256,5 +256,5 @@ if __name__ == '__main__':
     params.update(bins)
     plt.close('all')
 
-    for f in plotfuncs[0:1]:
+    for f in plotfuncs[2:3]:
         getattr(vp, f)(**params)

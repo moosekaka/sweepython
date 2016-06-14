@@ -52,8 +52,8 @@ def mungedata(vtkdf, dfvols, **kwargs):
     dic_bud = {}
     dic_mom = {}
     dic_neck = {}
-
-    for k in sorted(vtkdf.keys()):
+    keys = sorted(vtkdf.keys())
+    for k in keys:
         celltype = k.split('_')[0]
         celldate = k.split('_')[1]
 
@@ -80,13 +80,14 @@ def mungedata(vtkdf, dfvols, **kwargs):
 #        dfmom_fp = dfmom_fp.append(dfXcell)  # DataFrame output
 
         # Δψ Series data to DataFrames
-        DYseries, dy_wholecell = vf.dyseries(cell)
-        dic_cell[k] = DYseries
+        dy_wholecell = cell.mean()[['DY', 'DY_abs']]
+        dy_wholecell.rename({'DY': 'whole_cell_mean',
+                             'DY_abs': 'whole_cell_abs'}, inplace=True)
+        dic_cell[k] = dy_wholecell.to_dict()
         dic_cell[k].update({'type': celltype,
                             'date': celldate,
                             'neckpos': npos,
                             'neckpos_cellaxis': npos_scaled})
-        dic_cell[k].update(dy_wholecell)
 
         # Δψ mom-bud axis data
         X = vf.mombudscale(cell, k, dy_wholecell.whole_cell_mean)
@@ -96,7 +97,20 @@ def mungedata(vtkdf, dfvols, **kwargs):
         # neckregion analy.
         vf.neckDY(k, cell, npos, outdic=dic_neck)
 
+    # get agg. stat. measures for concatenate DataFrame of all cells
+    frames = []
+    for i in keys:
+        vtkdf[i]['df']['name'] = i
+        vtkdf[i]['df'].set_index('name', inplace=True)
+    dftemp = pd.concat([vtkdf[k]['df'] for k in keys])
+    dftemp = dftemp.reset_index()
+    df_agg = dftemp.groupby(['name', 'type'])[['DY', 'DY_abs']].agg(
+        [np.mean, np.median]).unstack().reset_index()
+    cnames = ['_'.join(c) for c in df_agg.columns.values[1:]]
+    df_agg.columns = ['index'] + cnames
+
     dfcell = pd.DataFrame.from_dict(dic_cell, orient='index')
+    dfcell = dfcell.merge(df_agg, left_index=True, right_on='index')
     dfbud = pd.DataFrame.from_dict(dic_bud, orient='index')
     dfmom = pd.DataFrame.from_dict(dic_mom, orient='index')
 
@@ -181,6 +195,7 @@ if __name__ == '__main__':
 # =============================================================================
 #    cleanup and add. labels for dataframes, calculate aggr measures etc.
 # =============================================================================
+    cellall = cellall.set_index('index')
     cellall['budvol'] = dfmb.bud
     cellall['momvol'] = dfmb.mom
     for i in [cellall, cellposbud, cellposmom, dfmfp]:
@@ -246,6 +261,7 @@ if __name__ == '__main__':
                  'plotDyAxisDist',
                  'plotNeck',
                  'plotYPE',
+                 'plotViolins',
                  'plotmom_budfp',
                  'plotRegr']
     params = {'data': cellall, 'neckdata': neckregion,
@@ -256,5 +272,5 @@ if __name__ == '__main__':
     params.update(bins)
     plt.close('all')
 
-    for f in plotfuncs[2:3]:
+    for f in plotfuncs[5:6]:
         getattr(vp, f)(**params)

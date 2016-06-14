@@ -83,6 +83,7 @@ def cellpos(cellname, df, **kwargs):
                'ind_cell_axis'] = (celldf.ix[:, 'x']-xn) / (xt-xn)
     celldf.loc[celldf.type ==
                'mom', 'ind_cell_axis'] = (celldf.ix[:, 'x']-xb) / (xn-xb)
+    celldf.index.name = cellkey
     return dict(df=celldf, neckpos=xn, neckpos_s=xn_scaled)
 
 
@@ -121,14 +122,16 @@ def dyseries(df, **kwargs):
 #              'DY_median_mom',
 #              'DY_abs_mean_bud',
 #              'DY_abs_mean_mom']
-    dy_series = df.groupby('type')[['DY', 'DY_abs']].agg(
-        [np.mean, np.median]).unstack().reset_index()
-    dy_series['lab'] = dy_series['level_0'].str.cat([dy_series['level_1'],
-                                                     dy_series['type']],
-                                                    sep='_')
 
-    dy_series = dy_series[[0, 'lab']].set_index('lab')
-    dy_series = dy_series[0].to_dict()
+#    dy_series = df.groupby('type')[['DY', 'DY_abs']].agg(
+#        [np.mean, np.median]).unstack().reset_index()
+#    dy_series['lab'] = dy_series['level_0'].str.cat([dy_series['level_1'],
+#                                                     dy_series['type']],
+#                                                    sep='_')
+#
+#    dy_series = dy_series[[0, 'lab']].set_index('lab')
+#    dy_series = dy_series[0].to_dict()
+    dy_series={}
 
     return dy_series, dy_wholecell
 

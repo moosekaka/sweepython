@@ -111,31 +111,6 @@ def bincell(cellname, col, bins):
     return binnedcell
 
 
-def dyseries(df, **kwargs):
-    """
-    Return cols of bud and mom agg. Δψ values per cell
-    """
-    dy_wholecell = df.mean()[['DY', 'DY_abs']]
-    dy_wholecell.rename({'DY': 'whole_cell_mean',
-                         'DY_abs': 'whole_cell_abs'}, inplace=True)
-#    groups = ['DY_median_bud',
-#              'DY_median_mom',
-#              'DY_abs_mean_bud',
-#              'DY_abs_mean_mom']
-
-#    dy_series = df.groupby('type')[['DY', 'DY_abs']].agg(
-#        [np.mean, np.median]).unstack().reset_index()
-#    dy_series['lab'] = dy_series['level_0'].str.cat([dy_series['level_1'],
-#                                                     dy_series['type']],
-#                                                    sep='_')
-#
-#    dy_series = dy_series[[0, 'lab']].set_index('lab')
-#    dy_series = dy_series[0].to_dict()
-    dy_series={}
-
-    return dy_series, dy_wholecell
-
-
 def mombudscale(df, fname, cellmean):
     """
     create mom/bud Series of average Δψ, scaled to cell minmax values,

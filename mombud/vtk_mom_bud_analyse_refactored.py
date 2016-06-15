@@ -22,7 +22,8 @@ def wrapper(regen=False, **kwargs):
     regenerate individual vtk DataFrames via vf.cellpos()
     """
     fpath = kwargs.pop('pkldatpath')
-    if regen:
+    # regenerata pickle file if not exist
+    if regen or not op.isfile(fpath):
         F = {}
         dfvol = kwargs.pop('dfvoldata')
         filepaths = kwargs.pop('fkeys')
@@ -272,3 +273,8 @@ if __name__ == '__main__':
 
     for f in plotfuncs[3:5]:
         getattr(vp, f)(**params)
+
+    with open('actual.pkl', 'wb') as out:
+        dicres = dict(zip(['cellres', 'momres', 'budres', 'neckres'],
+                          [cellall, cellposmom, cellposbud, neckregion]))
+        pickle.dump(dicres, out)

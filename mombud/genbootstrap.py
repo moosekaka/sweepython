@@ -59,7 +59,7 @@ def bootNeck(vtkdf, dd=0.3, num_runs=100, save=False, **kwargs):
             pickle.dump(merge, out)
 # _____________________________________________________________________________
 if __name__ == '__main__':
-    params = {'inpdatpath': 'celldata.pkl',
-              'outdatapath': 'bootneck.pkl'}
-    vtkdf = vf.wrapper(**params)
-    bootNeck(vtkdf, dd=0.9, num_runs=4, save=False, **params)
+    args = {'inpdatpath': 'celldata.pkl',
+            'outdatapath': 'bootneck.pkl'}
+    data = vf.wrapper(**args)
+    bootNeck(data, dd=0.9, num_runs=1, save=False, **args)

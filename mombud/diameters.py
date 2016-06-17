@@ -6,13 +6,11 @@ Created on Wed Jun 15 00:50:45 2016
 """
 from collections import defaultdict
 import numpy as np
-import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 from mombud.functions import vtk_mbfuncs as vf
 # pylint: disable=C0103
 COL_ODR = ['MFB1', 'NUM1', 'YPT11', 'WT', 'YPE', 'YPL', 'YPR']
-
 
 # _____________________________________________________________________________
 if __name__ == '__main__':

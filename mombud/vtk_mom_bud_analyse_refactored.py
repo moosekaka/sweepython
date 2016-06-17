@@ -89,14 +89,13 @@ def mungedata(vtkdf, **kwargs):
     dicout['dfmom'] = pd.DataFrame.from_dict(dicdf['mom'], orient='index')
 
     return dicout
-# _____________________________________________________________________________
-if __name__ == '__main__':
-    plt.close('all')
 
-# =============================================================================
-#     Data Input
-# =============================================================================
-    # new data
+
+def inputdata():
+    """
+    Get input data from specified work dirs
+    """
+
     datadir = op.join(os.getcwd(), 'mutants', 'transformedData', 'filtered')
     # old data
     datadir_old = op.join(os.getcwd(), 'data', 'transformedData')
@@ -139,32 +138,26 @@ if __name__ == '__main__':
     filekeys_f.update(filekeys_old)  # add YPE to dict
     # dataframe of neck, mom and bud tip positions, bud and mom volumes
     dfmb = dfmb.append(dfmb_o[dfmb_o.media != 'YPD'])
+    return filekeys_f, dfmb, datadir
 
 # =============================================================================
-#    Call mungedata(), set bins dict first
+#     Data Input
 # =============================================================================
-    bins = {'inpdatpath': 'celldata.pkl',
-            'fkeys': filekeys_f,
-            'dfvoldata': dfmb,
-            'binsaxis': np.linspace(0., 1., 6),  # pos. along mom/bud cell
-            'binsaxisbig': np.linspace(0, 1., 7),  # position along whole cell
-            'binsvolbud': np.linspace(0, 40, 5),  # vol binning for bud
-            'binsvolmom': np.array([0, 30, 40, 80.])}  # vol binning for mom
-    cell_dataframes = vf.wrapper(regen=False, **bins)
-    Dout = mungedata(cell_dataframes, **bins)
+def setupDataFrames(**kwargs):
+    """
+    Set population level data and update parameters dict for plotting
+    """
+    kwargs['filekeys_f'], kwargs['dfmb'], kwargs['savefolder'] = inputdata()
+    Dout = mungedata(vf.wrapper(**kwargs), **kwargs)
     cellall = Dout['dfcell']
     cellposmom = Dout['dfmom']
     cellposbud = Dout['dfbud']
-#    neckregion = Dout['dfneck']
-    dfmfp = Dout['dfmom_fp']
 
-# =============================================================================
-#    cleanup and add. labels for dataframes, calculate aggr measures etc.
-# =============================================================================
+    # cleanup and add. labels for dataframes, calculate aggr measures etc.
     cellall = cellall.set_index('index')
-    cellall['budvol'] = dfmb.bud
-    cellall['momvol'] = dfmb.mom
-    for i in [cellall, cellposbud, cellposmom, dfmfp]:
+    cellall['budvol'] = kwargs['dfmb'].bud
+    cellall['momvol'] = kwargs['dfmb'].mom
+    for i in [cellall, cellposbud, cellposmom]:
         i.reset_index(inplace=True)
 
     # strip 'c' from some dates
@@ -197,11 +190,11 @@ if __name__ == '__main__':
         dic[key] = pd.concat([val, cellall.ix[:, ['type']]], axis=1)
         dic[key]['%svol' % key] = cellall['%svol' % key]
         dic[key]['binvol'] = vf.bincell(
-            dic[key], '%svol' % key, bins['binsvol%s' % key])
+            dic[key], '%svol' % key, kwargs['binsvol%s' % key])
 
     # Add bins used for plotting budding progression
     # add the 2. cat. for cells that are larger than the 90th percentile
-    binsaxisbig = bins['binsaxisbig']
+    binsaxisbig = kwargs['binsaxisbig']
     cellall['bin_budprog'] = vf.bincell(cellall,
                                         'budvolratio',
                                         np.r_[binsaxisbig, [2.]])
@@ -211,35 +204,56 @@ if __name__ == '__main__':
     rejectlist = dic['mom'].ix[(np.asarray(dic['mom'].momvol) > 100) &
                                (dic['mom'].type != 'YPD'), 'index']
     cellall = cellall.ix[~ cellall.ix[:, 'index'].isin(rejectlist)]
-    cellposmom = dic['mom'].ix[~dic['mom'].ix[:, 'index'].isin(rejectlist)]
-    cellposbud = dic['bud'].ix[~dic['bud'].ix[:, 'index'].isin(rejectlist)]
 
-    # labels for counts of each condition, facet
-    Nype = YPE.groupby('date').size().to_dict()
-    Nbud = cellall.groupby(['type', 'binbudvol']).size()
-    N = cellall.groupby('type').size().to_dict()  # counts for each type
-    Ndate = cellall.groupby('date').size().to_dict()  # counts for each date
+    # Output dict labels
+    outputdic = {'data': cellall,
+                 'data_ype': YPE}
+    outputdic['dfmom'] = (dic['mom'].
+                          ix[~dic['mom'].ix[:, 'index'].isin(rejectlist)])
+    outputdic['dfbud'] = (dic['bud'].
+                          ix[~dic['bud'].ix[:, 'index'].isin(rejectlist)])
+    outputdic['counts'] = cellall.groupby('type').size().to_dict()  # type
+    outputdic['counts_ype'] = YPE.groupby('date').size().to_dict()
+    outputdic['counts_buds'] = cellall.groupby(['type', 'binbudvol']).size()
+    outputdic['counts_date'] = cellall.groupby('date').size().to_dict()
+    outputdic.update(kwargs)
+    return outputdic
 
-# =============================================================================
-#     Plot using seaborn
-# =============================================================================
-    plotfuncs = ['plotSizeDist',
-                 'plotBudProgr',
-                 'plotDyAxisDist',
-                 'plotGFP',
-                 'plotViolins',
-                 'plotRegr']
-#                 'plotNeck',
-#                 'plotmom_budfp',
-    params = {'data': cellall,
-#             'neckdata': neckregion,
-              'data_ype': YPE, 'data_mfp': dfmfp,
-              'counts': N, 'counts_buds': Nbud,
-              'counts_ype': Nype, 'counts_date': Ndate,
-              'dfmom': cellposmom, 'dfbud': cellposbud,
-              'savefolder': datadir, 'save': True}
-    params.update(bins)
+
+def main(*plot_func_names, **kwargs):
+    """
+    Main
+    """
+    wd = os.path.expanduser(os.sep.join(
+        ('~', 'Documents', 'Github', 'sweepython', 'WorkingData')))
+    os.chdir(wd)
+    args = {'regen': False,
+            'save': False,  # toggle to save plots
+            'inpdatpath': 'celldata.pkl',
+            'binsaxis': np.linspace(0., 1., 6),  # pos. along mom/bud cell
+            'binsaxisbig': np.linspace(0, 1., 11),  # position along whole cell
+            'binsvolbud': np.linspace(0, 40, 5),  # vol binning for bud
+            'binsvolmom': np.array([0, 30, 40, 80.])}
+
+    # update defaults to  specified pars. in main()
+    for arg in args:
+        if arg in kwargs:
+            args[arg] = kwargs[arg]
+
+    outputargs = setupDataFrames(**args)
+
+    # plots
+    for f in plot_func_names:
+        getattr(vp, f)(**outputargs)
+
+# _____________________________________________________________________________
+if __name__ == '__main__':
     plt.close('all')
-
-    for f in plotfuncs[3:4]:
-        getattr(vp, f)(**params)
+    L = ['plotDyAxisDist',  # 0
+         'plotSizeDist',  # 1
+         'plotBudProgr',  # 2
+         'plotGFP',     # 3
+         'plotViolins',  # 4
+         'plotRegr']
+    D = dict(zip(range(len(L)), L))
+    main(D[4], save=True)

@@ -4,7 +4,10 @@ Created on Thu Feb 11 16:45:59 2016
 Functions for mom bud analysis in module vtk_mom_bud_analyse.py
 @author: sweel
 """
+import sys
+import os.path as op
 from collections import defaultdict
+import cPickle as pickle
 import pandas as pd
 import numpy as np
 from tvtk.api import tvtk
@@ -12,6 +15,33 @@ import vtk
 # pylint: disable=C0103
 vtkF = defaultdict(dict)
 mombud = defaultdict(dict)
+
+
+def wrapper(regen=False, **kwargs):
+    """
+    wrapper func to call mungedata, pass default params in kwargs and
+    regenerate individual vtk DataFrames via vf.cellpos()
+    """
+    fpath = kwargs.get('inpdatpath')
+
+    # regenerata pickle file if not exist
+    if regen or not op.isfile(fpath):
+        F = {}
+
+        for k in ['dfvoldata', 'fkeys']:
+            if k not in kwargs:
+                sys.exit('Missing {}'.format(k))
+        dfvol = kwargs.get('dfvoldata')
+        filepaths = kwargs.get('fkeys')
+
+        for k in sorted(filepaths):
+            F[k] = cellpos(filepaths[k], dfvol)
+        with open(fpath, 'wb') as out:
+            pickle.dump(F, out)
+    else:
+        with open(fpath, 'rb') as inp:
+            F = pickle.load(inp)
+    return F
 
 
 def vtkopen(fpath):
@@ -51,7 +81,8 @@ def cellpos(cellname, df, **kwargs):
 
     """
     dyscale = kwargs.pop("dyscale", "DY_minmax")
-    dyraw = kwargs.pop("dyraw", "DY_raw")
+#    dyraw = kwargs.pop("dyraw", "DY_raw")
+    dyraw = kwargs.pop("dyraw", "bkstGFP")
 
     cellkey = cellname.rsplit('\\', 1)[1][:-4]
     data = vtkopen(cellname)

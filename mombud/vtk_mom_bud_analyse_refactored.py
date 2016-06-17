@@ -16,28 +16,6 @@ import wrappers as wr
 # pylint: disable=C0103
 
 
-def wrapper(regen=False, **kwargs):
-    """
-    wrapper func to call mungedata, pass default params in kwargs and
-    regenerate individual vtk DataFrames via vf.cellpos()
-    """
-    fpath = kwargs.pop('pkldatpath')
-    # regenerata pickle file if not exist
-    if regen or not op.isfile(fpath):
-        F = {}
-        dfvol = kwargs.pop('dfvoldata')
-        filepaths = kwargs.pop('fkeys')
-        for k in sorted(filepaths):
-            F[k] = vf.cellpos(filepaths[k], dfvol)
-        with open(fpath, 'wb') as outpt:
-            pickle.dump(F, outpt)
-
-    with open(fpath, 'rb') as inp:
-        F = pickle.load(inp)
-
-    return mungedata(F, **kwargs)
-
-
 def mungedata(vtkdf, **kwargs):
     """
     compute Δψ distrbution along cellaxis for each ind. cell and append
@@ -90,7 +68,7 @@ def mungedata(vtkdf, **kwargs):
         dicdf['mom'][k] = X['mom']
 
         # neckregion analy.
-        vf.neckDY(k, cell, vtkdf[k]['neckpos'], outdic=dicdf['neck'])
+#        vf.neckDY(k, cell, vtkdf[k]['neckpos'], outdic=dicdf['neck'])
 
         # set common index for ind cell so that concatenate is possible
         vtkdf[k]['df']['name'] = k
@@ -109,17 +87,6 @@ def mungedata(vtkdf, **kwargs):
         df_agg, left_index=True, right_on='index')
     dicout['dfbud'] = pd.DataFrame.from_dict(dicdf['bud'], orient='index')
     dicout['dfmom'] = pd.DataFrame.from_dict(dicdf['mom'], orient='index')
-
-    # concatenate neckregion data to DataFrame
-    cell_id = []
-    frames = []
-    for ids, d in dicdf['neck'].iteritems():
-        cell_id.append(ids)
-        frames.append(pd.DataFrame.from_dict(d, orient='columns'))
-    pd.concat(frames, keys=cell_id)
-    dicout['dfneck'] = pd.concat(frames, keys=cell_id)
-    dicout['dfneck'].index.names = ['cellname', 'dist']
-    dicout['dfneck'].reset_index(level='dist', inplace=True)
 
     return dicout
 # _____________________________________________________________________________
@@ -150,13 +117,13 @@ if __name__ == '__main__':
         filext = "*vtk"
         vtkF = wr.ddwalk(datadir, filext, stop=-4)
     except LookupError:
-        sys.exit("error filetypes %s not found in %s" % (filext, datadir))
+        sys.exit("error filetypes {} not found in {}".format(filext, datadir))
 
     try:
         filext = "*vtk"
         vtkF_old = wr.swalk(datadir_old, filext, stop=-4)
     except LookupError:
-        sys.exit("error filetypes %s not found in %s" % (filext, datadir))
+        sys.exit("error filetypes {} not found in {}".format(filext, datadir))
 
     # file paths for VTKs
     filekeys_old = {item: vtkF_old[item] for item
@@ -176,19 +143,19 @@ if __name__ == '__main__':
 # =============================================================================
 #    Call mungedata(), set bins dict first
 # =============================================================================
-    bins = {'pkldatpath': 'celldata.pkl',
+    bins = {'inpdatpath': 'celldata.pkl',
             'fkeys': filekeys_f,
             'dfvoldata': dfmb,
             'binsaxis': np.linspace(0., 1., 6),  # pos. along mom/bud cell
             'binsaxisbig': np.linspace(0, 1., 7),  # position along whole cell
             'binsvolbud': np.linspace(0, 40, 5),  # vol binning for bud
             'binsvolmom': np.array([0, 30, 40, 80.])}  # vol binning for mom
-
-    Dout = wrapper(regen=False, **bins)
+    cell_dataframes = vf.wrapper(regen=False, **bins)
+    Dout = mungedata(cell_dataframes, **bins)
     cellall = Dout['dfcell']
     cellposmom = Dout['dfmom']
     cellposbud = Dout['dfbud']
-    neckregion = Dout['dfneck']
+#    neckregion = Dout['dfneck']
     dfmfp = Dout['dfmom_fp']
 
 # =============================================================================
@@ -209,10 +176,10 @@ if __name__ == '__main__':
     YPE = YPE.reset_index(drop=True)
 
     # remove high and low Δψ day
-    cellall = cellall.ix[~(((cellall.type == 'YPE') &
-                            (cellall.date == '052315')) |
-                           ((cellall.type == 'WT') &
-                            (cellall.date == '032716')))]
+#    cellall = cellall.ix[~(((cellall.type == 'YPE') &
+#                            (cellall.date == '052315')) |
+#                           ((cellall.type == 'WT') &
+#                            (cellall.date == '032716')))]
 
     cellall['frac'] = (cellall.ix[:, 'DY_median_bud'] /
                        cellall.ix[:, 'DY_median_mom'])
@@ -251,6 +218,7 @@ if __name__ == '__main__':
     Nype = YPE.groupby('date').size().to_dict()
     Nbud = cellall.groupby(['type', 'binbudvol']).size()
     N = cellall.groupby('type').size().to_dict()  # counts for each type
+    Ndate = cellall.groupby('date').size().to_dict()  # counts for each date
 
 # =============================================================================
 #     Plot using seaborn
@@ -258,23 +226,20 @@ if __name__ == '__main__':
     plotfuncs = ['plotSizeDist',
                  'plotBudProgr',
                  'plotDyAxisDist',
-                 'plotNeck',
-                 'plotYPE',
+                 'plotGFP',
                  'plotViolins',
-                 'plotmom_budfp',
                  'plotRegr']
-    params = {'data': cellall, 'neckdata': neckregion,
+#                 'plotNeck',
+#                 'plotmom_budfp',
+    params = {'data': cellall,
+#             'neckdata': neckregion,
               'data_ype': YPE, 'data_mfp': dfmfp,
-              'counts': N, 'counts_buds': Nbud, 'counts_ype': Nype,
+              'counts': N, 'counts_buds': Nbud,
+              'counts_ype': Nype, 'counts_date': Ndate,
               'dfmom': cellposmom, 'dfbud': cellposbud,
-              'savefolder': datadir, 'save': False}
+              'savefolder': datadir, 'save': True}
     params.update(bins)
     plt.close('all')
 
-    for f in plotfuncs[3:5]:
+    for f in plotfuncs[3:4]:
         getattr(vp, f)(**params)
-
-    with open('actual.pkl', 'wb') as out:
-        dicres = dict(zip(['cellres', 'momres', 'budres', 'neckres'],
-                          [cellall, cellposmom, cellposbud, neckregion]))
-        pickle.dump(dicres, out)

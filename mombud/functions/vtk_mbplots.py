@@ -323,19 +323,20 @@ def plotViolins(**kwargs):
             plt.savefig(op.join(datadir, "DY_abs_dist.png"))
 
 
-def plotYPE(**kwargs):
+def plotGFP(**kwargs):
     """
-    Violinplots for YPE subdataset
+    Violinplots for GFP uptake by date and carbon type
     """
     df = kwargs.get('data')
-    dfype = kwargs.get('data_ype')
+#    dfype = kwargs.get('data_ype')
     N = kwargs.get('counts')
-    Nype = kwargs.get('counts_ype')
+    Ndate = kwargs.get('counts_date')
+#    Nype = kwargs.get('counts_ype')
     datadir = kwargs.get('savefolder')
     save = kwargs.get('save', False)
 
     with sns.plotting_context('talk', font_scale=1.):
-        BIG5 = pd.melt(dfype,
+        BIG5 = pd.melt(df,
                        id_vars=['date'],
                        value_vars=['whole_cell_abs',
                                    'DY_abs_mean_bud',
@@ -352,10 +353,10 @@ def plotYPE(**kwargs):
         plt.setp(leg,
                  bbox_to_anchor=(.75, .85, .1, .2))
         g.set_ylim(0, 4000)
-        label_n(g, Nype)
+        label_n(g, Ndate)
 
         if save:
-            plt.savefig(op.join(datadir, "Violin-DY_raw_ype_date.png"))
+            plt.savefig(op.join(datadir, "Violin-GFP_by_date.png"))
 
         BIG6 = pd.melt(df,
                        id_vars=['type'],
@@ -375,18 +376,18 @@ def plotYPE(**kwargs):
         leg = g.get_legend()
         plt.setp(leg,
                  bbox_to_anchor=(.75, .85, .1, .2))
-        g.set_ylim(0, 2000)
+        g.set_ylim(0, 4000)
         label_n(g, N)
 
         if save:
-            plt.savefig(op.join(datadir, "Violin-DY_raw_ype_date.png"))
+            plt.savefig(op.join(datadir, "Violin-GFP_by_type.png"))
 
 
 def plotRegr(**kwargs):
     """
     plot regression coeff of Δψ raw vs scaled
     """
-    df = kwargs.get('data_ype')
+    df = kwargs.get('data')
     datadir = kwargs.get('savefolder')
     save = kwargs.get('save', False)
 
@@ -405,7 +406,7 @@ def plotRegr(**kwargs):
                        data=a,
                        hue='date',
                        size=8,
-                       aspect=1.5).set(xlim=(0, 2000))
+                       aspect=1.5).set(xlim=(0, 2000), xlabel='raw GFP')
             if save:
                 plt.savefig(op.join(datadir,
                                     "{} vs raw.png".format(labeldic[p])))
@@ -415,7 +416,9 @@ def plotRegr(**kwargs):
                            data=a,
                            col='date',
                            hue='date',
-                           col_wrap=3).set(xlim=(0, 2000), ylim=(0., 1.))
+                           col_wrap=3).set(xlim=(0, 2000),
+                                           ylim=(0., 1.),
+                                           xlabel='raw GFP')
             label_n(g, r2, Rsqr=True)
 
             if save:
@@ -426,7 +429,7 @@ def plotRegr(**kwargs):
 
 def plotmom_budfp(**kwargs):
     """
-    plot regression coeff of Δψ raw vs scaled
+    plot Δψ of mom and first bud point
     """
     df = kwargs.get('data_mfp')
     datadir = kwargs.get('savefolder')

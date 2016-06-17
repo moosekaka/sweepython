@@ -2,7 +2,6 @@
 """
 Main module to analyze mom bud asymmetry
 """
-import sys
 import os
 import os.path as op
 import cPickle as pickle
@@ -16,14 +15,36 @@ import wrappers as wr
 # pylint: disable=C0103
 
 
-def mungedata(vtkdf, **kwargs):
+class UsageError(Exception):
+    """
+    Class for user-facing (non-programming) errors
+    """
+    pass
+
+
+def mungedata(vtkdf, mbax=None, cellax=None, **kwargs):
     """
     compute Δψ distrbution along cellaxis for each ind. cell and append
     to the resepective DataFrames
+
+    Parameters
+    ----------
+    vtkdf : dict
+        dict of DataFrames of ind. cell data
+    mbax : np.array
+        bin cell position for ind. mom/bud cell
+    cellax : np. array
+        bin cell position for whole cell
+    Returns
+    -------
+    dicout : dict
+        dictionary of DataFrames for mom bud analyses
     """
-    # bins for binning the bud progression ratio
-    mbax = kwargs.get('binsaxis', 0)  # ind mom/bud cell bins
-    cellax = kwargs.get('binsaxisbig', 0)  # whole cell bins
+
+    if mbax is None:
+        raise UsageError('please specify bin range for mom bud axis')
+    if cellax is None:
+        raise UsageError('please specify bin range for whole cell axis')
 
     # Dicts for budding progression and budratio DataFrames, etc.
     dicout = defaultdict(dict)
@@ -43,15 +64,6 @@ def mungedata(vtkdf, **kwargs):
                                                'whole_cell_axis',
                                                cellax)
 
-        #  DataFrame for mom bin points + first point on bud
-#        fp = cell[cell['type'] == 'bud'][:1].reset_index(drop=True)
-#        Xcell = cell.groupby('whole_cell_binpos').DY.mean()
-#        Xcell[Xcell > cell.neckpos_cellaxis.max()] = np.nan
-#        Xcell = Xcell.reset_index()
-#        dfXcell = vf.xcell(Xcell, fp)
-#        dfXcell['type'] = celltype
-#        dfmom_fp = dfmom_fp.append(dfXcell)  # DataFrame output
-
         # Δψ Series data to DataFrames
         dy_wholecell = cell.mean()[['DY', 'DY_abs']]
         dy_wholecell.rename({'DY': 'whole_cell_mean',
@@ -66,9 +78,6 @@ def mungedata(vtkdf, **kwargs):
         X = vf.mombudscale(cell, k, dy_wholecell.whole_cell_mean)
         dicdf['bud'][k] = X['bud']
         dicdf['mom'][k] = X['mom']
-
-        # neckregion analy.
-#        vf.neckDY(k, cell, vtkdf[k]['neckpos'], outdic=dicdf['neck'])
 
         # set common index for ind cell so that concatenate is possible
         vtkdf[k]['df']['name'] = k
@@ -94,9 +103,17 @@ def mungedata(vtkdf, **kwargs):
 def inputdata():
     """
     Get input data from specified work dirs
+
+    Returns
+    -------
+    filekeys_f, datadir : dict(Str), Str
+        filepaths of inputs and folder for data files
+    dfmb : DataFrame
+        cell volume data
     """
 
     datadir = op.join(os.getcwd(), 'mutants', 'transformedData', 'filtered')
+
     # old data
     datadir_old = op.join(os.getcwd(), 'data', 'transformedData')
 
@@ -115,14 +132,16 @@ def inputdata():
     try:
         filext = "*vtk"
         vtkF = wr.ddwalk(datadir, filext, stop=-4)
-    except LookupError:
-        sys.exit("error filetypes {} not found in {}".format(filext, datadir))
+    except:
+        raise UsageError(
+            "filetypes {} not found in {}".format(filext, datadir))
 
     try:
         filext = "*vtk"
         vtkF_old = wr.swalk(datadir_old, filext, stop=-4)
-    except LookupError:
-        sys.exit("error filetypes {} not found in {}".format(filext, datadir))
+    except:
+        raise UsageError(
+            "filetypes {} not found in {}".format(filext, datadir))
 
     # file paths for VTKs
     filekeys_old = {item: vtkF_old[item] for item
@@ -140,13 +159,17 @@ def inputdata():
     dfmb = dfmb.append(dfmb_o[dfmb_o.media != 'YPD'])
     return filekeys_f, dfmb, datadir
 
-# =============================================================================
-#     Data Input
-# =============================================================================
+
 def setupDataFrames(**kwargs):
     """
     Set population level data and update parameters dict for plotting
+
+    Returns
+    -------
+    outputdic : dict
+        dictionary of DataFrames for mom bud analyses
     """
+
     kwargs['filekeys_f'], kwargs['dfmb'], kwargs['savefolder'] = inputdata()
     Dout = mungedata(vf.wrapper(**kwargs), **kwargs)
     cellall = Dout['dfcell']
@@ -194,7 +217,7 @@ def setupDataFrames(**kwargs):
 
     # Add bins used for plotting budding progression
     # add the 2. cat. for cells that are larger than the 90th percentile
-    binsaxisbig = kwargs['binsaxisbig']
+    binsaxisbig = kwargs['cellax']
     cellall['bin_budprog'] = vf.bincell(cellall,
                                         'budvolratio',
                                         np.r_[binsaxisbig, [2.]])
@@ -220,30 +243,35 @@ def setupDataFrames(**kwargs):
     return outputdic
 
 
-def main(*plot_func_names, **kwargs):
+def main(*args, **kwargs):
     """
     Main
+
+    args
+    ----
+    list of plotting function names
     """
+
     wd = os.path.expanduser(os.sep.join(
         ('~', 'Documents', 'Github', 'sweepython', 'WorkingData')))
     os.chdir(wd)
-    args = {'regen': False,
-            'save': False,  # toggle to save plots
-            'inpdatpath': 'celldata.pkl',
-            'binsaxis': np.linspace(0., 1., 6),  # pos. along mom/bud cell
-            'binsaxisbig': np.linspace(0, 1., 11),  # position along whole cell
-            'binsvolbud': np.linspace(0, 40, 5),  # vol binning for bud
-            'binsvolmom': np.array([0, 30, 40, 80.])}
+    inpt_args = {'regen': False,
+                 'save': False,  # toggle to save plots
+                 'inpdatpath': 'celldata.pkl',
+                 'mbax': np.linspace(0., 1., 6),  # pos. along mom/bud cell
+                 'cellax': np.linspace(0, 1., 11),  # position along whole cell
+                 'binsvolbud': np.linspace(0, 40, 5),  # vol binning for bud
+                 'binsvolmom': np.array([0, 30, 40, 80.])}
 
     # update defaults to  specified pars. in main()
-    for arg in args:
+    for arg in inpt_args:
         if arg in kwargs:
-            args[arg] = kwargs[arg]
+            inpt_args[arg] = kwargs[arg]
 
-    outputargs = setupDataFrames(**args)
+    outputargs = setupDataFrames(**inpt_args)
 
     # plots
-    for f in plot_func_names:
+    for f in args:
         getattr(vp, f)(**outputargs)
 
 # _____________________________________________________________________________
@@ -256,4 +284,5 @@ if __name__ == '__main__':
          'plotViolins',  # 4
          'plotRegr']
     D = dict(zip(range(len(L)), L))
-    main(D[4], save=True)
+#    main(*(D.values()), save=True)
+    main(D[4], save=False)

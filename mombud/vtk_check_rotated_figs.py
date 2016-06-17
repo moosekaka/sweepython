@@ -4,7 +4,6 @@ Batch visualize skel and surface of rotated cell/ mitoskels
 Also writes out to a pickle file the transformed mom, bud and neck coordinates
 which is used for mombud analysis
 """
-import sys
 import os
 import os.path as op
 import cPickle as pickle
@@ -15,8 +14,14 @@ from tvtk.api import tvtk
 import wrappers as wr
 from mombud.functions import vtkvizfuncs as vz
 from mombud.classes.vtk_pick_mombud_class import CellEllipse
-
 # pylint: disable=C0103
+
+class UsageError(Exception):
+    """
+    Class for user-facing (non-programming) errors
+    """
+    pass
+
 datadir = op.join(os.getcwd(), 'mutants', 'transformedData2')
 rawdir = op.join(os.getcwd(), 'mutants', 'transformedData2')
 surfdir = op.join(os.getcwd(), 'mutants', 'surfaceFiles')
@@ -42,9 +47,8 @@ try:
                     '*.vtk', start=0, stop=-12)
     mombud = wr.swalk(op.join(datadir), '*.csv', stop=-4)
 
-except Exception:
-    print "Error: check your filepaths"
-    sys.exit()
+except:
+    raise UsageError("check your filepaths")
 
 ##############################################################################
 if __name__ == "__main__":

@@ -2,7 +2,6 @@
 """
 Plot mitoskel network in with various scalar values
 """
-import sys
 import os
 import os.path as op
 import matplotlib.pyplot as plt
@@ -11,6 +10,15 @@ from pipeline.make_networkx import makegraph as mg
 from mombud.functions import vtkvizfuncs as vz
 import wrappers as wr
 # pylint: disable=C0103
+
+
+class UsageError(Exception):
+    """
+    Class for user-facing (non-programming) errors
+    """
+    pass
+
+
 plt.close('all')
 mlab.close(all=True)
 datadir = op.join(os.getcwd(), 'mutants')
@@ -29,9 +37,9 @@ if __name__ == '__main__':
         vtkS = wr.swalk(op.join(inptdir, 'surfaceFiles'),
                         '*surface.vtk', stop=-4)
 
-    except Exception:
-        print "Check your filepaths\nSearch directory is %s\n" % inptdir
-        sys.exit()
+    except:
+        raise UsageError(
+            "Check your filepaths\nSearch directory is %s\n" % inptdir)
 
     data = vz.callreader(vtkF[filekey])
     node_data, edge_data, nxgrph = mg(data, filekey)

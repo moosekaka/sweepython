@@ -17,20 +17,48 @@ vtkF = defaultdict(dict)
 mombud = defaultdict(dict)
 
 
+class UsageError(Exception):
+    """
+    Class for user-facing (non-programming) errors
+    """
+    pass
+
+
 def wrapper(regen=False, **kwargs):
     """
     wrapper func to call mungedata, pass default params in kwargs and
     regenerate individual vtk DataFrames via vf.cellpos()
+
+    Kwargs
+    ------
+
+    inpdatpath : Str
+        filepath to celldata pickle file, if not specified then `dfvoldata` and
+        `fkeys` must be specified
+
+    dfvoldata : DataFrame
+        cell volume data
+
+    fkeys : dict
+        dictionary of filepaths to individual cell VTK data
+
+    Returns
+    -------
+
+    F : dict
+        dictionary of DataFrames data for individual cells, output of calling
+        cellpos()
     """
+
     fpath = kwargs.get('inpdatpath')
 
-    # regenerata pickle file if not exist
+    # regenerates pickle file if not exist
     if regen or not op.isfile(fpath):
         F = {}
 
         for k in ['dfvoldata', 'fkeys']:
             if k not in kwargs:
-                sys.exit('Missing {}'.format(k))
+                raise UsageError('Missing {}'.format(k))
         dfvol = kwargs.get('dfvoldata')
         filepaths = kwargs.get('fkeys')
 

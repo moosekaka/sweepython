@@ -9,8 +9,15 @@ import cPickle as pickle
 import wrappers as wr
 from pipeline import pipefuncs as pf
 from pipeline import make_networkx as mn
-
 # pylint: disable=C0103
+
+
+class UsageError(Exception):
+    """
+    Class for user-facing (non-programming) errors
+    """
+    pass
+
 datadir = op.join(os.getcwd())
 
 # filelist and graph list
@@ -28,9 +35,8 @@ if __name__ == '__main__':
                               '*RF*resampled.vtk', stop=-14)
         vtkVolGfp = wr.ddwalk(op.join(datadir, 'mutants', 'resampledFiles'),
                               '*GF*resampled.vtk', stop=-14)
-    except Exception:
-        print "Error: check your filepaths"
-        sys.exit()
+    except:
+        raise UsageError('check your filepaths')
 
     for lab in sorted(vtkSkel.keys())[:]:
         try:

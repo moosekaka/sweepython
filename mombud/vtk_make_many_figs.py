@@ -2,7 +2,6 @@
 """
 Batch visualize skel and surface vtk files
 """
-import sys
 import os
 import os.path as op
 import matplotlib.pyplot as plt
@@ -10,8 +9,15 @@ from mayavi import mlab
 from pipeline.make_networkx import makegraph as mg
 from mombud.functions import vtkvizfuncs as vf
 import wrappers as wr
-
 # pylint: disable=C0103
+
+
+class UsageError(Exception):
+    """
+    Class for user-facing (non-programming) errors
+    """
+    pass
+
 plt.close('all')
 mlab.close(all=True)
 inputdir = op.join(os.getcwd(), 'mutants')
@@ -26,9 +32,8 @@ if __name__ == '__main__':
         vtkS = wr.ddwalk(op.join(inputdir, 'surfaceFiles'),
                          '*surface.vtk', stop=-12)
 
-    except Exception:
-            print "Error: check your filepaths"
-            sys.exit()
+    except:
+        raise UsageError('check your filepaths')
 
     filekeys = {item: vtkF[media][item] for media
                 in sorted(vtkF.keys()) for item

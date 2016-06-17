@@ -8,7 +8,13 @@ import os
 import os.path as op
 import fnmatch
 from collections import defaultdict
-import mombud.functions.vtk_mbfuncs as vf
+
+
+class UsageError(Exception):
+    """
+    Class for user-facing (non-programming) errors
+    """
+    pass
 
 
 def swalk(ddir, txt, start=None, stop=None):
@@ -33,11 +39,11 @@ def swalk(ddir, txt, start=None, stop=None):
     for root, _, files in os.walk(ddir):
         for f in files:
             if fnmatch.fnmatch(f, txt):
-                vtf[f[start:stop]] = os.path.join(root, f)
+                vtf[f[start:stop]] = op.join(root, f)
     if len(vtf):
         return vtf
     else:
-        raise Exception
+        raise UsageError('Missing files')
 
 
 def ddwalk(ddir, txt, start=None, stop=None):
@@ -69,8 +75,8 @@ def ddwalk(ddir, txt, start=None, stop=None):
         for f in files:
             if fnmatch.fnmatch(f, txt):
                 media = root.rsplit(os.sep, 1)[1]
-                vtf[media][f[start:stop]] = os.path.join(root, f)
+                vtf[media][f[start:stop]] = op.join(root, f)
     if len(vtf):
         return vtf
     else:
-        raise Exception
+        raise UsageError('Missing files')

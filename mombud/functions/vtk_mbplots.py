@@ -113,7 +113,7 @@ def plotDyAxisDist(dfmom, dfbud, **kwargs):
     """
     Progression of Δψ as move along the bud axis
     """
-    binsaxis = kwargs.get('binsaxis')
+    binsaxis = kwargs.get('mbax')
     binsvolbud = kwargs.get('binsvolbud')
     Nbud = kwargs.get('counts_buds')
     datadir = kwargs.get('savefolder')

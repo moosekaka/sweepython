@@ -31,5 +31,5 @@ if __name__ == '__main__':
                       if re.search('sweepython', val)][0]]
 
 
-    searchfunc('except', scrloc)
+    searchfunc('generate_color_labels', scrloc)
 

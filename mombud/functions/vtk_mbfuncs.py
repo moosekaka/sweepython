@@ -4,17 +4,14 @@ Created on Thu Feb 11 16:45:59 2016
 Functions for mom bud analysis in module vtk_mom_bud_analyse.py
 @author: sweel
 """
-import sys
 import os.path as op
 from collections import defaultdict
 import cPickle as pickle
 import pandas as pd
-import numpy as np
 from tvtk.api import tvtk
 import vtk
+import numpy as np
 # pylint: disable=C0103
-vtkF = defaultdict(dict)
-mombud = defaultdict(dict)
 
 
 class UsageError(Exception):
@@ -143,7 +140,10 @@ def cellpos(cellname, df, **kwargs):
     celldf.loc[celldf.type ==
                'mom', 'ind_cell_axis'] = (celldf.ix[:, 'x']-xb) / (xn-xb)
     celldf.index.name = cellkey
-    return dict(df=celldf, neckpos=xn, neckpos_s=xn_scaled)
+    celldims = celldf.groupby(['type']).x.agg([np.max, np.min])
+    diameters = (celldims.amax-celldims.amin).to_dict()
+    return dict(df=celldf, neckpos=xn,
+                neckpos_s=xn_scaled, cell_diameter=diameters)
 
 
 def bincell(cellname, col, bins):

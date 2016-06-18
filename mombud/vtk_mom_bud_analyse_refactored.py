@@ -72,7 +72,8 @@ def mungedata(vtkdf, mbax=None, cellax=None, **kwargs):
         dicdf['cell'][k].update({'type': k.split('_')[0],
                                  'date': k.split('_')[1],
                                  'neckpos': vtkdf[k]['neckpos'],
-                                 'neckpos_cellaxis': vtkdf[k]['neckpos_s']})
+                                 'neckpos_cellaxis': vtkdf[k]['neckpos_s'],
+                                 'cell_diameter': vtkdf[k]['cell_diameter']})
 
         # Δψ mom-bud axis data
         X = vf.mombudscale(cell, k, dy_wholecell.whole_cell_mean)
@@ -171,13 +172,15 @@ def setupDataFrames(**kwargs):
     """
 
     kwargs['filekeys_f'], kwargs['dfmb'], kwargs['savefolder'] = inputdata()
-    Dout = mungedata(vf.wrapper(**kwargs), **kwargs)
+    Dout = mungedata(vf.wrapper(dfvoldata=kwargs['dfmb'],
+                                fkeys=kwargs['filekeys_f'],
+                                **kwargs), **kwargs)
     cellall = Dout['dfcell']
     cellposmom = Dout['dfmom']
     cellposbud = Dout['dfbud']
 
     # cleanup and add. labels for dataframes, calculate aggr measures etc.
-    cellall = cellall.set_index('index')
+    cellall = cellall.set_index('index')  # this is needed because of dfmb ind.
     cellall['budvol'] = kwargs['dfmb'].bud
     cellall['momvol'] = kwargs['dfmb'].mom
     for i in [cellall, cellposbud, cellposmom]:
@@ -243,46 +246,61 @@ def setupDataFrames(**kwargs):
     return outputdic
 
 
-def main(*args, **kwargs):
+def main(**kwargs):
     """
     Main
 
-    args
-    ----
-    list of plotting function names
+    kwargs
+    ------
+    plotlist : List
+        plotting function names
     """
 
     wd = os.path.expanduser(os.sep.join(
         ('~', 'Documents', 'Github', 'sweepython', 'WorkingData')))
     os.chdir(wd)
-    inpt_args = {'regen': False,
-                 'save': False,  # toggle to save plots
-                 'inpdatpath': 'celldata.pkl',
-                 'mbax': np.linspace(0., 1., 6),  # pos. along mom/bud cell
-                 'cellax': np.linspace(0, 1., 11),  # position along whole cell
-                 'binsvolbud': np.linspace(0, 40, 5),  # vol binning for bud
-                 'binsvolmom': np.array([0, 30, 40, 80.])}
+    def_args = {'regen': False,
+                'save': False,  # toggle to save plots
+                'inpdatpath': 'celldata.pkl',
+                'mbax': np.linspace(0., 1., 6),  # pos. along mom/bud cell
+                'cellax': np.linspace(0, 1., 11),  # position along whole cell
+                'binsvolbud': np.linspace(0, 40, 5),  # vol binning for bud
+                'binsvolmom': np.array([0, 30, 40, 80.]),
+                'COL_ODR': ['MFB1', 'NUM1', 'YPT11',
+                            'WT', 'YPE', 'YPL', 'YPR'],
+                'HUE_ODR': ['DY_abs_mean_mom',
+                            'DY_abs_mean_bud',
+                            'whole_cell_abs']}
+    def_args.update(kwargs)  # override default args with user kwargs, if any
 
-    # update defaults to  specified pars. in main()
-    for arg in inpt_args:
-        if arg in kwargs:
-            inpt_args[arg] = kwargs[arg]
+    plot_list = kwargs.get('plotlist',
+                           ['plotDyAxisDist',  # 0
+                            'plotSizeDist',  # 1
+                            'plotBudProgr',  # 2
+                            'plotGFP',     # 3
+                            'plotViolins',  # 4
+                            'plotRegr',
+                            'plotDims'])
 
-    outputargs = setupDataFrames(**inpt_args)
-
+    outputargs = setupDataFrames(**def_args)  # calls inputdata(), mungedata()
     # plots
-    for f in args:
+    for f in plot_list:
         getattr(vp, f)(**outputargs)
+        print 'finished {}'.format(f)
 
 # _____________________________________________________________________________
 if __name__ == '__main__':
     plt.close('all')
-    L = ['plotDyAxisDist',  # 0
+    L = ('plotDyAxisDist',  # 0
          'plotSizeDist',  # 1
          'plotBudProgr',  # 2
          'plotGFP',     # 3
          'plotViolins',  # 4
-         'plotRegr']
-    D = dict(zip(range(len(L)), L))
-#    main(*(D.values()), save=True)
-    main(D[4], save=False)
+         'plotRegr',
+         'plotDims')
+    # labs == first two letters after plotXXX
+    labs = (l.lower().partition('plot')[2][:2] for l in L)
+    D = dict(zip(labs, L))
+#    main(plotlist=[D['di']], save=False)
+    main(plotlist=D.values()[1:-1], save=False)
+#    main()

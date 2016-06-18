@@ -4,10 +4,12 @@ Created on Sat Jun 11 16:10:16 2016
 Module for plots of analysis of mother bud function in budding yeast
 """
 import os.path as op
+from collections import defaultdict
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from mombud.functions import vtk_mbfuncs as vf
 plt.rcParams['font.family'] = 'DejaVu Sans'
 plt.close('all')
 
@@ -73,6 +75,33 @@ def label_n(handle, labeldic, Rsqr=False):
         handle.axes.set_xticklabels(new_labels)
 
 
+def plotDims(**kwargs):
+    """
+    Diameters of cells
+    """
+    df = kwargs.get('data')
+    df2 = pd.DataFrame(x for x in df['cell_diameter'])
+    df2.rename(columns={'bud': 'bud_diameter',
+                        'mom': 'mom_diameter'},
+               inplace=True)
+    alldims = pd.concat([df, df2], axis=1)
+    melt = pd.melt(alldims,
+                   id_vars='type',
+                   value_vars=['bud_diameter', 'mom_diameter'])
+
+    with sns.plotting_context('talk'):
+        g = sns.FacetGrid(melt,
+                          col='type',
+                          col_wrap=4,
+                          hue="variable",
+                          col_order=COL_ODR,
+                          size=3,
+                          aspect=1.5)
+        g = (g.map(sns.stripplot,
+                   "value", jitter=0.1)).set(xlim=(0.),
+                                             xlabel='diameter/microns')
+
+
 def plotSizeDist(**kwargs):
     """
     Distribution of bud and mom volumes
@@ -81,6 +110,7 @@ def plotSizeDist(**kwargs):
     datadir = kwargs.get('savefolder')
     N = kwargs.get('counts')
     save = kwargs.get('save', False)
+    COL_ODR = kwargs.get('COL_ODR')
 
     budvol = df.ix[:, ['budvol', 'type']]
     momvol = df.ix[:, ['momvol', 'type']]
@@ -119,6 +149,7 @@ def plotDyAxisDist(dfmom, dfbud, **kwargs):
     datadir = kwargs.get('savefolder')
     N = kwargs.get('counts')
     save = kwargs.get('save', False)
+    COL_ODR = kwargs.get('COL_ODR')
 
     bigbinsmom = pd.melt(dfmom,
                          id_vars=['type', 'binvol'],
@@ -186,8 +217,9 @@ def plotBudProgr(**kwargs):
     df = kwargs.get('data')
     datadir = kwargs.get('savefolder')
     save = kwargs.get('save', False)
-
+    COL_ODR = kwargs.get('COL_ODR')
     sns.set_style('whitegrid')
+
     with sns.plotting_context('talk'):
         _, ax2 = plt.subplots(1, 1)
         h = (sns.pointplot(x='bin_budprog',
@@ -214,33 +246,6 @@ def plotBudProgr(**kwargs):
             p.savefig(op.join(datadir, "DY_bud_prog_facetted.png"))
 
 
-def plotNeck(**kwargs):
-    """
-    Δψ at the bud neck region
-    """
-    df = kwargs.get('neckdata')
-    datadir = kwargs.get('savefolder')
-    save = kwargs.get('save', False)
-
-    sns.set_style('whitegrid')
-    with sns.plotting_context('talk'):
-        A = pd.melt(df,
-                    id_vars=['dist'],
-                    value_vars=['bud', 'mom'])
-    A.dropna(inplace=True)
-    with sns.plotting_context('talk', font_scale=1.4):
-        _, ax1 = plt.subplots(1, 1)
-        q1 = sns.barplot(x='dist',
-                         y='value',
-                         hue='variable',
-                         data=A,
-                         ax=ax1)
-        leg = q1.get_legend()
-        plt.setp(leg, bbox_to_anchor=(0.85, 0.7, .3, .3))
-        if save:
-            plt.savefig(op.join(datadir, "neckregionDY.png"))
-
-
 def plotViolins(**kwargs):
     """
     Violinplots for frac Δψ, mom vs bud scaled and Δψ abs distr
@@ -249,6 +254,7 @@ def plotViolins(**kwargs):
     datadir = kwargs.get('savefolder')
     save = kwargs.get('save', False)
     N = kwargs.get('counts')
+    COL_ODR = kwargs.get('COL_ODR')
 
     BIG = pd.melt(df,
                   id_vars=['type'],
@@ -334,6 +340,8 @@ def plotGFP(**kwargs):
 #    Nype = kwargs.get('counts_ype')
     datadir = kwargs.get('savefolder')
     save = kwargs.get('save', False)
+    COL_ODR = kwargs.get('COL_ODR')
+    HUE_ODR = kwargs.get('HUE_ODR')
 
     with sns.plotting_context('talk', font_scale=1.):
         BIG5 = pd.melt(df,
@@ -431,6 +439,7 @@ def plotmom_budfp(**kwargs):
     """
     plot Δψ of mom and first bud point
     """
+    COL_ODR = kwargs.get('COL_ODR')
     df = kwargs.get('data_mfp')
     datadir = kwargs.get('savefolder')
     save = kwargs.get('save', False)

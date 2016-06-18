@@ -15,6 +15,13 @@ from seaborn import xkcd_palette as scolor
 # pylint: disable=C0103
 
 
+class UsageError(Exception):
+    """
+    Class for user-facing (non-programming) errors
+    """
+    pass
+
+
 def rgbcol(colorname):
     """
     returns RGB float values based on xkcd color name input string
@@ -22,18 +29,18 @@ def rgbcol(colorname):
     return scolor([colorname])[0]
 
 
-def generate_color_labels(**kwargs):
+def generate_color_labels(colors=None, labels=None):
     """
     Generates rgb values when passed a dictionary of xkcd color list
     and labels list."""
 
-    if 'colors' in kwargs:
-        colors_list = kwargs['colors']
-    if 'labels' in kwargs:
-        labels_list = kwargs['labels']
+    if 'colors' is None:
+        raise UsageError('must specify color list')
+    if 'labels' is None:
+        raise UsageError('must specify labels list')
 
-    dic_label_colors = dict(zip(labels_list, colors_list))
-    rgb_vals = dict(zip(colors_list, scolor(colors_list)))
+    dic_label_colors = dict(zip(labels, colors))
+    rgb_vals = dict(zip(colors, scolor(colors)))
 
     return dic_label_colors, rgb_vals
 

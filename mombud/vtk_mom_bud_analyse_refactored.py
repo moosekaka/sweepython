@@ -108,7 +108,7 @@ def process_ind_df(vtkdf, mbax=None, cellax=None, **kwargs):
 
     # Dicts for budding progression and budratio DataFrames, etc.
     dicout = defaultdict(dict)
-    dicdf = defaultdict(dict)
+    dicint = defaultdict(dict)
     keys = sorted(vtkdf.keys())
 
     for k in keys:
@@ -124,29 +124,32 @@ def process_ind_df(vtkdf, mbax=None, cellax=None, **kwargs):
                                                cellax)
 
         # update with whole cell stat/data
-        dicdf['cell'][k] = vtkdf[k]['celldata']
+        dicint['cell'][k] = vtkdf[k]['celldata']
 
         # set index to cellname so that concatenate is possible
         vtkdf[k]['df']['name'] = k
         vtkdf[k]['df'].set_index('name', inplace=True)
 
     # Concat of ALL cell dfs into one giant DataFrame
-    dftemp = pd.concat([vtkdf[k]['df'] for k in keys])
-    dftemp = dftemp.reset_index()
+    df_concat = pd.concat([vtkdf[k]['df'] for k in keys])
+    df_concat = df_concat.reset_index()
 
     # groupby mom/buds , get agg. stats for Δψ
-    df_agg = (dftemp.groupby(['name', 'type'])[['DY', 'DY_abs']]
+    df_agg = (df_concat.groupby(['name', 'type'])[['DY', 'DY_abs']]
               .agg([np.mean, np.median]).unstack().reset_index())
     df_agg.columns = (['index'] +
                       ['_'.join(c) for c in df_agg.columns.values[1:]])
 
     # DataFrame for all ind. cells
-    dicout['dfcell'] = pd.DataFrame.from_dict(dicdf['cell'], orient='index')
+    dicout['dfcell'] = pd.DataFrame.from_dict(dicint['cell'], orient='index')
     dicout['dfcell'] = dicout['dfcell'].merge(
         df_agg, left_index=True, right_on='index')
 
+    # normalize by mean GFP of date
+    norm = lambda x: x  / x.mean
+
     # bin by ind cell position and scale by whole cell mean
-    dfbinned = (dftemp.groupby(['name', 'type', 'ind_cell_binpos']).
+    dfbinned = (df_concat.groupby(['name', 'type', 'ind_cell_binpos']).
                 DY.mean().unstack(level='ind_cell_binpos'))
     dfbinned.columns = dfbinned.columns.astype('float')
     df = dicout['dfcell'][['index', 'whole_cell_mean']]
@@ -284,7 +287,6 @@ def main(**kwargs):
     for f in plot_list:
         getattr(vp, f)(**outputargs)
         print 'finished {}'.format(f)
-
 # _____________________________________________________________________________
 if __name__ == '__main__':
     plt.close('all')

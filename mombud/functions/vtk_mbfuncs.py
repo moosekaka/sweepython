@@ -10,7 +10,6 @@ import cPickle as pickle
 import pandas as pd
 from tvtk.api import tvtk
 import vtk
-import numpy as np
 # pylint: disable=C0103
 
 

@@ -142,11 +142,7 @@ def process_ind_df(vtkdf, mbax=None, cellax=None, **kwargs):
 
     # DataFrame for all ind. cells
     dicout['dfcell'] = pd.DataFrame.from_dict(dicint['cell'], orient='index')
-    dicout['dfcell'] = dicout['dfcell'].merge(
-        df_agg, left_index=True, right_on='index')
-
-    # normalize by mean GFP of date
-    norm = lambda x: x  / x.mean
+    dicout['dfcell'] = dicout['dfcell'].merge(df_agg, how='left', right_on='index')
 
     # bin by ind cell position and scale by whole cell mean
     dfbinned = (df_concat.groupby(['name', 'type', 'ind_cell_binpos']).

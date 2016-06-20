@@ -21,7 +21,7 @@ class UsageError(Exception):
     pass
 
 
-def wrapper(regen=False, **kwargs):
+def gen_data(regen=False, **kwargs):
     """
     wrapper func to call mungedata, pass default params in kwargs and
     regenerate individual vtk DataFrames via vf.cellpos()
@@ -108,6 +108,7 @@ def cellpos(cellname, df, **kwargs):
     dyscale = kwargs.pop("dyscale", "DY_minmax")
 #    dyraw = kwargs.pop("dyraw", "DY_raw")
     dyraw = kwargs.pop("dyraw", "bkstGFP")
+    outdic = {}
 
     cellkey = cellname.rsplit('\\', 1)[1][:-4]
     data = vtkopen(cellname)
@@ -127,7 +128,7 @@ def cellpos(cellname, df, **kwargs):
     xb, _, _ = df.ix[cellkey, 'base']
     xt, _, _ = df.ix[cellkey, 'tip']
 
-    xn_scaled = (xn - celldf.ix[0, 'x']) / (xt - xb)
+    outdic['neckpos_scaled'] = (xn - celldf.ix[0, 'x']) / (xt - xb)
 
     celldf['whole_cell_axis'] = ((celldf.ix[:, 'x'] -
                                   celldf.ix[0, 'x']) / (xt - xb))
@@ -140,10 +141,15 @@ def cellpos(cellname, df, **kwargs):
     celldf.loc[celldf.type ==
                'mom', 'ind_cell_axis'] = (celldf.ix[:, 'x']-xb) / (xn-xb)
     celldf.index.name = cellkey
-    celldims = celldf.groupby(['type']).x.agg([np.max, np.min])
-    diameters = (celldims.amax-celldims.amin).to_dict()
-    return dict(df=celldf, neckpos=xn,
-                neckpos_s=xn_scaled, cell_diameter=diameters)
+
+    outdic['bud_diameter'] = xt - xn
+    outdic['mom_diameter'] = xn - xb
+    outdic['neckpos'] = xn
+    outdic['type'] = cellkey.split('_')[0]
+    outdic['date'] = cellkey.split('_')[1]
+    outdic['whole_cell_mean'] = celldf.DY.mean()
+    outdic['whole_cell_abs'] = celldf.DY_abs.mean()
+    return dict(df=celldf, celldata=outdic)
 
 
 def bincell(cellname, col, bins):
@@ -170,22 +176,6 @@ def bincell(cellname, col, bins):
     return binnedcell
 
 
-def mombudscale(df, fname, cellmean):
-    """
-    create mom/bud Series of average Δψ, scaled to cell minmax values,
-    DY_minmax on MOM-BUD cell AXIS.
-    """
-    D = dict()
-    for t in ['mom', 'bud']:
-        D[t] = df.ix[df['type'] == t].groupby('ind_cell_binpos').DY.mean()
-        D[t] = D[t] / cellmean
-        D[t].name = fname
-        # scale by minmax of whole cell
-        # D['mom'] = lambda x, y :(x-y.min()) / (x.max()-y.min())
-        # Xbud = vf.scaleminmax(Xbud, scaled_dy_wholecell)
-    return D
-
-
 def neckDY(fname, celldf, neck_position, outdic, dist=None):
     """
     Return two Series of points within a range of +-dist from neck
@@ -199,10 +189,10 @@ def neckDY(fname, celldf, neck_position, outdic, dist=None):
     for d in dist:
         tempdic[fname]['bud'][d] = celldf.loc[(celldf.x >= neck_position) &
                                               (celldf.x <
-                                              (neck_position + d))].DY.mean()
+                                               (neck_position + d))].DY.mean()
         tempdic[fname]['mom'][d] = celldf.loc[(celldf.x < neck_position) &
                                               (celldf.x >=
-                                              (neck_position - d))].DY.mean()
+                                               (neck_position - d))].DY.mean()
     return outdic.update(tempdic)
 
 

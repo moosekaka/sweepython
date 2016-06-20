@@ -21,7 +21,7 @@ class wrapper(object):
     def __init__(self, **kwargs):
         self.celldfpath = kwargs.get('celldfdatapath')
         self.outdata = kwargs.get('datadict')
-        self.vtkdf = vf.wrapper(inpdatpath=self.celldfpath)
+        self.vtkdf = vf.gen_data(inpdatpath=self.celldfpath)
 
     def gen_neck_boot(self, **kwargs):
         """

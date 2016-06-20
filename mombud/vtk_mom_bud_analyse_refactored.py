@@ -22,86 +22,7 @@ class UsageError(Exception):
     pass
 
 
-def mungedata(vtkdf, mbax=None, cellax=None, **kwargs):
-    """
-    compute Δψ distrbution along cellaxis for each ind. cell and append
-    to the resepective DataFrames
-
-    Parameters
-    ----------
-    vtkdf : dict
-        dict of DataFrames of ind. cell data
-    mbax : np.array
-        bin cell position for ind. mom/bud cell
-    cellax : np. array
-        bin cell position for whole cell
-    Returns
-    -------
-    dicout : dict
-        dictionary of DataFrames for mom bud analyses
-    """
-
-    if mbax is None:
-        raise UsageError('please specify bin range for mom bud axis')
-    if cellax is None:
-        raise UsageError('please specify bin range for whole cell axis')
-
-    # Dicts for budding progression and budratio DataFrames, etc.
-    dicout = defaultdict(dict)
-    dicout['dfmom_fp'] = pd.DataFrame()
-    dicdf = defaultdict(dict)
-    keys = sorted(vtkdf.keys())
-
-    for k in keys:
-        # get Dataframe of pos along x-axis for inidivual mom/bud cells
-        cell = vtkdf[k]['df']
-
-        # bin the dataframe according to individual (mom/bud) axis
-        cell['ind_cell_binpos'] = vf.bincell(cell, 'ind_cell_axis', mbax)
-
-        # bin the dataframe according to individual entire cell axis
-        cell['whole_cell_binpos'] = vf.bincell(cell,
-                                               'whole_cell_axis',
-                                               cellax)
-
-        # Δψ Series data to DataFrames
-        dy_wholecell = cell.mean()[['DY', 'DY_abs']]
-        dy_wholecell.rename({'DY': 'whole_cell_mean',
-                             'DY_abs': 'whole_cell_abs'}, inplace=True)
-        dicdf['cell'][k] = dy_wholecell.to_dict()
-        dicdf['cell'][k].update({'type': k.split('_')[0],
-                                 'date': k.split('_')[1],
-                                 'neckpos': vtkdf[k]['neckpos'],
-                                 'neckpos_cellaxis': vtkdf[k]['neckpos_s'],
-                                 'cell_diameter': vtkdf[k]['cell_diameter']})
-
-        # Δψ mom-bud axis data
-        X = vf.mombudscale(cell, k, dy_wholecell.whole_cell_mean)
-        dicdf['bud'][k] = X['bud']
-        dicdf['mom'][k] = X['mom']
-
-        # set common index for ind cell so that concatenate is possible
-        vtkdf[k]['df']['name'] = k
-        vtkdf[k]['df'].set_index('name', inplace=True)
-
-    # get agg. stat. measures for concatenate DataFrame of all cells
-    dftemp = pd.concat([vtkdf[k]['df'] for k in keys])
-    dftemp = dftemp.reset_index()
-    df_agg = (dftemp.groupby(['name', 'type'])[['DY', 'DY_abs']]
-              .agg([np.mean, np.median]).unstack().reset_index())
-    df_agg.columns = (['index'] +
-                      ['_'.join(c) for c in df_agg.columns.values[1:]])
-
-    dicout['dfcell'] = pd.DataFrame.from_dict(dicdf['cell'], orient='index')
-    dicout['dfcell'] = dicout['dfcell'].merge(
-        df_agg, left_index=True, right_on='index')
-    dicout['dfbud'] = pd.DataFrame.from_dict(dicdf['bud'], orient='index')
-    dicout['dfmom'] = pd.DataFrame.from_dict(dicdf['mom'], orient='index')
-
-    return dicout
-
-
-def inputdata():
+def getdata():
     """
     Get input data from specified work dirs
 
@@ -161,9 +82,88 @@ def inputdata():
     return filekeys_f, dfmb, datadir
 
 
-def setupDataFrames(**kwargs):
+def process_ind_df(vtkdf, mbax=None, cellax=None, **kwargs):
     """
-    Set population level data and update parameters dict for plotting
+    bin Δψ distrbution along cellaxis for each ind. cell DataFrame and append
+    to the respective DataFrames
+
+    Parameters
+    ----------
+    vtkdf : dict
+        dict of DataFrames of ind. cell data
+    mbax : np.array
+        bin cell position for ind. mom/bud cell
+    cellax : np. array
+        bin cell position for whole cell
+    Returns
+    -------
+    dicout : dict
+        dictionary of DataFrames for mom bud analyses
+    """
+
+    if mbax is None:
+        raise UsageError('please specify bin range for mom bud axis')
+    if cellax is None:
+        raise UsageError('please specify bin range for whole cell axis')
+
+    # Dicts for budding progression and budratio DataFrames, etc.
+    dicout = defaultdict(dict)
+    dicdf = defaultdict(dict)
+    keys = sorted(vtkdf.keys())
+
+    for k in keys:
+        # get Dataframe of pos along x-axis for inidivual mom/bud cells
+        cell = vtkdf[k]['df']
+
+        # bin the dataframe according to individual (mom/bud) axis
+        cell['ind_cell_binpos'] = vf.bincell(cell, 'ind_cell_axis', mbax)
+
+        # bin the dataframe according to individual entire cell axis
+        cell['whole_cell_binpos'] = vf.bincell(cell,
+                                               'whole_cell_axis',
+                                               cellax)
+
+        # update with whole cell stat/data
+        dicdf['cell'][k] = vtkdf[k]['celldata']
+
+        # set index to cellname so that concatenate is possible
+        vtkdf[k]['df']['name'] = k
+        vtkdf[k]['df'].set_index('name', inplace=True)
+
+    # Concat of ALL cell dfs into one giant DataFrame
+    dftemp = pd.concat([vtkdf[k]['df'] for k in keys])
+    dftemp = dftemp.reset_index()
+
+    # groupby mom/buds , get agg. stats for Δψ
+    df_agg = (dftemp.groupby(['name', 'type'])[['DY', 'DY_abs']]
+              .agg([np.mean, np.median]).unstack().reset_index())
+    df_agg.columns = (['index'] +
+                      ['_'.join(c) for c in df_agg.columns.values[1:]])
+
+    # DataFrame for all ind. cells
+    dicout['dfcell'] = pd.DataFrame.from_dict(dicdf['cell'], orient='index')
+    dicout['dfcell'] = dicout['dfcell'].merge(
+        df_agg, left_index=True, right_on='index')
+
+    # bin by ind cell position and scale by whole cell mean
+    dfbinned = (dftemp.groupby(['name', 'type', 'ind_cell_binpos']).
+                DY.mean().unstack(level='ind_cell_binpos'))
+    dfbinned.columns = dfbinned.columns.astype('float')
+    df = dicout['dfcell'][['index', 'whole_cell_mean']]
+    df = df.set_index('index')
+    for i in ['dfbud', 'dfmom']:
+        dicout[i] = dfbinned.xs(i[2:], level='type')
+        dicout[i] = pd.concat([dicout[i], df], axis=1)
+        # scaling by whole cell mean Δψ
+        dicout[i] = dicout[i].ix[:, :-1].div(dicout[i].whole_cell_mean,
+                                             axis=0)
+    return dicout
+
+
+def postprocess_df(**kwargs):
+    """
+    Set population level data ,update parameters dict for plotting and filter
+    unwanted data
 
     Returns
     -------
@@ -171,10 +171,10 @@ def setupDataFrames(**kwargs):
         dictionary of DataFrames for mom bud analyses
     """
 
-    kwargs['filekeys_f'], kwargs['dfmb'], kwargs['savefolder'] = inputdata()
-    Dout = mungedata(vf.wrapper(dfvoldata=kwargs['dfmb'],
-                                fkeys=kwargs['filekeys_f'],
-                                **kwargs), **kwargs)
+    kwargs['filekeys_f'], kwargs['dfmb'], kwargs['savefolder'] = getdata()
+    Dout = process_ind_df(vf.gen_data(dfvoldata=kwargs['dfmb'],
+                                      fkeys=kwargs['filekeys_f'],
+                                      **kwargs), **kwargs)
     cellall = Dout['dfcell']
     cellposmom = Dout['dfmom']
     cellposbud = Dout['dfbud']
@@ -226,18 +226,15 @@ def setupDataFrames(**kwargs):
                                         np.r_[binsaxisbig, [2.]])
     cellall['binbudvol'] = dic['bud']['binvol']
 
-    # reject super large cells
-    rejectlist = dic['mom'].ix[(np.asarray(dic['mom'].momvol) > 100) &
-                               (dic['mom'].type != 'YPD'), 'index']
-    cellall = cellall.ix[~ cellall.ix[:, 'index'].isin(rejectlist)]
+    # reject super large cells that are not YPD
+    rejectlist = (cellall.momvol > 100) & (cellall.type != 'YPD')
+    cellall = cellall[~rejectlist]
 
     # Output dict labels
     outputdic = {'data': cellall,
                  'data_ype': YPE}
-    outputdic['dfmom'] = (dic['mom'].
-                          ix[~dic['mom'].ix[:, 'index'].isin(rejectlist)])
-    outputdic['dfbud'] = (dic['bud'].
-                          ix[~dic['bud'].ix[:, 'index'].isin(rejectlist)])
+    for i in ['dfmom', 'dfbud']:
+        outputdic[i] = dic[i[2:]][~rejectlist]
     outputdic['counts'] = cellall.groupby('type').size().to_dict()  # type
     outputdic['counts_ype'] = YPE.groupby('date').size().to_dict()
     outputdic['counts_buds'] = cellall.groupby(['type', 'binbudvol']).size()
@@ -282,7 +279,7 @@ def main(**kwargs):
                             'plotRegr',
                             'plotDims'])
 
-    outputargs = setupDataFrames(**def_args)  # calls inputdata(), mungedata()
+    outputargs = postprocess_df(**def_args)  # calls getdata(), process_ind_df()
     # plots
     for f in plot_list:
         getattr(vp, f)(**outputargs)
@@ -301,6 +298,6 @@ if __name__ == '__main__':
     # labs == first two letters after plotXXX
     labs = (l.lower().partition('plot')[2][:2] for l in L)
     D = dict(zip(labs, L))
-#    main(plotlist=[D['di']], save=False)
-    main(plotlist=D.values()[1:-1], save=False)
+    main(regen=False, plotlist=[D['di']], save=True)
+#    main(plotlist=D.values()[1:-1], save=False)
 #    main()

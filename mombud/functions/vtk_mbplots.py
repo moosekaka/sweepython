@@ -80,12 +80,9 @@ def plotDims(**kwargs):
     Diameters of cells
     """
     df = kwargs.get('data')
-    df2 = pd.DataFrame(x for x in df['cell_diameter'])
-    df2.rename(columns={'bud': 'bud_diameter',
-                        'mom': 'mom_diameter'},
-               inplace=True)
-    alldims = pd.concat([df, df2], axis=1)
-    melt = pd.melt(alldims,
+    save = kwargs.get('save', False)
+    datadir = kwargs.get('savefolder')
+    melt = pd.melt(df,
                    id_vars='type',
                    value_vars=['bud_diameter', 'mom_diameter'])
 
@@ -97,9 +94,22 @@ def plotDims(**kwargs):
                           col_order=COL_ODR,
                           size=3,
                           aspect=1.5)
+        h = sns.FacetGrid(melt,
+                          col='type',
+                          col_wrap=4,
+                          hue="variable",
+                          col_order=COL_ODR,
+                          size=3,
+                          aspect=1.5)
         g = (g.map(sns.stripplot,
                    "value", jitter=0.1)).set(xlim=(0.),
                                              xlabel='diameter/microns')
+
+        h = (h.map(sns.violinplot,
+                   "value")).set(xlim=(0.), xlabel='diameter/microns')
+        if save:
+            g.savefig(op.join(datadir, 'celldiameters_stripplot.png'))
+            h.savefig(op.join(datadir, 'celldiameters_violin.png'))
 
 
 def plotSizeDist(**kwargs):

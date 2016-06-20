@@ -136,26 +136,27 @@ def process_ind_df(vtkdf, mbax=None, cellax=None, **kwargs):
 
     # groupby mom/buds , get agg. stats for Δψ
     df_agg = (df_concat.groupby(['name', 'type'])[['DY', 'DY_abs']]
-              .agg([np.mean, np.median]).unstack().reset_index())
+              .agg([np.mean, np.median]).unstack())
     df_agg.columns = (['index'] +
                       ['_'.join(c) for c in df_agg.columns.values[1:]])
 
     # DataFrame for all ind. cells
     dicout['dfcell'] = pd.DataFrame.from_dict(dicint['cell'], orient='index')
-    dicout['dfcell'] = dicout['dfcell'].merge(df_agg, how='left', right_on='index')
+    dicout['dfcell'] = dicout['dfcell'].merge(df_agg, left_index=True, right_index=True)
 
     # bin by ind cell position and scale by whole cell mean
     dfbinned = (df_concat.groupby(['name', 'type', 'ind_cell_binpos']).
                 DY.mean().unstack(level='ind_cell_binpos'))
     dfbinned.columns = dfbinned.columns.astype('float')
-    df = dicout['dfcell'][['index', 'whole_cell_mean']]
-    df = df.set_index('index')
+    df = dicout['dfcell']['whole_cell_mean']
+#    df = df.set_index('index')
     for i in ['dfbud', 'dfmom']:
         dicout[i] = dfbinned.xs(i[2:], level='type')
-        dicout[i] = pd.concat([dicout[i], df], axis=1)
+#        dicout[i] = pd.concat([dicout[i], df], axis=1)
         # scaling by whole cell mean Δψ
-        dicout[i] = dicout[i].ix[:, :-1].div(dicout[i].whole_cell_mean,
-                                             axis=0)
+#        dicout[i] = dicout[i].ix[:, :-1].div(dicout[i].whole_cell_mean,
+#                                             axis=0)
+        dicout[i] = dicout[i].div(df, axis=0)
     return dicout
 
 
@@ -296,6 +297,6 @@ if __name__ == '__main__':
     # labs == first two letters after plotXXX
     labs = (l.lower().partition('plot')[2][:2] for l in L)
     D = dict(zip(labs, L))
-    main(regen=False, plotlist=[D['di']], save=True)
+    main(regen=False, plotlist=[D['dy']], save=True)
 #    main(plotlist=D.values()[1:-1], save=False)
 #    main()

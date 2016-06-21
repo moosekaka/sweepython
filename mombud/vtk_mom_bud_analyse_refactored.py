@@ -142,21 +142,18 @@ def process_ind_df(vtkdf, mbax=None, cellax=None, **kwargs):
 
     # DataFrame for all ind. cells
     dicout['dfcell'] = pd.DataFrame.from_dict(dicint['cell'], orient='index')
-    dicout['dfcell'] = dicout['dfcell'].merge(df_agg, left_index=True, right_index=True)
+    dicout['dfcell'] = dicout['dfcell'].merge(df_agg,
+                                              left_index=True,
+                                              right_index=True)
 
     # bin by ind cell position and scale by whole cell mean
     dfbinned = (df_concat.groupby(['name', 'type', 'ind_cell_binpos']).
                 DY.mean().unstack(level='ind_cell_binpos'))
     dfbinned.columns = dfbinned.columns.astype('float')
-    df = dicout['dfcell']['whole_cell_mean']
-#    df = df.set_index('index')
+    df = dicout['dfcell']['whole_cell_mean']  # whole cell mean Δψ
     for i in ['dfbud', 'dfmom']:
         dicout[i] = dfbinned.xs(i[2:], level='type')
-#        dicout[i] = pd.concat([dicout[i], df], axis=1)
-        # scaling by whole cell mean Δψ
-#        dicout[i] = dicout[i].ix[:, :-1].div(dicout[i].whole_cell_mean,
-#                                             axis=0)
-        dicout[i] = dicout[i].div(df, axis=0)
+        dicout[i] = dicout[i].div(df, axis=0)   # scaling by whole cell mean Δψ
     return dicout
 
 
@@ -179,36 +176,27 @@ def postprocess_df(**kwargs):
     cellposmom = Dout['dfmom']
     cellposbud = Dout['dfbud']
 
-    # cleanup and add. labels for dataframes, calculate aggr measures etc.
-    cellall = cellall.set_index('index')  # this is needed because of dfmb ind.
+    # add cell volume data from cell tracing data
     cellall['budvol'] = kwargs['dfmb'].bud
     cellall['momvol'] = kwargs['dfmb'].mom
-    for i in [cellall, cellposbud, cellposmom]:
-        i.reset_index(inplace=True)
 
     # strip 'c' from some dates
-    stripc = lambda x: x.replace(x[0], '0') if x.startswith('c') else x
-    cellall['date'] = cellall.date.apply(lambda x: stripc(x))
+    cellall['date'] = cellall.date.apply(
+        lambda x: x.replace(x[0], '0') if x.startswith('c') else x)
 
     # YPE subdataset
     YPE = cellall[(cellall.type == 'YPE') | (cellall.type == 'WT')]
     YPE = YPE.reset_index(drop=True)
 
-    # remove high and low Δψ day
-#    cellall = cellall.ix[~(((cellall.type == 'YPE') &
-#                            (cellall.date == '052315')) |
-#                           ((cellall.type == 'WT') &
-#                            (cellall.date == '032716')))]
-
+    # ratio of mom/bud Δψ
     cellall['frac'] = (cellall.ix[:, 'DY_median_bud'] /
                        cellall.ix[:, 'DY_median_mom'])
 
     #  90th percentile bud volume of each media type
-    Q = cellall.groupby('type').quantile(.90)
-    cellall['q90'] = cellall.type.apply(lambda x: Q.ix[x].budvol)
-
+    q90 = cellall.groupby('type').budvol.quantile(.90)
+    cellall = cellall.join(q90, on='type', rsuffix='_q90')
     #  budvolratio is based on the largest 10% cells
-    cellall['budvolratio'] = cellall.budvol / cellall.q90
+    cellall['budvolratio'] = cellall.budvol / cellall.budvol_q90
 
     # concatenate type and volume data from cellall DataFrame to mom and bud df
     dic = dict(zip(['bud', 'mom'], [cellposbud, cellposmom]))
@@ -226,15 +214,20 @@ def postprocess_df(**kwargs):
                                         np.r_[binsaxisbig, [2.]])
     cellall['binbudvol'] = dic['bud']['binvol']
 
-    # reject super large cells that are not YPD
-    rejectlist = (cellall.momvol > 100) & (cellall.type != 'YPD')
-    cellall = cellall[~rejectlist]
+    # Filter conditions, reject large cells
+    filt_size = (cellall.momvol > 100) & (cellall.type != 'YPD')
+#    filt_type = (
+#                  ((cellall.type == 'YPE') & (cellall.date == '052315')) |
+#                  ((cellall.type == 'WT') & (cellall.date == '032716'))
+#                 )
+#    mask = ~(filt_size) & ~(filt_type)  # (opt. reject YPE)
+    mask = ~(filt_size)
+    cellall = cellall[mask]
 
     # Output dict labels
-    outputdic = {'data': cellall,
-                 'data_ype': YPE}
+    outputdic = {'data': cellall, 'data_ype': YPE}
     for i in ['dfmom', 'dfbud']:
-        outputdic[i] = dic[i[2:]][~rejectlist]
+        outputdic[i] = dic[i[2:]][mask]
     outputdic['counts'] = cellall.groupby('type').size().to_dict()  # type
     outputdic['counts_ype'] = YPE.groupby('date').size().to_dict()
     outputdic['counts_buds'] = cellall.groupby(['type', 'binbudvol']).size()
@@ -297,6 +290,6 @@ if __name__ == '__main__':
     # labs == first two letters after plotXXX
     labs = (l.lower().partition('plot')[2][:2] for l in L)
     D = dict(zip(labs, L))
-    main(regen=False, plotlist=[D['dy']], save=True)
+    main(regen=False, plotlist=[D['di']], save=True)
 #    main(plotlist=D.values()[1:-1], save=False)
 #    main()

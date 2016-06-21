@@ -104,9 +104,9 @@ def cellpos(cellname, df, **kwargs):
         Columns `DY`, `x`, `wholecell_xaxis`, `type`, `indcell_xaxis`
 
     """
-    dyscale = kwargs.pop("dyscale", "DY_minmax")
-#    dyraw = kwargs.pop("dyraw", "DY_raw")
-    dyraw = kwargs.pop("dyraw", "bkstGFP")
+#    dyscale = kwargs.pop("dyscale", "DY_minmax")
+#    dyunscale = kwargs.pop("dyraw", "DY_raw")
+#    dyraw = kwargs.pop("dyraw", "bkstGFP")
     outdic = {}
 
     cellkey = cellname.rsplit('\\', 1)[1][:-4]
@@ -116,13 +116,15 @@ def cellpos(cellname, df, **kwargs):
     npx = data.points.to_array()
     # indices of npx that would sort npx according to the x-axis
     xind = npx[:, 0].argsort()
-    dy = data.point_data.get_array(dyscale).to_array()
-    dy_raw = data.point_data.get_array(dyraw).to_array()
+    dy = data.point_data.get_array('DY_minmax').to_array()  # scaled Δψ
+    dy_raw = data.point_data.get_array('bkstGFP').to_array()  # raw GFP
+    dy_unscale = data.point_data.get_array('DY_raw').to_array()  # unscaled Δψ
 
     #  individual skeletons xyz and Δψ
     celldf = pd.DataFrame({'x': npx[:, 0][xind],
                            'DY': dy[xind],
-                           'DY_abs': dy_raw[xind]})
+                           'DY_abs': dy_raw[xind],
+                           'DY_unscl': dy_unscale[xind]})
     xn, _, _ = df.ix[cellkey, 'neck']
     xb, _, _ = df.ix[cellkey, 'base']
     xt, _, _ = df.ix[cellkey, 'tip']
@@ -146,8 +148,9 @@ def cellpos(cellname, df, **kwargs):
     outdic['neckpos'] = xn
     outdic['type'] = cellkey.split('_')[0]
     outdic['date'] = cellkey.split('_')[1]
-    outdic['whole_cell_mean'] = celldf.DY.mean()
-    outdic['whole_cell_abs'] = celldf.DY_abs.mean()
+    outdic['whole_cell_mean'] = celldf.DY.mean()  # scaled Δψ
+    outdic['whole_cell_abs'] = celldf.DY_abs.mean()  # raw GFP
+    outdic['whole_cell_unscale'] = celldf.DY_unscl.mean()  # unscaled Δψ
     return dict(df=celldf, celldata=outdic)
 
 

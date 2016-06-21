@@ -113,7 +113,7 @@ def process_ind_df(vtkdf, mbax=None, cellax=None, **kwargs):
 
     for k in keys:
         # get Dataframe of pos along x-axis for inidivual mom/bud cells
-        cell = vtkdf[k]['df']
+        cell = vtkdf[k]['df']  # cell is ref/view, modification is inplace
 
         # bin the dataframe according to individual (mom/bud) axis
         cell['ind_cell_binpos'] = vf.bincell(cell, 'ind_cell_axis', mbax)
@@ -127,15 +127,15 @@ def process_ind_df(vtkdf, mbax=None, cellax=None, **kwargs):
         dicint['cell'][k] = vtkdf[k]['celldata']
 
         # set index to cellname so that concatenate is possible
-        vtkdf[k]['df']['name'] = k
-        vtkdf[k]['df'].set_index('name', inplace=True)
+        cell['name'] = k
+        cell.set_index('name', inplace=True)
 
     # Concat of ALL cell dfs into one giant DataFrame
     df_concat = pd.concat([vtkdf[k]['df'] for k in keys])
     df_concat = df_concat.reset_index()
 
     # groupby mom/buds , get agg. stats for Δψ
-    df_agg = (df_concat.groupby(['name', 'type'])[['DY', 'DY_abs']]
+    df_agg = (df_concat.groupby(['name', 'type'])[['DY', 'DY_abs', 'DY_unscl']]
               .agg([np.mean, np.median]).unstack())
     df_agg.columns = (['index'] +
                       ['_'.join(c) for c in df_agg.columns.values[1:]])
@@ -145,6 +145,13 @@ def process_ind_df(vtkdf, mbax=None, cellax=None, **kwargs):
     dicout['dfcell'] = dicout['dfcell'].merge(df_agg,
                                               left_index=True,
                                               right_index=True)
+
+    # Scaling factor for raw GFP daily variations
+    df2 = dicout['dfcell'].groupby(['date']).whole_cell_abs.mean()
+    df3 = df2 / df2.min()
+    dicout['dfcell'] = dicout['dfcell'].join(df3, on='date',
+                                             lsuffix='_org',
+                                             rsuffix='_scaling_fact')
 
     # bin by ind cell position and scale by whole cell mean
     dfbinned = (df_concat.groupby(['name', 'type', 'ind_cell_binpos']).
@@ -290,6 +297,6 @@ if __name__ == '__main__':
     # labs == first two letters after plotXXX
     labs = (l.lower().partition('plot')[2][:2] for l in L)
     D = dict(zip(labs, L))
-    main(regen=False, plotlist=[D['di']], save=True)
+    main(regen=True, plotlist=[D['di']], save=True)
 #    main(plotlist=D.values()[1:-1], save=False)
 #    main()

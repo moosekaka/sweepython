@@ -150,15 +150,9 @@ def cellpos(cellname, df, **kwargs):
     celldf['whole_cell_axis'] = (celldf.loc[:, 'x'] - first_pos) / (xt - xb)
 
     # calc. individual cell position grouped by bud or mom
-    gr = celldf.groupby('type').groups
-    for name in gr:
-        if name == 'bud':
-            celldf.loc[gr[name], 'ind_cell_axis'] = (
-                (celldf.loc[gr[name], 'x'] - xn) / (xt - xn))
-
-        else:
-            celldf.loc[gr[name], 'ind_cell_axis'] = (
-                (celldf.loc[gr[name], 'x'] - xb) / (xn - xb))
+    celldf['ind_cell_axis'] = (celldf.x - xn) / (xt - xn)  # default for buds
+    (celldf['ind_cell_axis']
+     .where(celldf.type == 'bud', (celldf.x - xb) / (xb - xb), inplace=True))
 
     celldf.index.name = cellkey
     outdic['bud_diameter'] = xt - xn
@@ -178,30 +172,6 @@ def indcellmark(group, x1, x2):
     """
     out = (group - x2) / (x1 - x2)
     return out
-
-
-def bincell(cellname, col, bins):
-    """
-    Return a cell DataFrame  and `col` according to `bins`.
-
-    Parameters
-    ----------
-    cellname : str
-           name of cell
-    col  : str
-           col to be binned
-    bins : list
-           sequence of scalars for the bin edges
-
-    Returns
-    -------
-    column of categorical labels for the bins
-    """
-    binnedcell = pd.cut(cellname.ix[:, col],
-                        bins,
-                        labels=bins[1:])
-
-    return binnedcell
 
 
 def neckDY(fname, celldf, neck_position, outdic, dist=None):

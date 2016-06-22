@@ -17,6 +17,8 @@ COL_ODR = ['MFB1', 'NUM1', 'YPT11', 'WT', 'YPE', 'YPL', 'YPR']
 HUE_ODR = ['DY_abs_mean_mom', 'DY_abs_mean_bud', 'whole_cell_abs']
 
 # pylint: disable=C0103
+
+
 def getrval(df, x, y, labeldic):
     """
     return a subset DataFrame and R^2 values for columns x, y in original df

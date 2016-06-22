@@ -103,6 +103,7 @@ def process_ind_df(vtkdf, mbax=None, cellax=None, **kwargs):
 
     if mbax is None:
         raise UsageError('please specify bin range for mom bud axis')
+
     if cellax is None:
         raise UsageError('please specify bin range for whole cell axis')
 
@@ -112,7 +113,9 @@ def process_ind_df(vtkdf, mbax=None, cellax=None, **kwargs):
     keys = sorted(vtkdf.keys())
 
     for k in keys:
-        cell = vtkdf[k]['df']  # cell is ref/view, modification is inplace
+        # cell is ref/view (not deep copy) of vtkdf[k]['df'], changes to cell
+        # results in changes to vtkdf[k]['df'], DataFrames are mutable
+        cell = vtkdf[k]['df']
         # update with whole cell stat. data
         dicint['cell'][k] = vtkdf[k]['celldata']
         # set index to cellname so that concatenate is possible
@@ -204,19 +207,21 @@ def postprocess_df(**kwargs):
     cellall['budvolratio'] = cellall.budvol / cellall.budvol_q90
 
     # concatenate type and volume data from cellall DataFrame to mom and bud df
+
     dic = dict(zip(['bud', 'mom'], [cellposbud, cellposmom]))
     for key, val in dic.iteritems():
-        dic[key] = pd.concat([val, cellall.loc[:, ['type']]], axis=1)
-        dic[key]['%svol' % key] = cellall['%svol' % key]
-        dic[key]['binvol'] = vf.bincell(
-            dic[key], '%svol' % key, kwargs['binsvol%s' % key])
+        bins = kwargs['binsvol%s' % key]
+        val['type'] = cellall.loc[:, 'type']
+        val['%svol' % key] = cellall['%svol' % key]
+        val['binvol'] = pd.cut(val['%svol' % key],
+                               bins=bins, labels=bins[1:])
 
     # Add bins used for plotting budding progression
     # add the 2. cat. for cells that are larger than the 90th percentile
     binsaxisbig = kwargs['cellax']
-    cellall['bin_budprog'] = vf.bincell(cellall,
-                                        'budvolratio',
-                                        np.r_[binsaxisbig, [2.]])
+    binsaxisbig = np.r_[binsaxisbig, [2.]]
+    cellall['bin_budprog'] = pd.cut(cellall['budvolratio'],
+                                    bins=binsaxisbig, labels=binsaxisbig[1:])
     cellall['binbudvol'] = dic['bud']['binvol']
 
     # Filter conditions, reject large cells
@@ -295,6 +300,6 @@ if __name__ == '__main__':
     # labs == first two letters after plotXXX
     labs = (l.lower().partition('plot')[2][:2] for l in L)
     D = dict(zip(labs, L))
-    main(regen=False, plotlist=[D['di']], save=True)
+    main(regen=True, plotlist=[D['di']], save=True)
 #    main(plotlist=D.values()[1:-1], save=False)
 #    main()

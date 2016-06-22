@@ -46,7 +46,6 @@ def cellpos(vtkdata, base, tip, neck):
         Columns `DY`, `x`, `wholecell_xaxis`, `type`, `indcell_xaxis`
     """
     data = vtkdata
-    # is a column vec of R^3 (coordinates in the skel)
     npx = data.points.to_array()
     # indices of npx that would sort npx according to the x-axis
     xind = npx[:, 0].argsort()
@@ -55,9 +54,7 @@ def cellpos(vtkdata, base, tip, neck):
     #  individual skeletons xyz and Δψ
     celldf = pd.DataFrame({'x': npx[:, 0][xind],
                            'DY': dy[xind]})
-    xn, _, _ = neck
-    xb, _, _ = base
-    xt, _, _ = tip
+    xn, xb, xt = [x[0] for x in [neck, base, tip]]
 
     celldf['wholecell_xaxis'] = ((celldf.ix[:, 'x'] -
                                   celldf.ix[0, 'x']) / (xt - xb))

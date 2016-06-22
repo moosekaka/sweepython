@@ -40,20 +40,12 @@ def cellpos(vtkdata, base, tip, neck):
     """
     Return DataFrame of cell along mom-bud axis coords.
 
-    Parameters
-    ----------
-    cellname : str
-               Name of cell
-    df : dataFrame
-         Dataframe of mom,bud,neck coords
-
     Returns
     -------
     celldf : DataFrame
         Columns `DY`, `x`, `wholecell_xaxis`, `type`, `indcell_xaxis`
     """
     data = vtkdata
-#    data = tvtk.to_tvtk(data)
     # is a column vec of R^3 (coordinates in the skel)
     npx = data.points.to_array()
     # indices of npx that would sort npx according to the x-axis
@@ -66,19 +58,21 @@ def cellpos(vtkdata, base, tip, neck):
     xn, _, _ = neck
     xb, _, _ = base
     xt, _, _ = tip
-#    xn_scaled = (xn - cell.ix[0, 'x']) / (xt - xb)
 
     celldf['wholecell_xaxis'] = ((celldf.ix[:, 'x'] -
                                   celldf.ix[0, 'x']) / (xt - xb))
-    celldf['type'] = ''
-    celldf.loc[celldf.x > xn, ['type']] = 'bud'
-    celldf.loc[celldf.x <= xn, ['type']] = 'mom'
-    celldf.ix[celldf.type == 'bud',
-              'indcell_xaxis'] = (celldf.ix[:, 'x']-xn) / (xt-xn)
-    celldf.ix[celldf.type == 'mom',
-              'indcell_xaxis'] = (celldf.ix[:, 'x']-xb) / (xn-xb)
-    celldf.reset_index(drop=True, inplace=True)
-    celldf['neckpos'] = xn
+
+    celldf['type'] = np.where(celldf['x'] > xn, 'bud', 'mom')
+
+    gr = celldf.groupby('type').groups
+    for name in gr:
+        if name == 'bud':
+            celldf.loc[gr[name], 'ind_cell_axis'] = (
+                (celldf.loc[gr[name], 'x'] - xn) / (xt - xn))
+
+        else:
+            celldf.loc[gr[name], 'ind_cell_axis'] = (
+                (celldf.loc[gr[name], 'x'] - xb) / (xn - xb))
 
     return celldf
 
@@ -515,7 +509,7 @@ if __name__ == "__main__":
     DataSize = pd.read_table(op.join(datadir, 'csv', 'Results.txt'))
     df = DataSize.ix[:, 1:]
     df['cell'] = df.ix[:, 'Label'].apply(lambda x: x.partition(':')[2])
-    counter = df.groupby('cell').Label.count()
+    counter = df.groupby('cell').size()
     hasbuds = df[df.cell.isin(counter[counter > 1].index.values)]
 
 #    vtkF = wr.ddalk(datadir, '*csv', start=0, stop=-4)

@@ -161,7 +161,6 @@ def cellpos(cellname, df, **kwargs):
                 (celldf.loc[gr[name], 'x'] - xb) / (xn - xb))
 
     celldf.index.name = cellkey
-
     outdic['bud_diameter'] = xt - xn
     outdic['mom_diameter'] = xn - xb
     outdic['neckpos'] = xn

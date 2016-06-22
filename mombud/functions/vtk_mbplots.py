@@ -101,12 +101,12 @@ def plotDims(**kwargs):
                           col_order=COL_ODR,
                           size=3,
                           aspect=1.5)
-        g = (g.map(sns.stripplot,
-                   "value", jitter=0.1)).set(xlim=(0.),
-                                             xlabel='diameter/microns')
+        g = (g.map(sns.stripplot, "value", jitter=0.1)
+             .set(xlim=(0.), xlabel='diameter/microns'))
 
-        h = (h.map(sns.violinplot,
-                   "value")).set(xlim=(0.), xlabel='diameter/microns')
+        h = (h.map(sns.violinplot, "value")
+             .set(xlim=(0.), xlabel='diameter/microns'))
+
         if save:
             g.savefig(op.join(datadir, 'celldiameters_stripplot.png'))
             h.savefig(op.join(datadir, 'celldiameters_violin.png'))
@@ -126,6 +126,7 @@ def plotSizeDist(**kwargs):
     momvol = df.ix[:, ['momvol', 'type']]
     budvol['N'] = budvol.groupby("type").transform('count')
     momvol['N'] = momvol.groupby("type").transform('count')
+
     sns.set_style('whitegrid')
     with sns.plotting_context('talk', font_scale=1.1):
         g = sns.FacetGrid(budvol,
@@ -133,7 +134,8 @@ def plotSizeDist(**kwargs):
                           col_wrap=4,
                           hue="type",
                           col_order=COL_ODR)
-        g = (g.map(sns.distplot, "budvol")).set(xlim=(0.))
+        g = (g.map(sns.distplot, "budvol")
+             .set(xlim=(0.)))
         label_n(g, N)
         if save:
             g.savefig(op.join(datadir, 'budsize_dist.png'))
@@ -143,7 +145,8 @@ def plotSizeDist(**kwargs):
                           col_wrap=4,
                           hue="type",
                           col_order=COL_ODR)
-        h = (h.map(sns.distplot, "momvol")).set(xlim=(0.))
+        h = (h.map(sns.distplot, "momvol")
+             .set(xlim=(0.)))
         label_n(h, N)
         if save:
             h.savefig(op.join(datadir, 'momsize_dist.png'))
@@ -181,9 +184,10 @@ def plotDyAxisDist(dfmom, dfbud, **kwargs):
                           col_wrap=4,
                           sharex=True,
                           col_order=COL_ODR)
-        h = h.map(sns.pointplot,
-                  'mom axis position',
-                  r'$\Delta\Psi$ scaled gradient').set(ylim=(0.7, 1.5))
+        h = (h.map(sns.pointplot,
+                   'mom axis position',
+                   r'$\Delta\Psi$ scaled gradient')
+             .set(ylim=(0.7, 1.5)))
         label_n(h, N)
         if save:
             h.savefig(op.join(datadir, 'mom_cell_dy.png'))
@@ -194,9 +198,10 @@ def plotDyAxisDist(dfmom, dfbud, **kwargs):
                            col_wrap=4,
                            col_order=COL_ODR)
 
-        m1 = m1.map(sns.pointplot,
-                    'bud axis position',
-                    r'$\Delta\Psi$ scaled gradient').set(ylim=(0.7, 1.5))
+        m1 = (m1.map(sns.pointplot,
+                     'bud axis position',
+                     r'$\Delta\Psi$ scaled gradient')
+              .set(ylim=(0.7, 1.5)))
         label_n(m1, N)
         if save:
             m1.savefig(op.join(datadir, 'bud_cell_dy.png'))
@@ -210,10 +215,10 @@ def plotDyAxisDist(dfmom, dfbud, **kwargs):
                            row_order=COL_ODR,
                            col_order=binsvolbud[1:])
 
-        m0 = m0.map(sns.pointplot,
-                    'bud axis position',
-                    r'$\Delta\Psi$ scaled gradient').set(
-                        yticks=np.arange(0.5, 1.9, 0.25), ylim=(0.65, 2.))
+        m0 = (m0.map(sns.pointplot,
+                     'bud axis position',
+                     r'$\Delta\Psi$ scaled gradient')
+              .set(yticks=np.arange(0.5, 1.9, 0.25), ylim=(0.65, 2.)))
         label_n(m0, Nbud)
 
         if save:
@@ -332,7 +337,8 @@ def plotViolins(**kwargs):
                           col_order=COL_ODR,
                           size=3,
                           aspect=1.5)
-        g = (g.map(sns.distplot, "value")).set(xlim=(0.))
+        g = (g.map(sns.distplot, "value")
+             .set(xlim=(0.)))
         label_n(g, N)
 
         if save:
@@ -418,25 +424,25 @@ def plotRegr(**kwargs):
         for p in ['whole_cell_mean', 'DY_median_mom', 'DY_median_bud']:
             a, r2 = getrval(df, 'whole_cell_abs', p, labeldic)
             x, y, _ = a.columns
-            sns.lmplot(x, y,
-                       fit_reg=False,
-                       legend_out=False,
-                       data=a,
-                       hue='date',
-                       size=8,
-                       aspect=1.5).set(xlim=(0, 2000), xlabel='raw GFP')
+            (sns.lmplot(x, y,
+                        fit_reg=False,
+                        legend_out=False,
+                        data=a,
+                        hue='date',
+                        size=8,
+                        aspect=1.5)
+             .set(xlim=(0, 2000), xlabel='raw GFP'))
             if save:
                 plt.savefig(op.join(datadir,
                                     "{} vs raw.png".format(labeldic[p])))
 
-            g = sns.lmplot(x, y,
-                           fit_reg=False,
-                           data=a,
-                           col='date',
-                           hue='date',
-                           col_wrap=3).set(xlim=(0, 2000),
-                                           ylim=(0., 1.),
-                                           xlabel='raw GFP')
+            g = (sns.lmplot(x, y,
+                            fit_reg=False,
+                            data=a,
+                            col='date',
+                            hue='date',
+                            col_wrap=3)
+                 .set(xlim=(0, 2000), ylim=(0., 1.), xlabel='raw GFP'))
             label_n(g, r2, Rsqr=True)
 
             if save:

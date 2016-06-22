@@ -112,27 +112,25 @@ def process_ind_df(vtkdf, mbax=None, cellax=None, **kwargs):
     keys = sorted(vtkdf.keys())
 
     for k in keys:
-        # get Dataframe of pos along x-axis for inidivual mom/bud cells
         cell = vtkdf[k]['df']  # cell is ref/view, modification is inplace
-
-        # bin the dataframe according to individual (mom/bud) axis
-        cell['ind_cell_binpos'] = vf.bincell(cell, 'ind_cell_axis', mbax)
-
-        # bin the dataframe according to individual entire cell axis
-        cell['whole_cell_binpos'] = vf.bincell(cell,
-                                               'whole_cell_axis',
-                                               cellax)
-
-        # update with whole cell stat/data
+        # update with whole cell stat. data
         dicint['cell'][k] = vtkdf[k]['celldata']
-
         # set index to cellname so that concatenate is possible
         cell['name'] = k
         cell.set_index('name', inplace=True)
 
     # Concat of ALL cell dfs into one giant DataFrame
     df_concat = pd.concat([vtkdf[k]['df'] for k in keys])
-    df_concat = df_concat.reset_index()
+    df_concat.reset_index(inplace=True)
+    groups = df_concat.groupby('name')
+    # bin the dataframe according to individual (mom/bud) axis
+    df_concat['ind_cell_binpos'] = (groups['ind_cell_axis']
+                                    .apply(pd.cut,
+                                           bins=mbax, labels=mbax[1:]))
+    # bin the dataframe according to individual entire cell axis
+    df_concat['whole_cell_binpos'] = (groups['whole_cell_axis']
+                                      .apply(pd.cut,
+                                             bins=cellax, labels=cellax[1:]))
 
     # groupby mom/buds , get agg. stats for Δψ
     df_agg = (df_concat.groupby(['name', 'type'])[['DY', 'DY_abs', 'DY_unscl']]
@@ -147,11 +145,11 @@ def process_ind_df(vtkdf, mbax=None, cellax=None, **kwargs):
                                               right_index=True)
 
     # Scaling factor for raw GFP daily variations
-    df2 = dicout['dfcell'].groupby(['date']).whole_cell_abs.mean()
-    df3 = df2 / df2.min()
-    dicout['dfcell'] = dicout['dfcell'].join(df3, on='date',
-                                             lsuffix='_org',
-                                             rsuffix='_scaling_fact')
+#    df2 = dicout['dfcell'].groupby(['date']).whole_cell_abs.mean()
+#    df3 = df2 / df2.min()
+#    dicout['dfcell'] = dicout['dfcell'].join(df3, on='date',
+#                                             lsuffix='_org',
+#                                             rsuffix='_scaling_fact')
 
     # bin by ind cell position and scale by whole cell mean
     dfbinned = (df_concat.groupby(['name', 'type', 'ind_cell_binpos']).
@@ -196,8 +194,8 @@ def postprocess_df(**kwargs):
     YPE = YPE.reset_index(drop=True)
 
     # ratio of mom/bud Δψ
-    cellall['frac'] = (cellall.ix[:, 'DY_median_bud'] /
-                       cellall.ix[:, 'DY_median_mom'])
+    cellall['frac'] = (cellall.loc[:, 'DY_median_bud'] /
+                       cellall.loc[:, 'DY_median_mom'])
 
     #  90th percentile bud volume of each media type
     q90 = cellall.groupby('type').budvol.quantile(.90)
@@ -208,7 +206,7 @@ def postprocess_df(**kwargs):
     # concatenate type and volume data from cellall DataFrame to mom and bud df
     dic = dict(zip(['bud', 'mom'], [cellposbud, cellposmom]))
     for key, val in dic.iteritems():
-        dic[key] = pd.concat([val, cellall.ix[:, ['type']]], axis=1)
+        dic[key] = pd.concat([val, cellall.loc[:, ['type']]], axis=1)
         dic[key]['%svol' % key] = cellall['%svol' % key]
         dic[key]['binvol'] = vf.bincell(
             dic[key], '%svol' % key, kwargs['binsvol%s' % key])
@@ -227,8 +225,8 @@ def postprocess_df(**kwargs):
 #                  ((cellall.type == 'YPE') & (cellall.date == '052315')) |
 #                  ((cellall.type == 'WT') & (cellall.date == '032716'))
 #                 )
-#    mask = ~(filt_size) & ~(filt_type)  # (opt. reject YPE)
     mask = ~(filt_size)
+#    mask = ~(filt_size) & ~(filt_type)  # (opt. reject YPE)
     cellall = cellall[mask]
 
     # Output dict labels
@@ -279,7 +277,7 @@ def main(**kwargs):
                             'plotRegr',
                             'plotDims'])
 
-    outputargs = postprocess_df(**def_args)  # calls getdata(), process_ind_df()
+    outputargs = postprocess_df(**def_args)  # call getdata(), process_ind_df()
     # plots
     for f in plot_list:
         getattr(vp, f)(**outputargs)
@@ -297,6 +295,6 @@ if __name__ == '__main__':
     # labs == first two letters after plotXXX
     labs = (l.lower().partition('plot')[2][:2] for l in L)
     D = dict(zip(labs, L))
-    main(regen=True, plotlist=[D['di']], save=True)
+    main(regen=False, plotlist=[D['di']], save=True)
 #    main(plotlist=D.values()[1:-1], save=False)
 #    main()

@@ -10,6 +10,7 @@ import cPickle as pickle
 import pandas as pd
 from tvtk.api import tvtk
 import vtk
+import numpy as np
 # pylint: disable=C0103
 
 
@@ -79,6 +80,27 @@ def vtkopen(fpath):
     return data
 
 
+def gen_cell_dict(data, label=None, vtk_label=None):
+    """
+    Create DataFrame of scalar values according to vtk_label[label]
+    """
+    npx = data.points.to_array()
+    # indices of npx that would sort npx according to the x-axis
+    xind = npx[:, 0].argsort()
+    labels = zip(label, vtk_label)
+    def_dic = defaultdict(dict)
+    for h, i in labels:
+        def_dic[h][i] = data.point_data.get_array(i).to_array()
+
+    out_dic = ({h: def_dic[h][j][xind]
+                for h, i in def_dic.iteritems()
+                for j in i.keys()})
+
+    out_dic.update({'x': npx[:, 0][xind]})
+
+    return pd.DataFrame(out_dic)
+
+
 def cellpos(cellname, df, **kwargs):
     """
     Return DataFrame of cell along mom-bud axis coords.
@@ -104,43 +126,40 @@ def cellpos(cellname, df, **kwargs):
         Columns `DY`, `x`, `wholecell_xaxis`, `type`, `indcell_xaxis`
 
     """
-#    dyscale = kwargs.pop("dyscale", "DY_minmax")
-#    dyunscale = kwargs.pop("dyraw", "DY_raw")
-#    dyraw = kwargs.pop("dyraw", "bkstGFP")
     outdic = {}
-
     cellkey = cellname.rsplit('\\', 1)[1][:-4]
     data = vtkopen(cellname)
     data = tvtk.to_tvtk(data)
-    # is a column vec of R^3 (coordinates in the skel)
-    npx = data.points.to_array()
-    # indices of npx that would sort npx according to the x-axis
-    xind = npx[:, 0].argsort()
-    dy = data.point_data.get_array('DY_minmax').to_array()  # scaled Δψ
-    dy_raw = data.point_data.get_array('bkstGFP').to_array()  # raw GFP
-    dy_unscale = data.point_data.get_array('DY_raw').to_array()  # unscaled Δψ
 
-    #  individual skeletons xyz and Δψ
-    celldf = pd.DataFrame({'x': npx[:, 0][xind],
-                           'DY': dy[xind],
-                           'DY_abs': dy_raw[xind],
-                           'DY_unscl': dy_unscale[xind]})
-    xn, _, _ = df.ix[cellkey, 'neck']
-    xb, _, _ = df.ix[cellkey, 'base']
-    xt, _, _ = df.ix[cellkey, 'tip']
+#    dy = data.point_data.get_array('DY_minmax').to_array()  # scaled Δψ
+#    dy_raw = data.point_data.get_array('bkstGFP').to_array()  # raw GFP
+#    dy_unscale = data.point_data.get_array('DY_raw').to_array()  # unscaled Δψ
 
-    outdic['neckpos_scaled'] = (xn - celldf.ix[0, 'x']) / (xt - xb)
+    # labels for types of scalar values to select from VTK file
+    lab = {'label': ['DY', 'DY_abs', 'DY_unscl'],
+           'vtk_label': ['DY_minmax', 'bkstGFP', 'DY_raw']}
 
-    celldf['whole_cell_axis'] = ((celldf.ix[:, 'x'] -
-                                  celldf.ix[0, 'x']) / (xt - xb))
-    celldf['type'] = ''
-    celldf.loc[celldf.x > xn, ['type']] = 'bud'
-    celldf.loc[celldf.x <= xn, ['type']] = 'mom'
-    #
-    celldf.loc[celldf.type == 'bud',
-               'ind_cell_axis'] = (celldf.ix[:, 'x']-xn) / (xt-xn)
-    celldf.loc[celldf.type ==
-               'mom', 'ind_cell_axis'] = (celldf.ix[:, 'x']-xb) / (xn-xb)
+    # Main DataFrame
+    celldf = gen_cell_dict(data, **lab)
+    # Cell picked points
+    xn, xb, xt = [x[0] for x in df.loc[cellkey, ['neck', 'base', 'tip']]]
+
+    celldf['type'] = np.where(celldf['x'] > xn, 'bud', 'mom')
+    first_pos = celldf.loc[0, 'x']
+    outdic['neckpos_scaled'] = (xn - first_pos) / (xt - xb)
+    celldf['whole_cell_axis'] = (celldf.loc[:, 'x'] - first_pos) / (xt - xb)
+
+    # calc. individual cell position grouped by bud or mom
+    gr = celldf.groupby('type').groups
+    for name in gr:
+        if name == 'bud':
+            celldf.loc[gr[name], 'ind_cell_axis'] = (
+                (celldf.loc[gr[name], 'x'] - xn) / (xt - xn))
+
+        else:
+            celldf.loc[gr[name], 'ind_cell_axis'] = (
+                (celldf.loc[gr[name], 'x'] - xb) / (xn - xb))
+
     celldf.index.name = cellkey
 
     outdic['bud_diameter'] = xt - xn
@@ -152,6 +171,14 @@ def cellpos(cellname, df, **kwargs):
     outdic['whole_cell_abs'] = celldf.DY_abs.mean()  # raw GFP
     outdic['whole_cell_unscale'] = celldf.DY_unscl.mean()  # unscaled Δψ
     return dict(df=celldf, celldata=outdic)
+
+
+def indcellmark(group, x1, x2):
+    """
+    Helper function to scale by `x1` and `x2` a Series object `group`
+    """
+    out = (group - x2) / (x1 - x2)
+    return out
 
 
 def bincell(cellname, col, bins):

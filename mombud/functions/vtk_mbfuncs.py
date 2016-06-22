@@ -152,7 +152,7 @@ def cellpos(cellname, df, **kwargs):
     # calc. individual cell position grouped by bud or mom
     celldf['ind_cell_axis'] = (celldf.x - xn) / (xt - xn)  # default for buds
     (celldf['ind_cell_axis']
-     .where(celldf.type == 'bud', (celldf.x - xb) / (xb - xb), inplace=True))
+     .where(celldf.type == 'bud', (celldf.x - xb) / (xn - xb), inplace=True))
 
     celldf.index.name = cellkey
     outdic['bud_diameter'] = xt - xn

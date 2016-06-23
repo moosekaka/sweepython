@@ -300,6 +300,6 @@ if __name__ == '__main__':
     # labs == first two letters after plotXXX
     labs = (l.lower().partition('plot')[2][:2] for l in L)
     D = dict(zip(labs, L))
-    main(regen=True, plotlist=[D['di']], save=True)
+    main(regen=False, plotlist=[D['gf']], save=True)
 #    main(plotlist=D.values()[1:-1], save=False)
 #    main()

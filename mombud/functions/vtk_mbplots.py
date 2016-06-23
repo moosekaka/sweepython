@@ -379,7 +379,8 @@ def plotGFP(**kwargs):
         plt.setp(leg,
                  bbox_to_anchor=(.75, .85, .1, .2))
         g.set_ylim(0, 4000)
-        label_n(g, Ndate)
+        if Ndate is not None:
+            label_n(g, Ndate)
 
         if save:
             plt.savefig(op.join(datadir, "Violin-GFP_by_date.png"))
@@ -403,7 +404,8 @@ def plotGFP(**kwargs):
         plt.setp(leg,
                  bbox_to_anchor=(.75, .85, .1, .2))
         g.set_ylim(0, 4000)
-        label_n(g, N)
+        if N is not None:
+            label_n(g, N)
 
         if save:
             plt.savefig(op.join(datadir, "Violin-GFP_by_type.png"))

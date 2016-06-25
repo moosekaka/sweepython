@@ -158,8 +158,8 @@ def cellpos(cellname, df, **kwargs):
     outdic['bud_diameter'] = xt - xn
     outdic['mom_diameter'] = xn - xb
     outdic['neckpos'] = xn
-    outdic['type'] = cellkey.split('_')[0]
-    outdic['date'] = cellkey.split('_')[1]
+#    outdic['type'] = cellkey.split('_')[0]
+#    outdic['date'] = cellkey.split('_')[1]
     outdic['whole_cell_mean'] = celldf.DY.mean()  # scaled Δψ
     outdic['whole_cell_abs'] = celldf.DY_abs.mean()  # raw GFP
     outdic['whole_cell_unscale'] = celldf.DY_unscl.mean()  # unscaled Δψ

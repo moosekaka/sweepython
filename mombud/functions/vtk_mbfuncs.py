@@ -131,10 +131,6 @@ def cellpos(cellname, df, **kwargs):
     data = vtkopen(cellname)
     data = tvtk.to_tvtk(data)
 
-#    dy = data.point_data.get_array('DY_minmax').to_array()  # scaled Δψ
-#    dy_raw = data.point_data.get_array('bkstGFP').to_array()  # raw GFP
-#    dy_unscale = data.point_data.get_array('DY_raw').to_array()  # unscaled Δψ
-
     # labels for types of scalar values to select from VTK file
     lab = {'label': ['DY', 'DY_abs', 'DY_unscl'],
            'vtk_label': ['DY_minmax', 'bkstGFP', 'DY_raw']}
@@ -158,20 +154,8 @@ def cellpos(cellname, df, **kwargs):
     outdic['bud_diameter'] = xt - xn
     outdic['mom_diameter'] = xn - xb
     outdic['neckpos'] = xn
-#    outdic['type'] = cellkey.split('_')[0]
-#    outdic['date'] = cellkey.split('_')[1]
-    outdic['whole_cell_mean'] = celldf.DY.mean()  # scaled Δψ
-    outdic['whole_cell_abs'] = celldf.DY_abs.mean()  # raw GFP
-    outdic['whole_cell_unscale'] = celldf.DY_unscl.mean()  # unscaled Δψ
+
     return dict(df=celldf, celldata=outdic)
-
-
-def indcellmark(group, x1, x2):
-    """
-    Helper function to scale by `x1` and `x2` a Series object `group`
-    """
-    out = (group - x2) / (x1 - x2)
-    return out
 
 
 def neckDY(fname, celldf, neck_position, outdic, dist=None):
@@ -192,21 +176,3 @@ def neckDY(fname, celldf, neck_position, outdic, dist=None):
                                               (celldf.x >=
                                                (neck_position - d))].DY.mean()
     return outdic.update(tempdic)
-
-
-def xcell(x, f):
-    """
-    return DataFrame of mom binned Δψ + first point of bud
-    """
-    x['temp'] = x.index.astype('float')
-
-    if len(f.DY.values):
-        x = x.append(pd.Series({'DY': f.get_value(0, 'DY')}),
-                     ignore_index=True)
-    else:
-        x = x.append(pd.Series({'DY': 0}),
-                     ignore_index=True)
-
-    x.loc[max(x.index), 'temp'] = 'fp'
-    x['cellaxis_mom_budfp'] = x.temp.astype('category', ordered=True)
-    return x

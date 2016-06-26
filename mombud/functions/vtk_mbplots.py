@@ -4,7 +4,6 @@ Created on Sat Jun 11 16:10:16 2016
 Module for plots of analysis of mother bud function in budding yeast
 """
 import os.path as op
-from collections import defaultdict
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -12,21 +11,27 @@ import seaborn as sns
 from mombud.functions import vtk_mbfuncs as vf
 plt.rcParams['font.family'] = 'DejaVu Sans'
 plt.close('all')
-
-COL_ODR = ['MFB1', 'NUM1', 'YPT11', 'WT', 'YPE', 'YPL', 'YPR']
-HUE_ODR = ['DY_abs_mean_mom', 'DY_abs_mean_bud', 'whole_cell_abs']
-
 # pylint: disable=C0103
+
+
+def ranger(lst, mult):
+    """
+    return array for y-ticks or x-ticks with multiples of `mult`
+    from limits in `lst`
+    """
+    yt = [i - i % mult for i in lst]
+    return np.arange(yt[0], yt[1], mult)
 
 
 def getrval(df, x, y, labeldic):
     """
     return a subset DataFrame and R^2 values for columns x, y in original df
     """
-    df = df.ix[:, [x, y, 'date']].reset_index(drop=True)
+    df = df[[x, y, 'date']].reset_index(drop=True)
     df.rename(columns=labeldic, inplace=True)
-    pear = df.groupby('date').corr().xs(labeldic[y],
-                                        level=1).raw.to_dict()
+    pear = (df.groupby('date')
+            .corr().xs(labeldic[y], level=1)
+            ['raw'].to_dict())
     r_sqr = {key: value**2 for key, value in pear.iteritems()}
 
     return df, r_sqr
@@ -53,10 +58,18 @@ def label_n(handle, labeldic, Rsqr=False):
             oldtitle = ax.get_title()
 
             if oldtitle.find('|') > -1:
-                media = oldtitle.split('|')[0].split('=')[1].strip()
-                budv = oldtitle.split('=')[-1].strip()
-                newtitle = '{}, N = {}'.format(
-                    media, labeldic.xs(media).get([float(budv)])[0])
+                media = (oldtitle
+                         .split('|')[0]
+                         .split('=')[1]
+                         .strip())  # carbon/media type label
+                budv = float(oldtitle
+                             .split('=')[-1]
+                             .strip())  # budvol label
+                # use get() on categorical index of labeldic.xs, as it might
+                # return None (i.e. no cells at that budvol)
+                newtitle = ('{}, N = {}'
+                            .format(media,
+                                    labeldic.xs(media).get([budv])[0]))
                 ax.set_title(newtitle)
             else:
                 oldtitle = oldtitle.split('=')[1].strip()
@@ -72,8 +85,9 @@ def label_n(handle, labeldic, Rsqr=False):
 
         labels = [xl.get_text().strip()
                   for xl in handle.axes.get_xticklabels()]
-        new_labels = ['{}\n N={}'.format(
-            old_lab, labeldic[old_lab]) for old_lab in labels]
+        new_labels = ['{}\n N={}'
+                      .format(old_lab,
+                              labeldic[old_lab]) for old_lab in labels]
         handle.axes.set_xticklabels(new_labels)
 
 
@@ -84,20 +98,21 @@ def plotDims(**kwargs):
     df = kwargs.get('data')
     save = kwargs.get('save', False)
     datadir = kwargs.get('savefolder')
+    COL_ODR = kwargs.get('COL_ODR')
     melt = pd.melt(df,
-                   id_vars='type',
+                   id_vars='media',
                    value_vars=['bud_diameter', 'mom_diameter'])
 
     with sns.plotting_context('talk'):
         g = sns.FacetGrid(melt,
-                          col='type',
+                          col='media',
                           col_wrap=4,
                           hue="variable",
                           col_order=COL_ODR,
                           size=3,
                           aspect=1.5)
         h = sns.FacetGrid(melt,
-                          col='type',
+                          col='media',
                           col_wrap=4,
                           hue="variable",
                           col_order=COL_ODR,
@@ -124,17 +139,17 @@ def plotSizeDist(**kwargs):
     save = kwargs.get('save', False)
     COL_ODR = kwargs.get('COL_ODR')
 
-    budvol = df.ix[:, ['budvol', 'type']]
-    momvol = df.ix[:, ['momvol', 'type']]
-    budvol['N'] = budvol.groupby("type").transform('count')
-    momvol['N'] = momvol.groupby("type").transform('count')
+    budvol = df.ix[:, ['budvol', 'media']]
+    momvol = df.ix[:, ['momvol', 'media']]
+    budvol['N'] = budvol.groupby('media').transform('count')
+    momvol['N'] = momvol.groupby('media').transform('count')
 
     sns.set_style('whitegrid')
     with sns.plotting_context('talk', font_scale=1.1):
         g = sns.FacetGrid(budvol,
-                          col="type",
+                          col='media',
                           col_wrap=4,
-                          hue="type",
+                          hue='media',
                           col_order=COL_ODR)
         g = (g.map(sns.distplot, "budvol")
              .set(xlim=(0.)))
@@ -143,9 +158,9 @@ def plotSizeDist(**kwargs):
             g.savefig(op.join(datadir, 'budsize_dist.png'))
 
         h = sns.FacetGrid(momvol,
-                          col="type",
+                          col='media',
                           col_wrap=4,
-                          hue="type",
+                          hue='media',
                           col_order=COL_ODR)
         h = (h.map(sns.distplot, "momvol")
              .set(xlim=(0.)))
@@ -167,60 +182,71 @@ def plotDyAxisDist(dfmom, dfbud, **kwargs):
     COL_ODR = kwargs.get('COL_ODR')
 
     bigbinsmom = pd.melt(dfmom,
-                         id_vars=['type', 'binvol'],
+                         id_vars=['media', 'binvol'],
                          var_name='mom axis position',
                          value_name=r'$\Delta\Psi$ scaled gradient',
                          value_vars=binsaxis.tolist())
     bigbinsmom = bigbinsmom.dropna()
+
     bigbinsbud = pd.melt(dfbud,
-                         id_vars=['type', 'binvol'],
+                         id_vars=['media', 'binvol'],
                          var_name='bud axis position',
                          value_name=r'$\Delta\Psi$ scaled gradient',
                          value_vars=binsaxis.tolist())
     bigbinsbud = bigbinsbud.dropna()
+
+    ylims = (bigbinsbud[r'$\Delta\Psi$ scaled gradient']
+             .quantile([0.1, 0.9]).tolist())
+
     sns.set_style('whitegrid')
     with sns.plotting_context('talk', font_scale=1.):
         h = sns.FacetGrid(bigbinsmom,
-                          col="type",
-                          hue='type',
+                          col='media',
+                          hue='media',
                           col_wrap=4,
                           sharex=True,
                           col_order=COL_ODR)
-        h = (h.map(sns.pointplot,
-                   'mom axis position',
-                   r'$\Delta\Psi$ scaled gradient')
-             .set(ylim=(0.7, 1.5)))
+        h = (h
+             .map(sns.pointplot,
+                  'mom axis position',
+                  r'$\Delta\Psi$ scaled gradient')
+             .set(ylim=tuple(ylims)))
         label_n(h, N)
         if save:
             h.savefig(op.join(datadir, 'mom_cell_dy.png'))
 
         m1 = sns.FacetGrid(bigbinsbud,
-                           col="type",
-                           hue='type',
+                           col='media',
+                           hue='media',
                            col_wrap=4,
                            col_order=COL_ODR)
 
-        m1 = (m1.map(sns.pointplot,
-                     'bud axis position',
-                     r'$\Delta\Psi$ scaled gradient')
-              .set(ylim=(0.7, 1.5)))
+        m1 = (m1
+              .map(sns.pointplot,
+                   'bud axis position',
+                   r'$\Delta\Psi$ scaled gradient')
+              .set(ylim=tuple(ylims)))
         label_n(m1, N)
         if save:
             m1.savefig(op.join(datadir, 'bud_cell_dy.png'))
 
     # with facetting by budvol
     with sns.plotting_context('talk', font_scale=.9):
+        ylims2 = (bigbinsbud[r'$\Delta\Psi$ scaled gradient']
+                  .quantile([0.025, 0.975]).tolist())
+        yt = ranger(ylims2, 0.25)
+
         m0 = sns.FacetGrid(bigbinsbud,
-                           row="type",
+                           row='media',
                            col="binvol",
-                           hue='type',
+                           hue='media',
                            row_order=COL_ODR,
                            col_order=binsvolbud[1:])
 
         m0 = (m0.map(sns.pointplot,
                      'bud axis position',
                      r'$\Delta\Psi$ scaled gradient')
-              .set(yticks=np.arange(0.5, 1.9, 0.25), ylim=(0.65, 2.)))
+              .set(yticks=yt, ylim=tuple(ylims2)))
         label_n(m0, Nbud)
 
         if save:
@@ -237,14 +263,16 @@ def plotBudProgr(**kwargs):
     COL_ODR = kwargs.get('COL_ODR')
     sns.set_style('whitegrid')
 
+    ylims = (df['frac'].dropna().quantile([0., 0.995]).tolist())
+
     with sns.plotting_context('talk'):
         _, ax2 = plt.subplots(1, 1)
         h = (sns.pointplot(x='bin_budprog',
                            y='frac',
-                           hue='type',
+                           hue='media',
                            data=df,
                            ax=ax2))
-        h.set(ylim=(0, 3),
+        h.set(ylim=tuple(ylims),
               title=u"Δψ vs bud progression\n ",
               xlabel="bud progression",
               ylabel=u"Δψ bud/Δψ mom")
@@ -254,11 +282,11 @@ def plotBudProgr(**kwargs):
             plt.savefig(op.join(datadir, "DY vs bud progression.png"))
 
         p = sns.FacetGrid(df,
-                          col="type",
-                          hue='type',
+                          col='media',
+                          hue='media',
                           col_wrap=4,
                           col_order=COL_ODR)
-        p = p.map(sns.pointplot, 'bin_budprog', 'frac')
+        p = p.map(sns.pointplot, 'bin_budprog', 'frac').set(ylim=tuple(ylims))
         if save:
             p.savefig(op.join(datadir, "DY_bud_prog_facetted.png"))
 
@@ -269,34 +297,36 @@ def plotViolins(**kwargs):
     """
     df = kwargs.get('data')
     datadir = kwargs.get('savefolder')
+    col_labels = kwargs.get('viol_plot_vars')
     save = kwargs.get('save', False)
     N = kwargs.get('counts')
     COL_ODR = kwargs.get('COL_ODR')
 
     BIG = pd.melt(df,
-                  id_vars=['type'],
+                  id_vars=['media'],
                   value_vars=['frac'])
 
     BIG2 = pd.melt(df,
-                   id_vars=['type'],
-                   value_vars=['DY_median_mom', 'DY_median_bud'])
+                   id_vars=['media'],
+                   value_vars=col_labels[:-1])
 
     sns.set_style('whitegrid')
     with sns.plotting_context('talk'):
         _, ax4 = plt.subplots(1, 1)
-        j = sns.violinplot(x='type',
+        ylims = BIG['value'].dropna().quantile([0.005, 0.99]).tolist()
+        j = sns.violinplot(x='media',
                            y='value',
-                           hue='type',
+                           hue='media',
                            data=BIG.dropna(),
                            order=COL_ODR,
                            inner=None,
                            ax=ax4)
-        j.set_ylim(0, 2.5)
+        j.set_ylim(ylims[0], ylims[1])
         j.get_legend().set_visible(False)
 
-        k = sns.boxplot(x='type',
+        k = sns.boxplot(x='media',
                         y='value',
-                        hue='type',
+                        hue='media',
                         data=BIG.dropna(),
                         order=COL_ODR,
                         showmeans=True,
@@ -316,26 +346,27 @@ def plotViolins(**kwargs):
             plt.savefig(op.join(datadir, "violin_fracDY.png"))
 
         _, ax3 = plt.subplots(1, 1)
-        h = sns.violinplot(x='type',
+        ylims = BIG2['value'].dropna().quantile([0., .9995]).tolist()
+        h = sns.violinplot(x='media',
                            y='value',
                            hue='variable',
                            order=COL_ODR,
                            data=BIG2.dropna(),
                            ax=ax3)
-        h.set_ylim(0, 1.)
+        h.set_ylim(ylims[0], ylims[1])
         h.get_legend().set_visible(False)
         label_n(h, N)
         if save:
             plt.savefig(op.join(datadir, "Violin Mom_Bud_DY.png"))
 
         BIG4 = pd.melt(df,
-                       id_vars=['type'],
-                       value_vars=['whole_cell_abs'])
+                       id_vars=['media'],
+                       value_vars=col_labels[-1])
 
         g = sns.FacetGrid(BIG4,
-                          col="type",
+                          col='media',
                           col_wrap=4,
-                          hue="type",
+                          hue='media',
                           col_order=COL_ODR,
                           size=3,
                           aspect=1.5)
@@ -351,22 +382,21 @@ def plotGFP(**kwargs):
     """
     Violinplots for GFP uptake by date and carbon type
     """
+    col_labels = kwargs.get('gfp_plot_vars')
     df = kwargs.get('data')
-#    dfype = kwargs.get('data_ype')
     N = kwargs.get('counts')
     Ndate = kwargs.get('counts_date')
-#    Nype = kwargs.get('counts_ype')
     datadir = kwargs.get('savefolder')
     save = kwargs.get('save', False)
     COL_ODR = kwargs.get('COL_ODR')
-    HUE_ODR = kwargs.get('HUE_ODR')
+    HUE_ODR = col_labels
 
     with sns.plotting_context('talk', font_scale=1.):
         BIG5 = pd.melt(df,
                        id_vars=['date'],
-                       value_vars=['whole_cell_abs',
-                                   'DY_abs_mean_bud',
-                                   'DY_abs_mean_mom'])
+                       value_vars=col_labels)
+
+        ylims = BIG5['value'].dropna().quantile([0.005, 0.95]).tolist()
 
         _, ax7 = plt.subplots(1, 1)
         g = sns.violinplot(x='date',
@@ -378,7 +408,7 @@ def plotGFP(**kwargs):
         leg = g.get_legend()
         plt.setp(leg,
                  bbox_to_anchor=(.75, .85, .1, .2))
-        g.set_ylim(0, 4000)
+        g.set_ylim(ylims[0], ylims[1])
         if Ndate is not None:
             label_n(g, Ndate)
 
@@ -386,13 +416,11 @@ def plotGFP(**kwargs):
             plt.savefig(op.join(datadir, "Violin-GFP_by_date.png"))
 
         BIG6 = pd.melt(df,
-                       id_vars=['type'],
-                       value_vars=['whole_cell_abs',
-                                   'DY_abs_mean_bud',
-                                   'DY_abs_mean_mom'])
+                       id_vars=['media'],
+                       value_vars=col_labels)
 
         _, ax8 = plt.subplots(1, 1)
-        g = sns.violinplot(x='type',
+        g = sns.violinplot(x='media',
                            y='value',
                            bw='scott',
                            hue='variable',
@@ -403,7 +431,7 @@ def plotGFP(**kwargs):
         leg = g.get_legend()
         plt.setp(leg,
                  bbox_to_anchor=(.75, .85, .1, .2))
-        g.set_ylim(0, 4000)
+        g.set_ylim(ylims[0], ylims[1])
         if N is not None:
             label_n(g, N)
 
@@ -419,14 +447,14 @@ def plotRegr(**kwargs):
     datadir = kwargs.get('savefolder')
     save = kwargs.get('save', False)
 
-    labeldic = {'whole_cell_abs': 'raw',
-                'whole_cell_mean': 'scaled cell mean',
+    labeldic = {'DY_abs_cell_mean': 'raw',
+                'DY_cell_mean': 'scaled cell mean',
                 'DY_median_mom': 'scaled mom mean',
                 'DY_median_bud': 'scaled bud mean'}
 
     with sns.plotting_context('talk', font_scale=1.):
-        for p in ['whole_cell_mean', 'DY_median_mom', 'DY_median_bud']:
-            a, r2 = getrval(df, 'whole_cell_abs', p, labeldic)
+        for p in ['DY_cell_mean', 'DY_median_mom', 'DY_median_bud']:
+            a, r2 = getrval(df, 'DY_abs_cell_mean', p, labeldic)
             x, y, _ = a.columns
             (sns.lmplot(x, y,
                         fit_reg=False,
@@ -469,8 +497,8 @@ def plotmom_budfp(**kwargs):
     df = df.rename(columns=colnames)
     with sns.plotting_context('talk'):
         p = sns.FacetGrid(df,
-                          col="type",
-                          hue='type',
+                          col='media',
+                          hue='media',
                           col_wrap=4,
                           col_order=COL_ODR,
                           size=3,

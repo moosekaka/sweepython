@@ -118,12 +118,17 @@ def _aggDY(df):
     gr = df.groupby('name')
     labels = gr.first()[['date', 'media']]
     # groupby mom/buds , get agg. stats for Δψ
-    df_agg = (df.groupby(['name', 'type'])
-              [['DY', 'DY_abs', 'DYun_f', 'DYun_f2', 'DYun_f3']]
-              .agg([np.mean, np.median]).unstack())
-    df_agg.columns = (['index'] +
-                      ['_'.join(c) for c in df_agg.columns.values[1:]])
-    return df_agg, labels
+    df_agg_mb = (df.groupby(['name', 'type'])
+                 [['DY', 'DY_abs', 'DY_unscl',
+                   'DYun_f', 'DYun_f2', 'DYun_f3']]
+                 .agg([np.mean, np.median]).unstack())
+    df_agg_mb.columns = ['_'.join(c) for c in df_agg_mb.columns.values]
+
+    df_agg_cell = (gr[['DY', 'DY_abs', 'DY_unscl',
+                       'DYun_f', 'DYun_f2', 'DYun_f3']].agg('mean'))
+    df_agg_cell.rename(columns=lambda x: x + '_cell_mean', inplace=True)
+
+    return pd.concat([df_agg_mb, df_agg_cell, labels], axis=1)
 
 
 def _mombudDF(df, dic, dy_type='DY'):
@@ -136,7 +141,7 @@ def _mombudDF(df, dic, dy_type='DY'):
     dfbinned.columns = dfbinned.columns.astype('float')
 
     # scale by whole cell mean Δψ
-    df = dic['dfcell']['whole_cell_mean']
+    df = dic['dfcell']['DY_cell_mean']
     for i in ['dfbud', 'dfmom']:
         dic[i] = dfbinned.xs(i[2:], level='type')
         dic[i] = dic[i].div(df, axis=0)  # scaling by whole cell mean Δψ
@@ -225,19 +230,16 @@ def process_ind_df(vtkdf, mbax=None, cellax=None, **kwargs):
                    for x in split]
 
     # Calc. scaling factor for raw GFP daily variations
-    _scaleDY(dfc)  # grlabels contain media and date
-    dfc_agg, grlabels = _aggDY(dfc)
+    _scaleDY(dfc)
+    # aggregated mean Δψ by date and by cell
+    dfc_agg = _aggDY(dfc)
 
     # DataFrame for agg. mean data of ind. cells
     dicout = defaultdict(dict)
     dicout['dfcell'] = pd.DataFrame.from_dict(dic_in['cell'], orient='index')
-    dicout['dfcell'] = dicout['dfcell'].merge(dfc_agg,
-                                              left_index=True,
-                                              right_index=True)
-    dicout['dfcell'] = pd.concat([dicout['dfcell'], grlabels], axis=1)
+    dicout['dfcell'] = pd.concat([dicout['dfcell'], dfc_agg], axis=1)
     dicout['concat'] = dfc
-    _mombudDF(dfc, dicout, dy_type='DYun_f3')
-
+    _mombudDF(dfc, dicout, dy_type='DY')
     return dicout
 
 
@@ -266,8 +268,8 @@ def postprocess_df(**kwargs):
 
     # frac -> ratio of mom/bud Δψ
     cellall = (cellall
-               .assign(frac=cellall.loc[:, 'DYun_f3_median_bud'] /
-                       cellall.loc[:, 'DYun_f3_median_mom']))
+               .assign(frac=cellall.loc[:, 'DY_median_bud'] /
+                       cellall.loc[:, 'DY_median_mom']))
 
     #  normalize budvol_q90 -> largest cells (90th percentile)
     cellall = (cellall
@@ -335,11 +337,15 @@ def main(**kwargs):
                 'cellax': np.linspace(0, 1., 11),  # position along whole cell
                 'binsvolbud': np.linspace(0, 40, 5),  # vol binning for bud
                 'binsvolmom': np.array([0, 30, 40, 80.]),
+                'gfp_plot_vars':['DY_abs_mean_mom',
+                                 'DY_abs_mean_bud',
+                                 'DY_abs_cell_mean'],  # plotGFP variables
+                'viol_plot_vars':['DY_median_mom',
+                                  'DY_median_bud',
+                                  'DY_abs_cell_mean'],  # plotviol variables
                 'COL_ODR': ['MFB1', 'NUM1', 'YPT11',
-                            'WT', 'YPE', 'YPL', 'YPR'],
-                'HUE_ODR': ['DY_abs_mean_mom',
-                            'DY_abs_mean_bud',
-                            'whole_cell_abs']}
+                            'WT', 'YPE', 'YPL', 'YPR']}
+
     def_args.update(kwargs)  # override default args with user kwargs, if any
 
     plot_list = kwargs.get('plotlist',
@@ -371,6 +377,7 @@ if __name__ == '__main__':
     # labs == first two letters after plotXXX
     labs = (l.lower().partition('plot')[2][:2] for l in L)
     D = dict(zip(labs, L))
-    main(regen=False, plotlist=[D['vi']], save=True)
+    main(regen=False, plotlist=[D['bu']], save=True)
 #    main(plotlist=D.values()[1:-1], save=False)
-#    main(plotlist=None)
+#    main(regen=False, plotlist=None)
+#    main()

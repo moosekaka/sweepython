@@ -8,7 +8,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from mombud.functions import vtk_mbfuncs as vf
 plt.rcParams['font.family'] = 'DejaVu Sans'
 plt.close('all')
 # pylint: disable=C0103
@@ -481,31 +480,3 @@ def plotRegr(**kwargs):
                 plt.savefig(op.join(datadir,
                                     "{} vs raw by date.png".format(
                                         labeldic[p])))
-
-
-def plotmom_budfp(**kwargs):
-    """
-    plot Δψ of mom and first bud point
-    """
-    COL_ODR = kwargs.get('COL_ODR')
-    df = kwargs.get('data_mfp')
-    datadir = kwargs.get('savefolder')
-    save = kwargs.get('save', False)
-    sns.set_style('whitegrid')
-    colnames = {'cellaxis_mom_budfp': 'mom position'}
-#                'DY': u'Δψ scaled'}
-    df = df.rename(columns=colnames)
-    with sns.plotting_context('talk'):
-        p = sns.FacetGrid(df,
-                          col='media',
-                          hue='media',
-                          col_wrap=4,
-                          col_order=COL_ODR,
-                          size=3,
-                          aspect=1.4)
-        p = p.map(sns.pointplot, 'mom position', 'DY')
-        s = df['mom position'].cat.categories.astype('str').tolist()
-        s[:-1] = [str(float(i)/10.) for i in s[:-1]]
-        p.set_xticklabels(labels=s)
-        if save:
-            p.savefig(op.join(datadir, "DY_mom_firstbud_facetted.png"))

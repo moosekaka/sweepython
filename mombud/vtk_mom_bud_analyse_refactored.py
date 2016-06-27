@@ -5,6 +5,7 @@ Main module to analyze mom bud asymmetry
 import os
 import os.path as op
 import cPickle as pickle
+import inspect
 from collections import defaultdict
 import matplotlib.pyplot as plt
 import numpy as np
@@ -20,6 +21,21 @@ class UsageError(Exception):
     Class for user-facing (non-programming) errors
     """
     pass
+
+
+def getFuncList(module, splitword):
+    """
+    generate a dispatch function hash with two letter abbreviation of the
+    functions name as key
+    """
+    fun_list = [f for f in inspect.getmembers(module, inspect.isfunction)
+                if f[0].startswith(splitword)]
+
+    fun_dict = {}
+    for tup in fun_list:
+        abbr = tup[0].split('plot')[1][:2].lower()
+        fun_dict[abbr] = tup[1]
+    return sorted(fun_dict.keys()), fun_dict
 
 
 def getData():
@@ -327,9 +343,9 @@ def main(**kwargs):
         plotting function names
     """
 
-    wd = os.path.expanduser(os.sep.join(
-        ('~', 'Documents', 'Github', 'sweepython', 'WorkingData')))
-    os.chdir(wd)
+    os.chdir(op.expanduser(os.sep.join(
+        ('~', 'Documents', 'Github', 'sweepython', 'WorkingData'))))
+
     def_args = {'regen': False,
                 'save': False,  # toggle to save plots
                 'inpdatpath': 'celldata.pkl',
@@ -347,37 +363,41 @@ def main(**kwargs):
                             'WT', 'YPE', 'YPL', 'YPR']}
 
     def_args.update(kwargs)  # override default args with user kwargs, if any
-
-    plot_list = kwargs.get('plotlist',
-                           ['plotDyAxisDist',  # 0
-                            'plotSizeDist',  # 1
-                            'plotBudProgr',  # 2
-                            'plotGFP',     # 3
-                            'plotViolins',  # 4
-                            'plotRegr',
-                            'plotDims'])
-
     outputargs = postprocess_df(**def_args)  # call getdata(), process_ind_df()
 
-    # plots
-    if plot_list is not None:
-        for f in plot_list:
-            getattr(vp, f)(**outputargs)
-            print 'finished {}'.format(f)
+    # =========================================================================
+    # Plotting routines
+    # =========================================================================
+    print "List abbr. for plotting function names\n"
+    abbrv_names, funcdict = getFuncList(vp, 'plot')
+    for f in abbrv_names:
+        print "{key}: {func}".format(key=f, func=funcdict[f].__name__),
+        print "{docs}".format(docs=funcdict[f].__doc__)
+
+    plot_switch = kwargs.get('plot_switch', True)
+    while plot_switch:
+        try:
+            invar = raw_input('Please enter abbrev. two letter name '
+                              'of functions to plot,\n'
+                              'or "a" for all plots, '
+                              'or "q" to quit (without quotes): ')
+
+            if invar == 'q':
+                break
+
+            if invar == 'a':
+                _ = [funcdict[f](**outputargs) for f in abbrv_names]
+                print "Finished plotting {} functions!".format(len(_))
+                break
+
+            funcdict[invar](**outputargs)
+            print "{} has been executed!".format(funcdict[invar].__name__)
+
+        except KeyError as e:
+            print "{} is not in functions list".format(e)
+            continue
+
 # _____________________________________________________________________________
 if __name__ == '__main__':
     plt.close('all')
-    L = ('plotDyAxisDist',  # 0
-         'plotSizeDist',  # 1
-         'plotBudProgr',  # 2
-         'plotGFP',     # 3
-         'plotViolins',  # 4
-         'plotRegr',
-         'plotDims')
-    # labs == first two letters after plotXXX
-    labs = (l.lower().partition('plot')[2][:2] for l in L)
-    D = dict(zip(labs, L))
-    main(regen=False, plotlist=[D['bu']], save=True)
-#    main(plotlist=D.values()[1:-1], save=False)
-#    main(regen=False, plotlist=None)
-#    main()
+    main(regen=False, plot_switch=True, save=True)

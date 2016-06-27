@@ -7,7 +7,6 @@ Created on Thu Jun 02 16:45:58 2016
 
 import math
 
-
 class Vector(object):
     """
     This examples shows how to have a private attribute (_angle_deg) with a
@@ -42,9 +41,32 @@ class Vector(object):
         self._angle_deg = degree
 
 #    angle_deg = property(get_angle_deg, set_angle_deg)
-v = Vector(2*math.pi)
-print v.rad
-v.deg = 310
-print "{} radians,  {} degrees".format(v.rad, v.deg)
-v.rad = 1.01
-print "{} radians,  {} degrees".format(v.rad, v.deg)
+#v = Vector(2*math.pi)
+#print v.rad
+#v.deg = 310
+#print "{} radians,  {} degrees".format(v.rad, v.deg)
+#v.rad = 1.01
+#print "{} radians,  {} degrees".format(v.rad, v.deg)
+
+
+class Vector2(object):
+    """
+    this example will initialize the expected input (radinput, in radians)
+    as private _angle_deg attribute, in degrees. The constructor will call the
+    angle setter to initialize _angle_deg
+    """
+    def __init__(self, radinput):
+        self._angle_deg = math.degrees(radinput)
+
+    @property
+    def angle(self):
+        return math.radians(self._angle_deg)
+
+    @angle.setter
+    def angle(self, value):
+        self._angle_deg = math.degrees(value)
+
+foo = Vector2(0.5*math.pi)
+print foo.angle  # old angle attr will output radians as before
+print foo._angle_deg  # but new private attribute is in degrees
+

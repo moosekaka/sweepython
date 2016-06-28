@@ -13,8 +13,7 @@ import seaborn as sns
 from mombud.functions import vtk_mbfuncs as vf
 # pylint: disable=C0103
 
-
-class wrapper(object):
+class GenData(object):
     """
     wrapper class to autogenerate missing data
     """
@@ -37,7 +36,7 @@ class wrapper(object):
         for key in self.vtkdf.keys():
             cell = self.vtkdf[key]['df']
             vf.neckDY(key, cell,
-                      self.vtkdf[key]['neckpos'],
+                      self.vtkdf[key]['celldata']['neckpos'],
                       self.outdata['actual'])
 
         if save:
@@ -66,7 +65,7 @@ def bootNeck(vtkdf, dd=0.3, num_runs=10, save=False, **kwargs):
     merge = defaultdict(dict)
     for key in sorted(vtkdf.keys()):
         print "now on cell {}".format(key)
-        neck_position = vtkdf[key]['neckpos']
+        neck_position = vtkdf[key]['celldata']['neckpos']
         cell = vtkdf[key]['df']
         merge[key]['bud'] = {}
         merge[key]['mom'] = {}
@@ -78,12 +77,14 @@ def bootNeck(vtkdf, dd=0.3, num_runs=10, save=False, **kwargs):
                                             left_index=True,
                                             right_index=True,
                                             indicator=True)
-            merge[key]['bud'][i] = c3.loc[
-                (c3.x >= neck_position) &
-                (c3.x < (neck_position + dd))].DY.mean()
-            merge[key]['mom'][i] = c3.loc[
-                (c3.x < neck_position) &
-                (c3.x >= (neck_position - dd))].DY.mean()
+            merge[key]['bud'][i] = (c3
+                                    .loc[(c3.x >= neck_position) &
+                                         (c3.x < (neck_position + dd))]
+                                        ['DY'].mean())
+            merge[key]['mom'][i] = (c3
+                                    .loc[(c3.x < neck_position) &
+                                         (c3.x >= (neck_position - dd))]
+                                         ['DY'].mean())
 
     if save:
         fpath = kwargs.get('boot_savepath', os.getcwd())
@@ -165,29 +166,45 @@ def plotBoot(gen_boot_data, **kwargs):
                        ax=ax1).set(title='Bootstrapped', ylim=(0, 0.95))
 
 
-def main():
+def main(**kwargs):
     """
     main
     """
     sns.set_style('whitegrid')
     data = defaultdict(dict)
     params = {'celldfdatapath': 'celldata.pkl',
-              'num_runs': 100,
+              'num_runs': 1,
               'boot_savepath': 'neck_boot.pkl',
               'neck_act_savepath': 'neck_actual.pkl',
               'datadict': data,
               'COL_ODR': ['MFB1', 'NUM1',
                           'YPT11', 'WT',
                           'YPE', 'YPL', 'YPR']}
-    datobj = wrapper(**params)
+    params.update(kwargs)
+    datobj = GenData(**params)
 
-    for files in ['neck_boot', 'neck_actual']:
-        keyname = files.split('_')[1]  # key for storing actual and boot data
-        try:
-            with open('{}.pkl'.format(files), 'rb') as inp:
-                data[keyname] = pickle.load(inp)
-        except IOError:
-            # must pass **params in () !!
+    run_boot = params.get('run_boot', False)
+
+    # if regen switch is False, will try to read in the pickle files below;
+    # else if not found will regenerate the files
+    while not run_boot:
+        for files in ['neck_boot', 'neck_actual']:
+            keyname = files.split('_')[1]
+
+            try:
+                with open('{}.pkl'.format(files), 'rb') as inp:
+                    data[keyname] = pickle.load(inp)
+
+            except IOError as e:
+                print "{} not found, will regenerate".format(e.filename)
+                run_boot = True
+                break
+
+        break
+
+    if run_boot:
+        for files in ['neck_boot', 'neck_actual']:
+            keyname = files.split('_')[1]
             getattr(datobj, 'gen_%s' % files)(**params)
             data[keyname] = getattr(datobj, 'outdata')[keyname]
 
@@ -207,4 +224,4 @@ def main():
 # _____________________________________________________________________________
 if __name__ == '__main__':
     plt.close('all')
-    main()
+    main(run_boot=False, num_runs=50,)

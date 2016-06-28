@@ -12,15 +12,9 @@ import numpy as np
 import pandas as pd
 from mombud.functions import vtk_mbfuncs as vf
 from mombud.functions import vtk_mbplots as vp
-import wrappers as wr
+from wrappers import UsageError, swalk, ddwalk
+
 # pylint: disable=C0103
-
-
-class UsageError(Exception):
-    """
-    Class for user-facing (non-programming) errors
-    """
-    pass
 
 
 def getFuncList(module, splitword):
@@ -56,30 +50,25 @@ def getData():
     datadir_old = op.join(os.getcwd(), 'data', 'transformedData')
 
     # DataFrames for new and old cell picked point
-    with open(op.join(datadir, 'mombudtrans_new.pkl'), 'rb') as inpt:
-        dfmb = pickle.load(inpt)  # columns base, neck, tip, media, bud, mom
+    try:
+        with open(op.join(datadir, 'mombudtrans_new.pkl'), 'rb') as inpt:
+            dfmb = pickle.load(inpt)  # cols base, neck, tip, media, bud, mom
 
-    with open(op.join(datadir_old, 'mombudtrans.pkl'), 'rb') as inpt:
-        dfmb_o = pickle.load(inpt)  # columns base, neck, tip, media, bud, mom
+        with open(op.join(datadir_old, 'mombudtrans.pkl'), 'rb') as inpt:
+            dfmb_o = pickle.load(inpt)
 
-    # reject candidates
-    rejectfold = op.join(datadir, os.pardir, 'reject')
-    reject = wr.swalk(rejectfold, '*png', stop=-4)
+        # reject candidates
+        rejectfold = op.join(datadir, os.pardir, 'reject')
+        reject = swalk(rejectfold, '*png', stop=-4)
 
     # VTK files for new and old data
-    try:
         filext = "*vtk"
-        vtkF = wr.ddwalk(datadir, filext, stop=-4)
-    except:
-        raise UsageError(
-            "filetypes {} not found in {}".format(filext, datadir))
+        vtkF = ddwalk(datadir, filext, stop=-4)
+        vtkF_old = swalk(datadir_old, filext, stop=-4)
 
-    try:
-        filext = "*vtk"
-        vtkF_old = wr.swalk(datadir_old, filext, stop=-4)
-    except:
-        raise UsageError(
-            "filetypes {} not found in {}".format(filext, datadir))
+    except UsageError as e:
+        print e.args[0]
+        raise
 
     # file paths for VTKs
     filekeys_old = {item: vtkF_old[item] for item
@@ -400,4 +389,4 @@ def main(**kwargs):
 # _____________________________________________________________________________
 if __name__ == '__main__':
     plt.close('all')
-    main(regen=False, plot_switch=True, save=True)
+    main(regen=True, plot_switch=True, save=True)

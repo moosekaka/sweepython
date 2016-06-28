@@ -11,16 +11,8 @@ from mayavi import mlab
 from tvtk.api import tvtk
 from pipeline.make_networkx import makegraph as mg
 from mombud.functions import vtkvizfuncs as vf
-import wrappers as wr
+from wrappers import swalk, UsageError
 # pylint: disable=C0103
-
-
-class UsageError(Exception):
-    """
-    Class for user-facing (non-programming) errors
-    """
-    pass
-
 plt.close('all')
 mlab.close(all=True)
 datadir = op.join(os.getcwd(), 'data')
@@ -52,14 +44,13 @@ if __name__ == '__main__':
 
     filekey = 'YPE_042515_001_RFPstack_000'
     try:
-        vtkF = wr.swalk(op.join(inptdir, 'tubule'),
-                        'N*Skeleton.vtk', start=5, stop=-13)
-        vtkS = wr.swalk(op.join(inptdir, 'surfaceFiles'),
-                        '*surface.vtk', stop=-12)
+        vtkF = swalk(op.join(inptdir, 'tubule'),
+                     'N*Skeleton.vtk', start=5, stop=-13)
+        vtkS = swalk(op.join(inptdir, 'surfaceFiles'),
+                     '*surface.vtk', stop=-12)
 
-    except:
-        raise UsageError(
-            "Check your filepaths\nSearch directory is %s\n" % inptdir)
+    except UsageError:
+        raise
 
     data = vf.callreader(vtkF[filekey])
     node_data, edge_data, nxgrph = mg(data, filekey)

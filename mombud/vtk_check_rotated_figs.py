@@ -11,16 +11,10 @@ from mayavi import mlab
 import pandas as pd
 import numpy as np
 from tvtk.api import tvtk
-import wrappers as wr
+from wrappers import swalk, UsageError
 from mombud.functions import vtkvizfuncs as vz
 from mombud.classes.vtk_pick_mombud_class import CellEllipse
 # pylint: disable=C0103
-
-class UsageError(Exception):
-    """
-    Class for user-facing (non-programming) errors
-    """
-    pass
 
 datadir = op.join(os.getcwd(), 'mutants', 'transformedData2')
 rawdir = op.join(os.getcwd(), 'mutants', 'transformedData2')
@@ -41,14 +35,14 @@ hasbuds = \
 
 # vtk data and picked bud, neck, tip inputs
 try:
-    vtkF = wr.swalk(op.join(rawdir),
-                    '*.vtk', start=0, stop=-4)
-    vtkS = wr.swalk(surfdir,
-                    '*.vtk', start=0, stop=-12)
-    mombud = wr.swalk(op.join(datadir), '*.csv', stop=-4)
+    vtkF = swalk(op.join(rawdir),
+                 '*.vtk', start=0, stop=-4)
+    vtkS = swalk(surfdir,
+                 '*.vtk', start=0, stop=-12)
+    mombud = swalk(op.join(datadir), '*.csv', stop=-4)
 
-except:
-    raise UsageError("check your filepaths")
+except UsageError:
+    raise
 
 ##############################################################################
 if __name__ == "__main__":

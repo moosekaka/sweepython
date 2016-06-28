@@ -31,5 +31,5 @@ if __name__ == '__main__':
                       if re.search('sweepython', val)][0]]
 
 
-    searchfunc('reset_index', scrloc)
+    searchfunc('from wrappers', scrloc)
 

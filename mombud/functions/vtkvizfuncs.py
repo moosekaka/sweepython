@@ -12,14 +12,8 @@ from mayavi.sources.vtk_data_source import VTKDataSource
 from tvtk.api import tvtk
 import networkx as nx
 from seaborn import xkcd_palette as scolor
+from wrappers import UsageError
 # pylint: disable=C0103
-
-
-class UsageError(Exception):
-    """
-    Class for user-facing (non-programming) errors
-    """
-    pass
 
 
 def rgbcol(colorname):

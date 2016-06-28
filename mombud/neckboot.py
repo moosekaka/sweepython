@@ -13,6 +13,7 @@ import seaborn as sns
 from mombud.functions import vtk_mbfuncs as vf
 # pylint: disable=C0103
 
+
 class GenData(object):
     """
     wrapper class to autogenerate missing data
@@ -22,11 +23,16 @@ class GenData(object):
         self.outdata = kwargs.get('datadict')
         self.vtkdf = vf.gen_data(inpdatpath=self.celldfpath)
 
-    def gen_neck_boot(self, **kwargs):
+    def gen_neck_boot(self, save=True, **kwargs):
         """
         generate bootstrap data
         """
-        self.outdata['boot'] = bootNeck(self.vtkdf, save=True, **kwargs)
+        self.outdata['boot'] = bootNeck(self.vtkdf, **kwargs)
+
+        if save:
+            fpath = kwargs.get('boot_savepath', os.getcwd())
+            with open(fpath, 'wb') as out:
+                pickle.dump(self.outdata['boot'], out)
 
     def gen_neck_actual(self, save=True, **kwargs):
         """
@@ -45,8 +51,26 @@ class GenData(object):
                 pickle.dump(self.outdata['actual'], out)
 
 
+def makeMask(swtch):
+    """
+    Make mask according to 'mom' or 'bud' region
+    """
+    if swtch not in ['mom', 'bud']:
+        raise ValueError('must be either "mom" or "bud"')
+
+    else:
+        def _mask_fn(df, x1, rad):
+            if swtch == 'mom':
+                return (df.x < x1) & (df.x >= (x1 - rad))
+            elif swtch == 'bud':
+                return (df.x >= x1) & (df.x < (x1 + rad))
+        return _mask_fn
+
+
 def bootNeck(vtkdf, dd=0.3, num_runs=10, save=False, **kwargs):
     """
+    Bootstrap points along cellaxis for a given radius around a neckposition
+
     Parameters
     ----------
     vtkdf : DataFrame
@@ -63,33 +87,38 @@ def bootNeck(vtkdf, dd=0.3, num_runs=10, save=False, **kwargs):
     """
 
     merge = defaultdict(dict)
-    for key in sorted(vtkdf.keys()):
+    maskMom = makeMask('mom')
+    maskBud = makeMask('bud')
+
+    for key in sorted(vtkdf.keys()):  # cellname
         print "now on cell {}".format(key)
         neck_position = vtkdf[key]['celldata']['neckpos']
         cell = vtkdf[key]['df']
-        merge[key]['bud'] = {}
-        merge[key]['mom'] = {}
-        cleft = cell.reset_index(level='name')
-        for i in range(num_runs):
-            cright = cell.sample(n=cell.shape[0])
-            cright = cright[['DY', 'DY_abs']].reset_index(level='name')
-            c3 = cleft[['x', 'type']].merge(cright,
-                                            left_index=True,
-                                            right_index=True,
-                                            indicator=True)
-            merge[key]['bud'][i] = (c3
-                                    .loc[(c3.x >= neck_position) &
-                                         (c3.x < (neck_position + dd))]
-                                        ['DY'].mean())
-            merge[key]['mom'][i] = (c3
-                                    .loc[(c3.x < neck_position) &
-                                         (c3.x >= (neck_position - dd))]
-                                         ['DY'].mean())
 
-    if save:
-        fpath = kwargs.get('boot_savepath', os.getcwd())
-        with open(fpath, 'wb') as out:
-            pickle.dump(merge, out)
+        for i in ['bud', 'mom', 'fk_bud', 'fk_mom']:
+            merge[key][i] = {}
+
+        cleft = cell[['x', 'type']].reset_index(level='name')
+        for i in range(num_runs):
+            # bootstrap the pixel positions along the cell axis
+            cright = cell.sample(n=cell.shape[0])  # bootstrapped DY vector
+            cright = cright['DY'].reset_index(level='name', drop=True)
+            cleft['DY'] = cright
+            merge[key]['bud'][i] = (cleft.loc[
+                                    maskBud(cleft, neck_position, dd)]['DY']
+                                    .mean())
+            merge[key]['mom'][i] = (cleft.loc[
+                                    maskMom(cleft, neck_position, dd)]['DY']
+                                    .mean())
+
+            # take random positions along the cell axis as the neck
+            random_x = cell.sample(n=1)['x'].values[0]
+            merge[key]['fk_bud'][i] = (cell
+                                       .loc[maskBud(cell, random_x, dd)]['DY']
+                                       .mean())
+            merge[key]['fk_mom'][i] = (cell
+                                       .loc[maskMom(cell, random_x, dd)]['DY']
+                                       .mean())
     return merge
 
 
@@ -154,7 +183,7 @@ def plotBoot(gen_boot_data, **kwargs):
     df4 = df3.reset_index()
     boot = pd.melt(df4,
                    id_vars=['type'],
-                   value_vars=['bud', 'mom'])
+                   value_vars=['bud', 'mom', 'fk_bud', 'fk_mom'])
 
     with sns.plotting_context('talk'):
         _, ax1 = plt.subplots()
@@ -224,4 +253,4 @@ def main(**kwargs):
 # _____________________________________________________________________________
 if __name__ == '__main__':
     plt.close('all')
-    main(run_boot=False, num_runs=50,)
+    main(run_boot=True, num_runs=100,)

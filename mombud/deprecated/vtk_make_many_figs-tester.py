@@ -7,35 +7,28 @@ import os.path as op
 from mayavi import mlab
 from pipeline.make_networkx import makegraph as mg
 from mombud.functions import vtkvizfuncs as vf
-import wrappers as wr
+from wrappers import UsageError, ddwalk
 import cPickle as pickle
 # pylint: disable=C0103
-#plt.close('all')
-#mlab.close(all=True)
 
-class UsageError(Exception):
-    """
-    Class for user-facing (non-programming) errors
-    """
-    pass
 
 inputdir = op.join(os.getcwd(), 'input')
 rawdir = op.join(os.getcwd(), 'output')
 direc = op.join(os.getcwd(), 'data')
 with open(op.join(direc, 'YPL_grph_b.pkl'), 'rb') as inpt:
-    node_data, edge_data, nxgrph =pickle.load(inpt)
+    node_data, edge_data, nxgrph = pickle.load(inpt)
 
 nxgrph = nxgrph[78]
 # filelist and graph list
 if __name__ == '__main__':
     try:
-        vtkF = wr.ddwalk(op.join(rawdir, 'normSkel'),
-                         '*skeleton.vtk', start=5, stop=-13)
-        vtkS = wr.ddwalk(op.join(inputdir, 'surfaceFiles'),
-                         '*surface.vtk', stop=-12)
+        vtkF = ddwalk(op.join(rawdir, 'normSkel'),
+                      '*skeleton.vtk', start=5, stop=-13)
+        vtkS = ddwalk(op.join(inputdir, 'surfaceFiles'),
+                      '*surface.vtk', stop=-12)
 
-    except:
-        raise UsageError("Error: check your filepaths")
+    except UsageError as e:
+        raise
 
     filekeys = {item: vtkF[media][item] for media
                 in sorted(vtkF.keys()) for item

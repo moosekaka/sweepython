@@ -43,7 +43,8 @@ def swalk(ddir, txt, start=None, stop=None):
     if len(vtf):
         return vtf
     else:
-        raise UsageError('Missing files')
+        raise UsageError('Search for file with ext. {} in dir {} failed'
+                         .format(txt, ddir))
 
 
 def ddwalk(ddir, txt, start=None, stop=None):
@@ -79,4 +80,5 @@ def ddwalk(ddir, txt, start=None, stop=None):
     if len(vtf):
         return vtf
     else:
-        raise UsageError('Missing files')
+        raise UsageError('Search for file with ext. {} in dir {} failed'
+                         .format(txt, ddir))

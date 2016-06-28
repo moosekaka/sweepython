@@ -1,22 +1,15 @@
 """
 Pipeline to normalize'raw' vtk files and make mito network graph
 """
-import sys
-import errno
 import os
 import os.path as op
+import errno
 import cPickle as pickle
-import wrappers as wr
+from wrappers import ddwalk, UsageError
 from pipeline import pipefuncs as pf
 from pipeline import make_networkx as mn
 # pylint: disable=C0103
 
-
-class UsageError(Exception):
-    """
-    Class for user-facing (non-programming) errors
-    """
-    pass
 
 datadir = op.join(os.getcwd())
 
@@ -29,14 +22,14 @@ if __name__ == '__main__':
         print "Error: Make sure you have file metadatas in working directory"
 
     try:
-        vtkSkel = wr.ddwalk(op.join(datadir, 'mutants', 'SkelVTK'),
-                            '*skeleton.vtk', stop=-13)
-        vtkVolRfp = wr.ddwalk(op.join(datadir, 'mutants', 'resampledFiles'),
-                              '*RF*resampled.vtk', stop=-14)
-        vtkVolGfp = wr.ddwalk(op.join(datadir, 'mutants', 'resampledFiles'),
-                              '*GF*resampled.vtk', stop=-14)
-    except:
-        raise UsageError('check your filepaths')
+        vtkSkel = ddwalk(op.join(datadir, 'mutants', 'SkelVTK'),
+                         '*skeleton.vtk', stop=-13)
+        vtkVolRfp = ddwalk(op.join(datadir, 'mutants', 'resampledFiles'),
+                           '*RF*resampled.vtk', stop=-14)
+        vtkVolGfp = ddwalk(op.join(datadir, 'mutants', 'resampledFiles'),
+                           '*GF*resampled.vtk', stop=-14)
+    except UsageError:
+        raise
 
     for lab in sorted(vtkSkel.keys())[:]:
         try:
@@ -56,8 +49,9 @@ if __name__ == '__main__':
                                   vtkVolRfp[lab][key],
                                   vtkVolGfp[lab][key.replace('RFP', 'GFP')])
             filename = op.join(folder, 'Norm_%s_%s_skeleton.vtk' % (lab, key))
-            nm, rw, rb, gb, wq = pf.normSkel(data,
-                                             filemetas['_'.join((lab, key[:-4]))])
+            (nm, rw, rb, gb,
+             wq) = pf.normSkel(data, filemetas['_'.join((lab, key[:-4]))])
+
             calc = {'DY_minmax': nm,
                     'DY_raw': rw,
                     'bkstRFP': rb,

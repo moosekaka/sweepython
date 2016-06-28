@@ -11,14 +11,8 @@ import pandas as pd
 from tvtk.api import tvtk
 import vtk
 import numpy as np
+from wrappers import UsageError
 # pylint: disable=C0103
-
-
-class UsageError(Exception):
-    """
-    Class for user-facing (non-programming) errors
-    """
-    pass
 
 
 def gen_data(regen=False, **kwargs):

@@ -8,15 +8,8 @@ import matplotlib.pyplot as plt
 from mayavi import mlab
 from pipeline.make_networkx import makegraph as mg
 from mombud.functions import vtkvizfuncs as vf
-import wrappers as wr
+from wrappers import ddwalk, UsageError
 # pylint: disable=C0103
-
-
-class UsageError(Exception):
-    """
-    Class for user-facing (non-programming) errors
-    """
-    pass
 
 plt.close('all')
 mlab.close(all=True)
@@ -27,29 +20,28 @@ rawdir = op.join(os.getcwd(), 'mutants')
 # filelist and graph list
 if __name__ == '__main__':
     try:
-        vtkF = wr.ddwalk(op.join(rawdir, 'normalizedVTK'),
-                         '*skeleton.vtk', start=5, stop=-13)
-        vtkS = wr.ddwalk(op.join(inputdir, 'surfaceFiles'),
-                         '*surface.vtk', stop=-12)
+        vtkF = ddwalk(op.join(rawdir, 'normalizedVTK'),
+                      '*skeleton.vtk', start=5, stop=-13)
+        vtkS = ddwalk(op.join(inputdir, 'surfaceFiles'),
+                      '*surface.vtk', stop=-12)
 
-    except:
-        raise UsageError('check your filepaths')
+    except UsageError as e:
+        raise
 
     filekeys = {item: vtkF[media][item] for media
                 in sorted(vtkF.keys()) for item
                 in sorted(vtkF[media].keys())}
 
-    for key in sorted(filekeys.keys())[::10]:
+    for key in sorted(filekeys.keys())[::100]:
         temp = key.partition("_")
         etype = temp[0]
-        cellkey = temp[-1]
         data = vf.callreader(vtkF[etype][key])
         node_data, edge_data, nxgrph = mg(data, key)
         figone = mlab.figure(figure=key,
                              size=(800, 600),
                              bgcolor=(.1, .1, .1))
         vtkobj, _ = vf.cellplot(figone, filekeys[key])
-        vf.rendsurf(vtkS[etype][cellkey])
+        vf.rendsurf(vtkS[etype][key])
         vf.labelbpoints(nxgrph, bsize=0.08, esize=0.08)
 #        mlab.savefig(op.join(rawdir, '%s.png' % key))
 #        mlab.close()

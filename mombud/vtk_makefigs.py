@@ -8,15 +8,8 @@ import matplotlib.pyplot as plt
 from mayavi import mlab
 from pipeline.make_networkx import makegraph as mg
 from mombud.functions import vtkvizfuncs as vz
-import wrappers as wr
+from wrappers import swalk, UsageError
 # pylint: disable=C0103
-
-
-class UsageError(Exception):
-    """
-    Class for user-facing (non-programming) errors
-    """
-    pass
 
 
 plt.close('all')
@@ -30,16 +23,16 @@ if __name__ == '__main__':
     WRITE_PNG = False
     filekey = 'NUM1_032016_011_RFPstack_030'
     try:
- #        vtkF = wr.swalk(op.join(outputdir, 'normalizedVTK'),
- #                        'N*Skeleton.vtk', start=5, stop=-13)
-        vtkF = wr.swalk(os.getcwd(),
-                        '*.vtk', start=0, stop=-4)
-        vtkS = wr.swalk(op.join(inptdir, 'surfaceFiles'),
-                        '*surface.vtk', stop=-4)
+        #        vtkF = wr.swalk(op.join(outputdir, 'normalizedVTK'),
+        #                        'N*Skeleton.vtk', start=5, stop=-13)
+        vtkF = swalk(os.getcwd(),
+                     '*.vtk', start=0, stop=-4)
+        vtkS = swalk(op.join(inptdir, 'surfaceFiles'),
+                     '*surface.vtk', stop=-4)
 
-    except:
-        raise UsageError(
-            "Check your filepaths\nSearch directory is %s\n" % inptdir)
+    except UsageError as e:
+        print e.args[0]
+        raise
 
     data = vz.callreader(vtkF[filekey])
     node_data, edge_data, nxgrph = mg(data, filekey)

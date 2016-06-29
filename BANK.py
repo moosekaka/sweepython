@@ -68,7 +68,7 @@ spend.loc[spend.Desc.str.contains(
     'BCD|BOIL|Boil|YOGURT|MEET FRESH\
     |MITSUWA-BEER'), ['Category']] = 'AsianFood'
 
-pattern = 'JACK|^CHICK|MCD|DEL TACO|IN-N-OUT\
+pattern = 'JACK|^CHICK|MCD|DEL TACO|IN-N-OUT|DAPHNE|RAISING\
 |TACO BELL|SUBWAY|PANERA|^EL P|CHIPOTLE|BLAZE|HABIT|IKEA R\
 |SEAFOOD C|DENNY|IHOP|POPEY|SLAPFISH|PHO SAIGON|Flame|FLAME|KFC|Pizza 90'
 spend.loc[spend.Desc.str.contains(pattern), ['Category']] = 'FastFood'
@@ -94,7 +94,7 @@ Books, Elec. etc.'
 pattern = 'FARMERS IN|AM SOC|USPS 053711025|U-HAUL\
 |UCI TRANSPO|VISTA DEL|IMAGE D|COINBASE|EVA|UMI|PRIME TIME|VR|HARBOR J \
 |BIOMEDICAL ENGINEERING|AUTOZONE|PERFORMANCE BIKE SHOP\
-|STATE OF CALIF DMV|OPTOMETRIC|TOWING'
+|STATE OF CALIF DMV|OPTOMETRIC|TOWING|AAA'
 spend.loc[spend.Desc.str.contains(pattern), ['Category']] = '_One-offs, Fees'
 
 pattern = 'UCI PARK|GOOGLE *|UCI TRANS'
@@ -188,13 +188,13 @@ z['Total'] = z.sum(axis=1)
 # ============================================================================
 # Number of visits to xxx
 # ============================================================================
-print '\n{}\nNumber of occur. of \n{}\n{}\n'.format('='*79, '='*79, z_count)
-
+#print '\n{}\nNumber of occur. of \n{}\n{}\n'.format('='*79, '='*79, z_count)
+print z_count
 # ============================================================================
 # Category spending
 # ============================================================================
-print '\n{}\nSpending by category to \n{}\n{}\n'.format('='*79, '='*79, z)
-
+#print '\n{}\nSpending by category to \n{}\n{}\n'.format('='*79, '='*79, z)
+print z
 # =============================================================================
 # Write out to file
 # =============================================================================

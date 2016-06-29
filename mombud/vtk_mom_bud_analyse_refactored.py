@@ -210,10 +210,12 @@ def process_ind_df(vtkdf, mbax=None, cellax=None, **kwargs):
     """
 
     if mbax is None:
-        raise UsageError('please specify bin range for mom bud axis')
+        raise UsageError('please specify kwargs for "mbax" '
+                         '(mom bud axis bins)')
 
     if cellax is None:
-        raise UsageError('please specify bin range for whole cell axis')
+        raise UsageError('please specify kwargs for "cellax" '
+                         '(whole cell axis bins)')
 
     # concat individual cell DFs and get individual cell data dic_in
     dfc, dic_in = _concatDF(vtkdf)
@@ -223,6 +225,7 @@ def process_ind_df(vtkdf, mbax=None, cellax=None, **kwargs):
     dfc['ind_cell_binpos'] = (groups['ind_cell_axis']
                               .apply(pd.cut, bins=mbax,
                                      labels=mbax[1:]))
+
     # bin the dataframe according to individual entire cell axis
     dfc['whole_cell_binpos'] = (groups['whole_cell_axis']
                                 .apply(pd.cut, bins=cellax,
@@ -339,15 +342,15 @@ def main(**kwargs):
                 'save': False,  # toggle to save plots
                 'inpdatpath': 'celldata.pkl',
                 'mbax': np.linspace(0., 1., 6),  # pos. along mom/bud cell
-                'cellax': np.linspace(0, 1., 11),  # position along whole cell
+#                'cellax': np.linspace(0, 1., 11),  # position along whole cell
                 'binsvolbud': np.linspace(0, 40, 5),  # vol binning for bud
                 'binsvolmom': np.array([0, 30, 40, 80.]),
-                'gfp_plot_vars':['DY_abs_mean_mom',
-                                 'DY_abs_mean_bud',
-                                 'DY_abs_cell_mean'],  # plotGFP variables
-                'viol_plot_vars':['DY_median_mom',
-                                  'DY_median_bud',
-                                  'DY_abs_cell_mean'],  # plotviol variables
+                'gfp_plot_vars': ['DY_abs_mean_mom',
+                                  'DY_abs_mean_bud',
+                                  'DY_abs_cell_mean'],  # plotGFP variables
+                'viol_plot_vars': ['DY_median_mom',
+                                   'DY_median_bud',
+                                   'DY_abs_cell_mean'],  # plotviol variables
                 'COL_ODR': ['MFB1', 'NUM1', 'YPT11',
                             'WT', 'YPE', 'YPL', 'YPR']}
 
@@ -389,4 +392,4 @@ def main(**kwargs):
 # _____________________________________________________________________________
 if __name__ == '__main__':
     plt.close('all')
-    main(regen=True, plot_switch=True, save=True)
+    main(regen=False, plot_switch=True, save=True)

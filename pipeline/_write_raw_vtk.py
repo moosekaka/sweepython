@@ -37,7 +37,9 @@ if __name__ == '__main__':
             os.makedirs(folder)
         except OSError as exception:
             if exception.errno != errno.EEXIST:
-                raise
+                raise  # for any other kinds of errors
+            else:
+                print "{} already exists".format(folder)
 
         nlist = []
         elist = []

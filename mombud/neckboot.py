@@ -51,22 +51,6 @@ class GenData(object):
                 pickle.dump(self.outdata['actual'], out)
 
 
-def makeMask(swtch):
-    """
-    Make mask according to 'mom' or 'bud' region
-    """
-    if swtch not in ['mom', 'bud']:
-        raise ValueError('must be either "mom" or "bud"')
-
-    else:
-        def _mask_fn(df, x1, rad):
-            if swtch == 'mom':
-                return (df.x < x1) & (df.x >= (x1 - rad))
-            elif swtch == 'bud':
-                return (df.x >= x1) & (df.x < (x1 + rad))
-        return _mask_fn
-
-
 def bootNeck(vtkdf, dd=0.3, num_runs=10, save=False, **kwargs):
     """
     Bootstrap points along cellaxis for a given radius around a neckposition
@@ -87,8 +71,8 @@ def bootNeck(vtkdf, dd=0.3, num_runs=10, save=False, **kwargs):
     """
 
     merge = defaultdict(dict)
-    maskMom = makeMask('mom')
-    maskBud = makeMask('bud')
+    maskMom = vf.makeMask('mom')
+    maskBud = vf.makeMask('bud')
 
     for key in sorted(vtkdf.keys()):  # cellname
         print "now on cell {}".format(key)
@@ -253,4 +237,4 @@ def main(**kwargs):
 # _____________________________________________________________________________
 if __name__ == '__main__':
     plt.close('all')
-    main(run_boot=True, num_runs=100,)
+    main(run_boot=True, num_runs=50,)

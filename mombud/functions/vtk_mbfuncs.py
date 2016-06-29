@@ -161,12 +161,27 @@ def neckDY(fname, celldf, neck_position, outdic, dist=None):
     tempdic = defaultdict(dict)
     tempdic[fname]['bud'] = {}
     tempdic[fname]['mom'] = {}
-
+    maskMom = makeMask('mom')
+    maskBud = makeMask('bud')
     for d in dist:
-        tempdic[fname]['bud'][d] = celldf.loc[(celldf.x >= neck_position) &
-                                              (celldf.x <
-                                               (neck_position + d))].DY.mean()
-        tempdic[fname]['mom'][d] = celldf.loc[(celldf.x < neck_position) &
-                                              (celldf.x >=
-                                               (neck_position - d))].DY.mean()
+        tempdic[fname]['bud'][d] = celldf.loc[
+            maskBud(celldf, neck_position, d)].DY.mean()
+        tempdic[fname]['mom'][d] = celldf.loc[
+            maskMom(celldf, neck_position, d)].DY.mean()
     return outdic.update(tempdic)
+
+
+def makeMask(swtch):
+    """
+    Make mask according to 'mom' or 'bud' region
+    """
+    if swtch not in ['mom', 'bud']:
+        raise ValueError('must be either "mom" or "bud"')
+
+    else:
+        def _mask_fn(df, x1, rad):
+            if swtch == 'mom':
+                return (df.x < x1) & (df.x >= (x1 - rad))
+            elif swtch == 'bud':
+                return (df.x >= x1) & (df.x < (x1 + rad))
+        return _mask_fn

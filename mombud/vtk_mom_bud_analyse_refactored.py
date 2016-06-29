@@ -247,7 +247,7 @@ def process_ind_df(vtkdf, mbax=None, cellax=None, **kwargs):
     dicout['dfcell'] = pd.DataFrame.from_dict(dic_in['cell'], orient='index')
     dicout['dfcell'] = pd.concat([dicout['dfcell'], dfc_agg], axis=1)
     dicout['concat'] = dfc
-    _mombudDF(dfc, dicout, dy_type='DY')
+    _mombudDF(dfc, dicout, dy_type=kwargs.get('dy_type'))
     return dicout
 
 
@@ -274,10 +274,11 @@ def postprocess_df(**kwargs):
     cellall['budvol'] = kwargs['dfmb'].bud
     cellall['momvol'] = kwargs['dfmb'].mom
 
-    # frac -> ratio of mom/bud Δψ
+    # v -> ratio of bud/mom Δψ
+    frac_par = kwargs.get('frac_vars')
     cellall = (cellall
-               .assign(frac=cellall.loc[:, 'DY_median_bud'] /
-                       cellall.loc[:, 'DY_median_mom']))
+               .assign(frac=cellall.loc[:, frac_par[1]] /
+                       cellall.loc[:, frac_par[0]]))
 
     #  normalize budvol_q90 -> largest cells (90th percentile)
     cellall = (cellall
@@ -325,6 +326,17 @@ def postprocess_df(**kwargs):
     return outputdic
 
 
+def _dySet(string):
+    """
+    keyword builder for scaling Δψ types
+    """
+    mombud = [string + i for i in ['_median_mom', '_median_bud']]
+
+    return dict(dy_type=string,
+                frac_vars=mombud,
+                viol_plot_vars=mombud + ['DY_abs_cell_mean'])
+
+
 def main(**kwargs):
     """
     Main
@@ -342,17 +354,16 @@ def main(**kwargs):
                 'save': False,  # toggle to save plots
                 'inpdatpath': 'celldata.pkl',
                 'mbax': np.linspace(0., 1., 6),  # pos. along mom/bud cell
-#                'cellax': np.linspace(0, 1., 11),  # position along whole cell
+                'cellax': np.linspace(0, 1., 11),  # position along whole cell
                 'binsvolbud': np.linspace(0, 40, 5),  # vol binning for bud
                 'binsvolmom': np.array([0, 30, 40, 80.]),
                 'gfp_plot_vars': ['DY_abs_mean_mom',
                                   'DY_abs_mean_bud',
                                   'DY_abs_cell_mean'],  # plotGFP variables
-                'viol_plot_vars': ['DY_median_mom',
-                                   'DY_median_bud',
-                                   'DY_abs_cell_mean'],  # plotviol variables
                 'COL_ODR': ['MFB1', 'NUM1', 'YPT11',
                             'WT', 'YPE', 'YPL', 'YPR']}
+    dydict = _dySet('DY')
+    def_args.update(dydict)
 
     def_args.update(kwargs)  # override default args with user kwargs, if any
     outputargs = postprocess_df(**def_args)  # call getdata(), process_ind_df()

@@ -36,58 +36,65 @@ def getrval(df, x, y, labeldic):
     return df, r_sqr
 
 
-def label_n(handle, labeldic, Rsqr=False):
+def labelhandler(htype):
     """
-    modifies title on facetgrid to include labeldic
-
-    Parameters
-    ----------
-
-    handle : FacetGrid ref
-        handle to FacetGrid obj
-
-    labeldic : dict
-        dictionary of text labels to be added to handle's title
-    Rsqr : Bool
-        if True, labels R^2 instead of N counts
+    modifies title on `handle` (an axes obj) to include additional
+    labels in dict. `labeldic`
     """
 
-    if hasattr(handle.axes, 'flat'):
-        for ax in handle.axes.flat:
-            oldtitle = ax.get_title()
-
-            if oldtitle.find('|') > -1:
-                media = (oldtitle
-                         .split('|')[0]
-                         .split('=')[1]
-                         .strip())  # carbon/media type label
-                budv = float(oldtitle
-                             .split('=')[-1]
-                             .strip())  # budvol label
-                # use get() on categorical index of labeldic.xs, as it might
-                # return None (i.e. no cells at that budvol)
-                newtitle = ('{}, N = {}'
-                            .format(media,
-                                    labeldic.xs(media).get([budv])[0]))
-                ax.set_title(newtitle)
-            else:
-                oldtitle = oldtitle.split('=')[1].strip()
-                if not Rsqr:
-                    ax.set_title('{}, N={}'
-                                 .format(oldtitle,
-                                         labeldic[oldtitle]))
-                else:
-                    ax.set_title('{}, R^2={:5.3f}'
-                                 .format(oldtitle,
-                                         labeldic[oldtitle]))
-    else:
-
+    def fun1(handle, labeldic):
+        """
+        for normal plots
+        """
         labels = [xl.get_text().strip()
                   for xl in handle.axes.get_xticklabels()]
         new_labels = ['{}\n N={}'
                       .format(old_lab,
                               labeldic[old_lab]) for old_lab in labels]
         handle.axes.set_xticklabels(new_labels)
+
+    def fun2(handle, labeldic):
+        """
+        for single row facetted plots or rqr regressions
+        """
+        for ax in handle.axes.flat:
+            oldtitle = ax.get_title()
+            oldtitle = oldtitle.split('=')[1].strip()
+            if not htype == 'rsqr':
+                ax.set_title('{}, N={}'
+                             .format(oldtitle,
+                                     labeldic[oldtitle]))
+            else:
+                ax.set_title('{}, R^2={:5.3f}'
+                             .format(oldtitle,
+                                     labeldic[oldtitle]))
+
+    def fun3(handle, labeldic):
+        """
+        for facetted grid plots with multi rows
+        """
+        for ax in handle.axes.flat:
+            oldtitle = ax.get_title()
+
+            media = (oldtitle
+                     .split('|')[0]
+                     .split('=')[1]
+                     .strip())  # carbon/media type label
+            budv = float(oldtitle
+                         .split('=')[-1]
+                         .strip())  # budvol label
+            newtitle = ('{}, N = {}'
+                        .format(media, labeldic.xs(media).get([budv])[0]))
+            ax.set_title(newtitle)
+
+    fundict = {'facet': fun2, 'normal': fun1, 'rowfacet': fun3, 'rsqr': fun2}
+
+    return fundict[htype]
+
+labelBudVol = labelhandler('rowfacet')
+labelFacet = labelhandler('facet')
+labelNormal = labelhandler('normal')
+labelRsqr = labelhandler('rsqr')
 
 
 def plotDims(**kwargs):
@@ -152,7 +159,7 @@ def plotSizeDist(**kwargs):
                           col_order=COL_ODR)
         g = (g.map(sns.distplot, "budvol")
              .set(xlim=(0.)))
-        label_n(g, N)
+        labelFacet(g, N)
         if save:
             g.savefig(op.join(datadir, 'budsize_dist.png'))
 
@@ -163,7 +170,8 @@ def plotSizeDist(**kwargs):
                           col_order=COL_ODR)
         h = (h.map(sns.distplot, "momvol")
              .set(xlim=(0.)))
-        label_n(h, N)
+        labelFacet(h, N)
+
         if save:
             h.savefig(op.join(datadir, 'momsize_dist.png'))
 
@@ -210,7 +218,7 @@ def plotDyAxisDist(dfmom, dfbud, **kwargs):
                   'mom axis position',
                   r'$\Delta\Psi$ scaled gradient')
              .set(ylim=tuple(ylims)))
-        label_n(h, N)
+        labelFacet(h, N)
         if save:
             h.savefig(op.join(datadir, 'mom_cell_dy.png'))
 
@@ -225,7 +233,7 @@ def plotDyAxisDist(dfmom, dfbud, **kwargs):
                    'bud axis position',
                    r'$\Delta\Psi$ scaled gradient')
               .set(ylim=tuple(ylims)))
-        label_n(m1, N)
+        labelFacet(m1, N)
         if save:
             m1.savefig(op.join(datadir, 'bud_cell_dy.png'))
 
@@ -233,7 +241,12 @@ def plotDyAxisDist(dfmom, dfbud, **kwargs):
     with sns.plotting_context('talk', font_scale=.9):
         ylims2 = (bigbinsbud[r'$\Delta\Psi$ scaled gradient']
                   .quantile([0.025, 0.975]).tolist())
-        yt = ranger(ylims2, 0.25)
+
+        if (ylims[1] - ylims[0]) < 2:
+            mult = 0.25
+        else:
+            mult = np.ceil((ylims2[1] - ylims2[0]) / 6)
+        yt = ranger(ylims2, mult)
 
         m0 = sns.FacetGrid(bigbinsbud,
                            row='media',
@@ -246,7 +259,7 @@ def plotDyAxisDist(dfmom, dfbud, **kwargs):
                      'bud axis position',
                      r'$\Delta\Psi$ scaled gradient')
               .set(yticks=yt, ylim=tuple(ylims2)))
-        label_n(m0, Nbud)
+        labelBudVol(m0, Nbud)
 
         if save:
             m0.savefig(op.join(datadir, 'bud_cell_dy_facetted.png'))
@@ -312,7 +325,7 @@ def plotViolins(**kwargs):
     sns.set_style('whitegrid')
     with sns.plotting_context('talk'):
         _, ax4 = plt.subplots(1, 1)
-        ylims = BIG['value'].dropna().quantile([0.005, 0.99]).tolist()
+        ylims = BIG['value'].dropna().quantile([0.015, 0.985]).tolist()
         j = sns.violinplot(x='media',
                            y='value',
                            hue='media',
@@ -340,7 +353,7 @@ def plotViolins(**kwargs):
                                    'markeredgewidth': 2},
                         ax=ax4)
         k.get_legend().set_visible(False)
-        label_n(j, N)
+        labelNormal(j, N)
         if save:
             plt.savefig(op.join(datadir, "violin_fracDY.png"))
 
@@ -354,7 +367,7 @@ def plotViolins(**kwargs):
                            ax=ax3)
         h.set_ylim(ylims[0], ylims[1])
         h.get_legend().set_visible(False)
-        label_n(h, N)
+        labelNormal(h, N)
         if save:
             plt.savefig(op.join(datadir, "Violin Mom_Bud_DY.png"))
 
@@ -371,7 +384,7 @@ def plotViolins(**kwargs):
                           aspect=1.5)
         g = (g.map(sns.distplot, "value")
              .set(xlim=(0.)))
-        label_n(g, N)
+        labelFacet(g, N)
 
         if save:
             plt.savefig(op.join(datadir, "DY_abs_dist.png"))
@@ -408,8 +421,9 @@ def plotGFP(**kwargs):
         plt.setp(leg,
                  bbox_to_anchor=(.75, .85, .1, .2))
         g.set_ylim(ylims[0], ylims[1])
+
         if Ndate is not None:
-            label_n(g, Ndate)
+            labelNormal(g, Ndate)
 
         if save:
             plt.savefig(op.join(datadir, "Violin-GFP_by_date.png"))
@@ -431,8 +445,9 @@ def plotGFP(**kwargs):
         plt.setp(leg,
                  bbox_to_anchor=(.75, .85, .1, .2))
         g.set_ylim(ylims[0], ylims[1])
+
         if N is not None:
-            label_n(g, N)
+            labelNormal(g, N)
 
         if save:
             plt.savefig(op.join(datadir, "Violin-GFP_by_type.png"))
@@ -474,7 +489,8 @@ def plotRegr(**kwargs):
                             hue='date',
                             col_wrap=3)
                  .set(xlim=(0, 2000), ylim=(0., 1.), xlabel='raw GFP'))
-            label_n(g, r2, Rsqr=True)
+
+            labelRsqr(g, r2)
 
             if save:
                 plt.savefig(op.join(datadir,

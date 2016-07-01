@@ -29,7 +29,7 @@ def printtab(data):
     """Print every line of data with a newline for significant diffs
     """
     for line in data:
-        if line[2] == True:
+        if line[2]:
             print line
 
 
@@ -66,7 +66,7 @@ def label_diff(axes, labels, data, text):
     X = axes.get_xticks()
     Y = axes.get_ylim()
     for i in data:
-        if i[2] == True:
+        if i[2]:
             temp.append(
                 (labels.index(i[0]), labels.index(i[1])))
 

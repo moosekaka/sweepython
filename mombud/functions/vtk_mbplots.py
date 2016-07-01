@@ -3,14 +3,113 @@
 Created on Sat Jun 11 16:10:16 2016
 Module for plots of analysis of mother bud function in budding yeast
 """
+import os
 import os.path as op
+import datetime
+import inspect
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from wrappers import UsageError
+
 plt.rcParams['font.family'] = 'DejaVu Sans'
 plt.close('all')
 # pylint: disable=C0103
+
+
+#set1 = dict(x='media', y='value', hue='variable', 'groupkey'='x',
+#            data=gr.get_group('032016'), title='032016')
+#set2 = dict(x='media', y='value', hue='variable',
+#            data=gr.get_group('032716'), title='032716')
+
+
+def get_group_counts(**kwargs):
+    """
+    Get counts of groups based on the first columns name or a groupkey
+    """
+    df = kwargs.get('data')
+    groupkey = kwargs.pop('groupkey', df.columns[0])
+    N = (df.groupby([groupkey, 'variable'])
+         .size()
+         .xs(df['variable'].iloc[0], level='variable'))
+    return N
+
+
+class plviol(object):
+    """
+    Wrapper class for generating violinplots
+    """
+    def __init__(self, plt_type='violinplot', **kwargs):
+        self.plt_type = plt_type
+        self.COL_ODR = kwargs.get('COL_ODR')
+        self.q_lims = kwargs.get('q_lims')
+        self.labeller = kwargs.get('labeller')
+        self.ax = None
+
+    def get_ylims(self, data):
+        """
+        get the ylims for the long form data set
+        """
+        if self.q_lims is not None:
+            y_lims = data['value'].dropna().quantile(self.q_lims).tolist()
+        else:
+            y_lims = (data.value.min(), data.value.max())
+        return y_lims
+
+    def plt(self, ylims=None, **kwargs):
+        """
+        plot violinplots onto instance axes self.ax
+        """
+        data = kwargs.get('data')
+        if ylims is None:  # if ylims is not specifice, get automatically
+            ylims = self.get_ylims(data)
+
+        N = get_group_counts(**kwargs)  # group counts
+
+        # if COL_ODR is specified, get the subset of it
+        if self.COL_ODR is not None:
+            col_order = [i for i in self.COL_ODR if i in N]
+        else:
+            col_order = None
+
+        _, self.ax = plt.subplots(1, 1)
+        h = (getattr(sns, self.plt_type)(ax=self.ax,
+                                         order=col_order, **kwargs))
+
+        h.set_ylim(ylims[0], ylims[1])
+        h.set_title(kwargs.get('title'))
+        self.ax.legend(loc=0)
+#        self.add_count_labels(h, N)
+        if self.labeller is not None:
+            self.labeller(h, N)
+
+
+class plboxer(plviol):
+    """
+    subclass of plviol to have boxplot mean instead of violinplot medians
+    """
+
+    def bxplt(self, **kwargs):
+        """
+        extends plviol.plt to have boxplot mean markers
+        """
+        self.plt(**kwargs)
+        # plt.boxplot doesnt have kwargs, hence need to check kws allowed
+        allowable = inspect.getargspec(sns.boxplot).args
+        kws = {k: v for k, v in kwargs.iteritems() if k in allowable}
+        sns.boxplot(ax=self.ax,
+                    showmeans=True,
+                    showbox=False,
+                    showcaps=False,
+                    showfliers=False,
+                    medianprops={'linewidth': 0},
+                    whiskerprops={'linewidth': 0},
+                    meanprops={'marker': '_',
+                               'c': 'w',
+                               'ms': 5,
+                               'markeredgewidth': 2},
+                    **kws)
 
 
 def ranger(lst, mult):
@@ -105,19 +204,19 @@ def plotDims(**kwargs):
     save = kwargs.get('save', False)
     datadir = kwargs.get('savefolder')
     COL_ODR = kwargs.get('COL_ODR')
-    melt = pd.melt(df,
-                   id_vars='media',
-                   value_vars=['bud_diameter', 'mom_diameter'])
+    diameters = pd.melt(df,
+                        id_vars='media',
+                        value_vars=['bud_diameter', 'mom_diameter'])
 
     with sns.plotting_context('talk'):
-        g = sns.FacetGrid(melt,
+        g = sns.FacetGrid(diameters,
                           col='media',
                           col_wrap=4,
                           hue="variable",
                           col_order=COL_ODR,
                           size=3,
                           aspect=1.5)
-        h = sns.FacetGrid(melt,
+        h = sns.FacetGrid(diameters,
                           col='media',
                           col_wrap=4,
                           hue="variable",
@@ -314,22 +413,22 @@ def plotViolins(**kwargs):
     N = kwargs.get('counts')
     COL_ODR = kwargs.get('COL_ODR')
 
-    BIG = pd.melt(df,
-                  id_vars=['media'],
-                  value_vars=['frac'])
-
-    BIG2 = pd.melt(df,
+    frac = pd.melt(df,
                    id_vars=['media'],
-                   value_vars=col_labels[:-1])
+                   value_vars=['frac'])
+
+    mb_dy = pd.melt(df,
+                    id_vars=['media'],
+                    value_vars=col_labels[:-1])
 
     sns.set_style('whitegrid')
     with sns.plotting_context('talk'):
         _, ax4 = plt.subplots(1, 1)
-        ylims = BIG['value'].dropna().quantile([0.015, 0.985]).tolist()
+        ylims = frac['value'].dropna().quantile([0.015, 0.985]).tolist()
         j = sns.violinplot(x='media',
                            y='value',
                            hue='media',
-                           data=BIG.dropna(),
+                           data=frac.dropna(),
                            order=COL_ODR,
                            inner=None,
                            ax=ax4)
@@ -339,7 +438,7 @@ def plotViolins(**kwargs):
         k = sns.boxplot(x='media',
                         y='value',
                         hue='media',
-                        data=BIG.dropna(),
+                        data=frac.dropna(),
                         order=COL_ODR,
                         showmeans=True,
                         showbox=False,
@@ -358,36 +457,18 @@ def plotViolins(**kwargs):
             plt.savefig(op.join(datadir, "violin_fracDY.png"))
 
         _, ax3 = plt.subplots(1, 1)
-        ylims = BIG2['value'].dropna().quantile([0., .9995]).tolist()
+        ylims = mb_dy['value'].dropna().quantile([0., .9995]).tolist()
         h = sns.violinplot(x='media',
                            y='value',
                            hue='variable',
                            order=COL_ODR,
-                           data=BIG2.dropna(),
+                           data=mb_dy.dropna(),
                            ax=ax3)
         h.set_ylim(ylims[0], ylims[1])
         h.get_legend().set_visible(False)
         labelNormal(h, N)
         if save:
             plt.savefig(op.join(datadir, "Violin Mom_Bud_DY.png"))
-
-        BIG4 = pd.melt(df,
-                       id_vars=['media'],
-                       value_vars=col_labels[-1])
-
-        g = sns.FacetGrid(BIG4,
-                          col='media',
-                          col_wrap=4,
-                          hue='media',
-                          col_order=COL_ODR,
-                          size=3,
-                          aspect=1.5)
-        g = (g.map(sns.distplot, "value")
-             .set(xlim=(0.)))
-        labelFacet(g, N)
-
-        if save:
-            plt.savefig(op.join(datadir, "DY_abs_dist.png"))
 
 
 def plotGFP(**kwargs):
@@ -404,18 +485,18 @@ def plotGFP(**kwargs):
     HUE_ODR = col_labels
 
     with sns.plotting_context('talk', font_scale=1.):
-        BIG5 = pd.melt(df,
-                       id_vars=['date'],
-                       value_vars=col_labels)
+        gfp_date = pd.melt(df,
+                           id_vars=['date'],
+                           value_vars=col_labels)
 
-        ylims = BIG5['value'].dropna().quantile([0.005, 0.95]).tolist()
+        ylims = gfp_date['value'].dropna().quantile([0.005, 0.95]).tolist()
 
         _, ax7 = plt.subplots(1, 1)
         g = sns.violinplot(x='date',
                            y='value',
                            hue='variable',
                            hue_order=HUE_ODR,
-                           data=BIG5,
+                           data=gfp_date,
                            ax=ax7)
         leg = g.get_legend()
         plt.setp(leg,
@@ -428,9 +509,9 @@ def plotGFP(**kwargs):
         if save:
             plt.savefig(op.join(datadir, "Violin-GFP_by_date.png"))
 
-        BIG6 = pd.melt(df,
-                       id_vars=['media'],
-                       value_vars=col_labels)
+        gfp_type = pd.melt(df,
+                           id_vars=['media'],
+                           value_vars=col_labels)
 
         _, ax8 = plt.subplots(1, 1)
         g = sns.violinplot(x='media',
@@ -439,7 +520,7 @@ def plotGFP(**kwargs):
                            hue='variable',
                            order=COL_ODR,
                            hue_order=HUE_ODR,
-                           data=BIG6,
+                           data=gfp_type,
                            ax=ax8)
         leg = g.get_legend()
         plt.setp(leg,
@@ -496,3 +577,38 @@ def plotRegr(**kwargs):
                 plt.savefig(op.join(datadir,
                                     "{} vs raw by date.png".format(
                                         labeldic[p])))
+
+
+#def example_utils():
+#    """
+#    Just a few functions shared between all the examples. Ensures example plots are
+#    all the same size, etc.
+#
+#    Usage
+#    -----
+#
+#    example_utils.title(fig, 'fill/fill_between/stackplot: Filled polygons',
+#                            y=0.95)
+#    example_utils.label(ax, 'fill')
+#    """
+#    import matplotlib.pyplot as plt
+#
+#    def setup_axes():
+#        fig, axes = plt.subplots(ncols=3, figsize=(6.5,3))
+#        for ax in fig.axes:
+#            ax.set(xticks=[], yticks=[])
+#        fig.subplots_adjust(wspace=0, left=0, right=0.93)
+#        return fig, axes
+#
+#    def title(fig, text, y=0.9):
+#        fig.suptitle(text, size=14, y=y, weight='semibold', x=0.98, ha='right',
+#                     bbox=dict(boxstyle='round', fc='floralwhite', ec='#8B7E66',
+#                               lw=2))
+#
+#    def label(ax, text, y=0):
+#        ax.annotate(text, xy=(0.5, 0.00), xycoords='axes fraction', ha='center',
+#                    style='italic',
+#                    bbox=dict(boxstyle='round', facecolor='floralwhite',
+#                              ec='#8B7E66'))
+#
+

@@ -404,7 +404,7 @@ class MombudPicker(HasTraits):
                 self.scene1.picker.pointpicker.pick_position)
         array = getattr(self, '%s_pos' % part)
         self.cursors[part].actor.actor.set(position=array)
-        if self.cursors[part].visible is False:
+        if not self.cursors[part].visible:
             self.cursors[part].set(visible=True)  # make cursors visible now
         self.spheres[part].actor.actor.position = array  # set pos. for spheres
 

@@ -198,8 +198,8 @@ def main(**kwargs):
 
     run_boot = params.get('run_boot', False)
 
-    # if regen switch is False, will try to read in the pickle files below;
-    # else if not found will regenerate the files
+    # if run_boot switch is False, will try to read in the pickle files below;
+    # except if the file is not found, will regenerate the files anyway
     while not run_boot:
         for files in ['neck_boot', 'neck_actual']:
             keyname = files.split('_')[1]

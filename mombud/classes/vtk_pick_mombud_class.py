@@ -20,7 +20,6 @@ from mayavi import mlab
 from mayavi.core.api import Source, Engine
 from mayavi.core.ui.api import SceneEditor, MlabSceneModel, EngineView, \
                                MayaviScene
-import wrappers as wr
 from mombud.functions import vtkvizfuncs as vz
 # pylint: disable=C0103, E1136
 datadir = op.join(os.getcwd(), 'mutants')
@@ -117,8 +116,14 @@ class MitoSkel(HasTraits):
         """
         Calls mayavi tube and surface modules to visualize the VTK data
         """
-        tube = mlab.pipeline.tube(self.data_src, tube_sides=32, **kwargs)
-        skelsurf = mlab.pipeline.surface(tube, **kwargs)
+        tubekws = ['figure', 'name', 'tube_radius', 'tube_sides']
+        kws1 = {k: v for k, v in kwargs.iteritems() if k in tubekws}
+        tube = mlab.pipeline.tube(self.data_src, **kws1)
+
+        surfkws = ['color', 'figure', 'name', 'opacity']
+        kws2 = {k: v for k, v in kwargs.iteritems() if k in surfkws}
+        skelsurf = mlab.pipeline.surface(tube, **kws2)
+
         setattr(self, 'surf', skelsurf)
         mmgr = skelsurf.module_manager.scalar_lut_manager
         mmgr.show_legend = False
@@ -284,6 +289,10 @@ class MombudPicker(HasTraits):
         # This adds the Range trait to the object instance!
         self.add_trait(label, trait)
 
+        #fig aesthetics kws
+        self.kws = dict(tube_radius='0.07', tube_sides=32,
+                        opacity=1.0, transparent=False)
+
     # ------------------------------------------------------------------------
     # Default values
     # ------------------------------------------------------------------------
@@ -320,7 +329,7 @@ class MombudPicker(HasTraits):
 
         # select which scalartype to show on the skeleton
         self.data_src3d.data_src.point_scalars_name = 'DY_raw'
-        self.data_src3d.viz_skel(figure=self.scene1.mayavi_scene)
+        self.data_src3d.viz_skel(figure=self.scene1.mayavi_scene, **self.kws)
 
         # add arrow actor to pipeline
         self.arrow_src.viz_arrow(name='arrow',
@@ -354,7 +363,7 @@ class MombudPicker(HasTraits):
 
         # We will be transforming this copy!!
         self.src_copy = MitoSkel(data_src=vtk_src_copy)
-        self.src_copy.viz_skel(figure=self.scene2.mayavi_scene)
+        self.src_copy.viz_skel(figure=self.scene2.mayavi_scene, **self.kws)
 
         # instanstiate a copy of ellipses objects
         self.mom_t = CellEllipse(name='mom_t',
@@ -499,9 +508,17 @@ class MombudPicker(HasTraits):
         mlab.view(0, 0, distance='auto', figure=self.scene1.mayavi_scene)
         mlab.view(0, 0, distance='auto', figure=self.scene2.mayavi_scene)
 
-##############################################################################
-if __name__ == "__main__":
-    mlab.close(all=True)
+
+def main(*args):
+    """
+    Mom bud cell axis picking tool
+
+    Args
+    ----
+    start, stop, step : int
+        arguments for slice(), i.e. [start:stop:step] to control the range
+        cells to be picked
+    """
     # Read in the celltracing data into a Pandas Dataframe
     DataSize = pd.read_table(op.join(datadir, 'csv', 'Results.txt'))
     df = DataSize.ix[:, 1:]
@@ -509,9 +526,7 @@ if __name__ == "__main__":
     counter = df.groupby('cell').size()
     hasbuds = df[df.cell.isin(counter[counter > 1].index.values)]
 
-#    vtkF = wr.ddalk(datadir, '*csv', start=0, stop=-4)
-    Dcells = {key: None for key in hasbuds.cell.values}
-    for i in hasbuds.cell.unique()[70:72]:
+    for i in hasbuds.cell.unique()[slice(*args)]:
         filename = i
         foldername = filename.partition('_')[0]
 
@@ -536,3 +551,8 @@ if __name__ == "__main__":
                          momellipse=mom,
                          budellipse=bud)
         m.configure_traits()
+
+# ===========================================================================
+if __name__ == "__main__":
+    mlab.close(all=True)
+    main(1, 4)

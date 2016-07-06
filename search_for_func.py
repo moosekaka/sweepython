@@ -26,12 +26,12 @@ def searchfunc(fun, rootdir):
 
 if __name__ == '__main__':
 
-    datadir = os.getenv('PYTHONPATH').split(';')
+#    datadir = os.getenv('PYTHONPATH').split(';')
+    datadir = sys.path
     scrloc = datadir[[num for num, val in enumerate(datadir) if re.search('sweepython', val)][0]]
 
-    datadir2 = op.dirname(os.getenv('PYTHONPATH'))
-    scrloc2 = op.join(datadir2, 'seaborn')
+    scrloc2 = op.join(scrloc, os.pardir, 'seaborn')
 
 
-    searchfunc('tubuleHet', scrloc)
+    searchfunc('getattr', scrloc)
 

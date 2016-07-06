@@ -69,7 +69,7 @@ spend.loc[spend.Desc.str.contains(
     |MITSUWA-BEER'), ['Category']] = 'AsianFood'
 
 pattern = 'JACK|^CHICK|MCD|DEL TACO|IN-N-OUT|DAPHNE|RAISING\
-|TACO BELL|SUBWAY|PANERA|^EL P|CHIPOTLE|BLAZE|HABIT|IKEA R\
+|TACO BELL|SUBWAY|PANERA|EL POLLO LOCO|CHIPOTLE|BLAZE|HABIT|IKEA R\
 |SEAFOOD C|DENNY|IHOP|POPEY|SLAPFISH|PHO SAIGON|Flame|FLAME|KFC|Pizza 90'
 spend.loc[spend.Desc.str.contains(pattern), ['Category']] = 'FastFood'
 
@@ -135,7 +135,7 @@ total = total.set_value(uncat.index, 'Category', 'Uncat')
 # =============================================================================
 date_range = '2015-10'
 dollar_lim = 2000
-mth_lim = 250
+mth_lim = 300
 MthlySpd = - MthlySpd.ix[date_range:]
 df = pd.pivot_table(total,
                     index='Date',

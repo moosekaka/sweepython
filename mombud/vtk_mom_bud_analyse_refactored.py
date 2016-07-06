@@ -350,6 +350,12 @@ def main(**kwargs):
     os.chdir(op.expanduser(os.sep.join(
         ('~', 'Documents', 'Github', 'sweepython', 'WorkingData'))))
 
+#    outkws = dict(COL_ODR=outputargs['COL_ODR'],
+#                  q_lims=[0, 1],
+#                  labeller=labelhandler('normal'))
+
+  #set1 = dict(x='media', y='value', hue='variable', 'groupkey'='x',
+  #            data=gr.get_group('032016'), title='032016')
     def_args = {'regen': False,
                 'save': False,  # toggle to save plots
                 'inpdatpath': 'celldata.pkl',

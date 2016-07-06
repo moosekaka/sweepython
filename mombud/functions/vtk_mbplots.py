@@ -12,10 +12,129 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from wrappers import UsageError
+# pylint: disable=C0103
 
 plt.rcParams['font.family'] = 'DejaVu Sans'
 plt.close('all')
-# pylint: disable=C0103
+
+
+class labelhandler:
+
+    def __init__(self, htype):
+        self._htype = htype
+        self._fundict = {'facet': '_fun2',
+                        'normal': '_fun1',
+                        'rowfacet': '_fun3',
+                        'rsqr': '_fun2'}
+
+    def __call__(self, handle_to_ax, label_dict):
+        getattr(self, self._fundict[self._htype])(handle_to_ax, label_dict)
+
+    def _fun1(self, handle, labeldic):
+        """
+        for normal plots
+        """
+        labels = [xtik.get_text().strip()
+                  for xtik in handle.axes.get_xticklabels()]
+        new_labels = ['{}\n N={}'
+                      .format(old_lab,
+                              labeldic[old_lab]) for old_lab in labels]
+        handle.axes.set_xticklabels(new_labels)
+
+    def _fun2(self, handle, labeldic):
+        """
+        for single row facetted plots or rqr regressions
+        """
+        for ax in handle.axes.flat:
+            oldtitle = ax.get_title()
+            oldtitle = oldtitle.split('=')[1].strip()
+            if not self._htype == 'rsqr':
+                ax.set_title('{}, N={}'
+                             .format(oldtitle,
+                                     labeldic[oldtitle]))
+            else:
+                ax.set_title('{}, R^2={:5.3f}'
+                             .format(oldtitle,
+                                     labeldic[oldtitle]))
+
+    def _fun3(self, handle, labeldic):
+        """
+        for facetted grid plots with multi rows
+        """
+        for ax in handle.axes.flat:
+            oldtitle = ax.get_title()
+
+            media = (oldtitle
+                     .split('|')[0]
+                     .split('=')[1]
+                     .strip())  # carbon/media type label
+            budv = float(oldtitle
+                         .split('=')[-1]
+                         .strip())  # budvol label
+            newtitle = ('{}, N = {}'
+                        .format(media, labeldic.xs(media).get([budv])[0]))
+            ax.set_title(newtitle)
+
+
+#def labelhandler(htype):
+#    """
+#    modifies title on `handle` (an axes obj) to include additional
+#    labels in dict. `labeldic`
+#    """
+#
+#    def fun1(handle, labeldic):
+#        """
+#        for normal plots
+#        """
+#        labels = [xl.get_text().strip()
+#                  for xl in handle.axes.get_xticklabels()]
+#        new_labels = ['{}\n N={}'
+#                      .format(old_lab,
+#                              labeldic[old_lab]) for old_lab in labels]
+#        handle.axes.set_xticklabels(new_labels)
+#
+#    def fun2(handle, labeldic):
+#        """
+#        for single row facetted plots or rqr regressions
+#        """
+#        for ax in handle.axes.flat:
+#            oldtitle = ax.get_title()
+#            oldtitle = oldtitle.split('=')[1].strip()
+#            if not htype == 'rsqr':
+#                ax.set_title('{}, N={}'
+#                             .format(oldtitle,
+#                                     labeldic[oldtitle]))
+#            else:
+#                ax.set_title('{}, R^2={:5.3f}'
+#                             .format(oldtitle,
+#                                     labeldic[oldtitle]))
+#
+#    def fun3(handle, labeldic):
+#        """
+#        for facetted grid plots with multi rows
+#        """
+#        for ax in handle.axes.flat:
+#            oldtitle = ax.get_title()
+#
+#            media = (oldtitle
+#                     .split('|')[0]
+#                     .split('=')[1]
+#                     .strip())  # carbon/media type label
+#            budv = float(oldtitle
+#                         .split('=')[-1]
+#                         .strip())  # budvol label
+#            newtitle = ('{}, N = {}'
+#                        .format(media, labeldic.xs(media).get([budv])[0]))
+#            ax.set_title(newtitle)
+#
+#    fundict = {'facet': fun2, 'normal': fun1, 'rowfacet': fun3, 'rsqr': fun2}
+#
+#    return fundict[htype]
+
+labelBudVol = labelhandler('rowfacet')
+labelFacet = labelhandler('facet')
+labelNormal = labelhandler('normal')
+labelRsqr = labelhandler('rsqr')
 
 
 #set1 = dict(x='media', y='value', hue='variable', 'groupkey'='x',
@@ -40,9 +159,10 @@ class plviol(object):
     """
     Wrapper class for generating violinplots
     """
-    def __init__(self, plt_type='violinplot', **kwargs):
+    def __init__(self, plt_type='violinplot', col_order=None,
+                 **kwargs):
         self.plt_type = plt_type
-        self.COL_ODR = kwargs.get('COL_ODR')
+        self.col_order = col_order
         self.q_lims = kwargs.get('q_lims')
         self.labeller = kwargs.get('labeller')
         self.ax = None
@@ -57,7 +177,7 @@ class plviol(object):
             y_lims = (data.value.min(), data.value.max())
         return y_lims
 
-    def plt(self, ylims=None, **kwargs):
+    def plt(self, ylims=None, save=False, **kwargs):
         """
         plot violinplots onto instance axes self.ax
         """
@@ -68,21 +188,26 @@ class plviol(object):
         N = get_group_counts(**kwargs)  # group counts
 
         # if COL_ODR is specified, get the subset of it
-        if self.COL_ODR is not None:
-            col_order = [i for i in self.COL_ODR if i in N]
+        if self.col_order is not None:
+            col_order_sub = [i for i in self.col_order if i in N]
         else:
-            col_order = None
+            col_order_sub = None
 
-        _, self.ax = plt.subplots(1, 1)
+        f, self.ax = plt.subplots(1, 1)
         h = (getattr(sns, self.plt_type)(ax=self.ax,
-                                         order=col_order, **kwargs))
+                                         order=col_order_sub,
+                                         **kwargs))
 
         h.set_ylim(ylims[0], ylims[1])
         h.set_title(kwargs.get('title'))
         self.ax.legend(loc=0)
-#        self.add_count_labels(h, N)
+
         if self.labeller is not None:
             self.labeller(h, N)
+
+        if save:
+            f.savefig(kwargs.get('savename',
+                                 op.join(os.getcwd(), '_fig.png')))
 
 
 class plboxer(plviol):
@@ -133,67 +258,6 @@ def getrval(df, x, y, labeldic):
     r_sqr = {key: value**2 for key, value in pear.iteritems()}
 
     return df, r_sqr
-
-
-def labelhandler(htype):
-    """
-    modifies title on `handle` (an axes obj) to include additional
-    labels in dict. `labeldic`
-    """
-
-    def fun1(handle, labeldic):
-        """
-        for normal plots
-        """
-        labels = [xl.get_text().strip()
-                  for xl in handle.axes.get_xticklabels()]
-        new_labels = ['{}\n N={}'
-                      .format(old_lab,
-                              labeldic[old_lab]) for old_lab in labels]
-        handle.axes.set_xticklabels(new_labels)
-
-    def fun2(handle, labeldic):
-        """
-        for single row facetted plots or rqr regressions
-        """
-        for ax in handle.axes.flat:
-            oldtitle = ax.get_title()
-            oldtitle = oldtitle.split('=')[1].strip()
-            if not htype == 'rsqr':
-                ax.set_title('{}, N={}'
-                             .format(oldtitle,
-                                     labeldic[oldtitle]))
-            else:
-                ax.set_title('{}, R^2={:5.3f}'
-                             .format(oldtitle,
-                                     labeldic[oldtitle]))
-
-    def fun3(handle, labeldic):
-        """
-        for facetted grid plots with multi rows
-        """
-        for ax in handle.axes.flat:
-            oldtitle = ax.get_title()
-
-            media = (oldtitle
-                     .split('|')[0]
-                     .split('=')[1]
-                     .strip())  # carbon/media type label
-            budv = float(oldtitle
-                         .split('=')[-1]
-                         .strip())  # budvol label
-            newtitle = ('{}, N = {}'
-                        .format(media, labeldic.xs(media).get([budv])[0]))
-            ax.set_title(newtitle)
-
-    fundict = {'facet': fun2, 'normal': fun1, 'rowfacet': fun3, 'rsqr': fun2}
-
-    return fundict[htype]
-
-labelBudVol = labelhandler('rowfacet')
-labelFacet = labelhandler('facet')
-labelNormal = labelhandler('normal')
-labelRsqr = labelhandler('rsqr')
 
 
 def plotDims(**kwargs):

@@ -12,23 +12,26 @@ from wrappers import ddwalk, UsageError
 # pylint: disable=C0103
 
 
-def main(save=False, offscreen=False, **kwargs):
+def main(*args, **kwargs):
     """
     make a list of figures for mito networks
 
     Args
     ----
+    start, stop, step : int
+        arguments for slice(), i.e. [start:stop:step]
 
-    offscreen : Bool
-        disables on screen rendering, won't display plot
 
     kwargs
     ------
-
-    Defaults for optional keywords :
-        `slicerange` =(None, None, 100)
-        `size` =(1200,800), `bgcolor` =(0.05, 0.05, 0.05),
-        `bsize` =0.08, `esize` =0.08
+    save : Bool
+        save toggle
+    offscreen : Bool
+        disables on screen rendering, won't display plot
+    size, bgcolor : Tuple
+        size and background color of Figure
+    bsize, esize : Float
+        branch and end points size
     """
 
     plt.close('all')
@@ -49,11 +52,11 @@ def main(save=False, offscreen=False, **kwargs):
 
     figone = mlab.figure(size=kwargs.get('size', (1200, 800)),
                          bgcolor=kwargs.get('bgcolor', (.05, .05, .05)))
-    if offscreen:
+    if kwargs.get('offscreen', False):
         figone.scene.off_screen_rendering = True
 
-    slicerange = kwargs.get('slicerange', (None, None, 100))
-    for key in sorted(filekeys.keys())[slice(*slicerange)]:
+#    slicerange = kwargs.get('slicerange', (None, None, 100))
+    for key in sorted(filekeys.keys())[slice(*args)]:
         mlab.clf(figure=figone)
         temp = key.partition("_")
         etype = temp[0]
@@ -65,9 +68,9 @@ def main(save=False, offscreen=False, **kwargs):
                         bsize=kwargs.get('bsize', 0.08),
                         esize=kwargs.get('esize', 0.08))
 
-        if save:
+        if kwargs.get('save', False):
             mlab.savefig(op.join(datadir, '%s.png' % key))
 
 # filelist and graph list
 if __name__ == '__main__':
-    main(slicerange=(None, None, 90))
+    main(1, 5, save=True, offscreen=True)

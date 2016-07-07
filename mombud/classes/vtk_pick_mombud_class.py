@@ -116,6 +116,8 @@ class MitoSkel(HasTraits):
         """
         Calls mayavi tube and surface modules to visualize the VTK data
         """
+        # have to check for allowable kws in kwargs because of quirk in
+        # traits factory function, doesn't seem to handle unused kwargs well
         tubekws = ['figure', 'name', 'tube_radius', 'tube_sides']
         kws1 = {k: v for k, v in kwargs.iteritems() if k in tubekws}
         tube = mlab.pipeline.tube(self.data_src, **kws1)
@@ -555,4 +557,4 @@ def main(*args):
 # ===========================================================================
 if __name__ == "__main__":
     mlab.close(all=True)
-    main(1, 4)
+    main(1, 4, 2)

@@ -30,8 +30,8 @@ if __name__ == '__main__':
     datadir = sys.path
     scrloc = datadir[[num for num, val in enumerate(datadir) if re.search('sweepython', val)][0]]
 
-    scrloc2 = op.join(scrloc, os.pardir, 'seaborn')
+    scrloc2 = op.join(scrloc, os.pardir, 'traits')
 
 
-    searchfunc('getattr', scrloc)
+    searchfunc('super(', scrloc2)
 

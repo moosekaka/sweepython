@@ -5,7 +5,6 @@ Module for plots of analysis of mother bud function in budding yeast
 """
 import os
 import os.path as op
-import datetime
 import inspect
 import matplotlib.pyplot as plt
 import numpy as np
@@ -16,24 +15,29 @@ from wrappers import UsageError
 
 plt.rcParams['font.family'] = 'DejaVu Sans'
 plt.close('all')
+error_text = ("labelhandler() called with type {}, which does not exist for"
+              " this handler. Defaulting to unlabelled title for subplot")
 
 
-class labelhandler:
-
-    def __init__(self, htype):
+class labelhandler(object):
+    """ Callable object for labeling subplot titles"""
+    def __init__(self, htype='normal'):
         self._htype = htype
-        self._fundict = {'facet': '_fun2',
-                        'normal': '_fun1',
-                        'rowfacet': '_fun3',
-                        'rsqr': '_fun2'}
+        self._fundict = {'normal': 'fun1',
+                         'facet': 'fun2', 'rowfacet': 'fun2', 'rsqr': 'fun2'}
 
     def __call__(self, handle_to_ax, label_dict):
-        getattr(self, self._fundict[self._htype])(handle_to_ax, label_dict)
+        try:
+            functype = self._fundict[self._htype]
+            getattr(self, functype)(handle_to_ax, label_dict)
+        except KeyError as e:
+            print error_text.format(e)
 
-    def _fun1(self, handle, labeldic):
+    def fun1(self, handle, labeldic):
         """
-        for normal plots
+        for normal plots, i.e. 'unfacetted'
         """
+        assert self._htype == 'normal'  # sanity check here
         labels = [xtik.get_text().strip()
                   for xtik in handle.axes.get_xticklabels()]
         new_labels = ['{}\n N={}'
@@ -41,99 +45,40 @@ class labelhandler:
                               labeldic[old_lab]) for old_lab in labels]
         handle.axes.set_xticklabels(new_labels)
 
-    def _fun2(self, handle, labeldic):
+    def fun2(self, handle, labeldic):
         """
-        for single row facetted plots or rqr regressions
+        for facetted plots
         """
         for ax in handle.axes.flat:
             oldtitle = ax.get_title()
-            oldtitle = oldtitle.split('=')[1].strip()
-            if not self._htype == 'rsqr':
-                ax.set_title('{}, N={}'
-                             .format(oldtitle,
-                                     labeldic[oldtitle]))
+
+            if self._htype == 'rowfacet':  # multi-row facetted plots"
+                media = (oldtitle  # carbon/media type label
+                         .split('|')[0]
+                         .split('=')[1]
+                         .strip())
+                budv = float(oldtitle   # budvol label
+                             .split('=')[-1]
+                             .strip())
+                newtitle = ('{}, N = {}'
+                            .format(media,
+                                    labeldic.xs(media).get([budv])[0]))
+                ax.set_title(newtitle)
+
             else:
-                ax.set_title('{}, R^2={:5.3f}'
-                             .format(oldtitle,
-                                     labeldic[oldtitle]))
+                oldtitle = oldtitle.split('=')[1].strip()
+                if self._htype != 'rsqr':  # defaults for "facet"
+                    ax.set_title('{}, N={}'
+                                 .format(oldtitle,
+                                         labeldic[oldtitle]))
+                else:
+                    ax.set_title('{}, R^2={:5.3f}'  # adds R^2 corr. labels"
+                                 .format(oldtitle,
+                                         labeldic[oldtitle]))
 
-    def _fun3(self, handle, labeldic):
-        """
-        for facetted grid plots with multi rows
-        """
-        for ax in handle.axes.flat:
-            oldtitle = ax.get_title()
-
-            media = (oldtitle
-                     .split('|')[0]
-                     .split('=')[1]
-                     .strip())  # carbon/media type label
-            budv = float(oldtitle
-                         .split('=')[-1]
-                         .strip())  # budvol label
-            newtitle = ('{}, N = {}'
-                        .format(media, labeldic.xs(media).get([budv])[0]))
-            ax.set_title(newtitle)
-
-
-#def labelhandler(htype):
-#    """
-#    modifies title on `handle` (an axes obj) to include additional
-#    labels in dict. `labeldic`
-#    """
-#
-#    def fun1(handle, labeldic):
-#        """
-#        for normal plots
-#        """
-#        labels = [xl.get_text().strip()
-#                  for xl in handle.axes.get_xticklabels()]
-#        new_labels = ['{}\n N={}'
-#                      .format(old_lab,
-#                              labeldic[old_lab]) for old_lab in labels]
-#        handle.axes.set_xticklabels(new_labels)
-#
-#    def fun2(handle, labeldic):
-#        """
-#        for single row facetted plots or rqr regressions
-#        """
-#        for ax in handle.axes.flat:
-#            oldtitle = ax.get_title()
-#            oldtitle = oldtitle.split('=')[1].strip()
-#            if not htype == 'rsqr':
-#                ax.set_title('{}, N={}'
-#                             .format(oldtitle,
-#                                     labeldic[oldtitle]))
-#            else:
-#                ax.set_title('{}, R^2={:5.3f}'
-#                             .format(oldtitle,
-#                                     labeldic[oldtitle]))
-#
-#    def fun3(handle, labeldic):
-#        """
-#        for facetted grid plots with multi rows
-#        """
-#        for ax in handle.axes.flat:
-#            oldtitle = ax.get_title()
-#
-#            media = (oldtitle
-#                     .split('|')[0]
-#                     .split('=')[1]
-#                     .strip())  # carbon/media type label
-#            budv = float(oldtitle
-#                         .split('=')[-1]
-#                         .strip())  # budvol label
-#            newtitle = ('{}, N = {}'
-#                        .format(media, labeldic.xs(media).get([budv])[0]))
-#            ax.set_title(newtitle)
-#
-#    fundict = {'facet': fun2, 'normal': fun1, 'rowfacet': fun3, 'rsqr': fun2}
-#
-#    return fundict[htype]
-
+labelNormal = labelhandler()
 labelBudVol = labelhandler('rowfacet')
 labelFacet = labelhandler('facet')
-labelNormal = labelhandler('normal')
 labelRsqr = labelhandler('rsqr')
 
 

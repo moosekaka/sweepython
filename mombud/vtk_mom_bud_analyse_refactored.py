@@ -162,19 +162,6 @@ def _update_dfMB(key, df_all, df_ind, **kwargs):
     return df_ind
 
 
-def _subsetDF(df, dic, keylist=None):
-    """
-    return a subset, eg. YPE data from full df dataset
-    """
-    if keylist is None:
-        keylist = ['YPE', 'WT']
-    subset = df[df['media'].isin(keylist)]
-    subset = subset.reset_index(drop=True)
-    cntlab = keylist[0].lower()
-    dic['counts_%s' % cntlab] = subset.groupby('date').size().to_dict()
-    dic['data_%s' % cntlab] = subset
-
-
 def _filterMask(df):
     """
     Filter conditions, reject large cells
@@ -255,6 +242,7 @@ def postprocess_df(**kwargs):
     -------
     outputdic : dict
         dictionary of DataFrames for mom bud analyses
+
     """
 
     kwargs['filekeys_f'], kwargs['dfmb'], kwargs['savefolder'] = getData()
@@ -270,7 +258,7 @@ def postprocess_df(**kwargs):
     cellall['momvol'] = kwargs['dfmb'].mom
 
     # v -> ratio of bud/mom Δψ
-    frac_par = kwargs.get('frac_vars', ['DY_median_mom', 'DY_median_bud'])
+    frac_par = ['DY_median_mom', 'DY_median_bud']
     cellall = (cellall
                .assign(frac=cellall.loc[:, frac_par[1]] /
                        cellall.loc[:, frac_par[0]]))
@@ -312,24 +300,21 @@ def postprocess_df(**kwargs):
                                 .groupby('date')
                                 .size().to_dict())
 
-    # subset for YPE
-    _subsetDF(cellall, outputdic)
-
     # output as dict.
     outputdic.update(kwargs)
     outputdic.update(Dout)  # any leftover vars in Dout are returned
     return outputdic
 
 
-def _dySet(string):
-    """
-    keyword builder for scaling Δψ types
-    """
-    mombud = [string + i for i in ['_median_mom', '_median_bud']]
-
-    return dict(dy_type=string,
-                frac_vars=mombud,
-                viol_plot_vars=mombud + ['DY_abs_cell_mean'])
+#def _dySet(string):
+#    """
+#    keyword builder for scaling Δψ types
+#    """
+#    mombud = [string + i for i in ['_median_mom', '_median_bud']]
+#
+#    return dict(dy_type=string,
+#                frac_vars=mombud,
+#                viol_plot_vars=mombud + ['DY_abs_cell_mean'])
 
 
 def main(**kwargs):
@@ -338,15 +323,23 @@ def main(**kwargs):
 
     kwargs
     ------
-    plotlist : List
-        plotting function names
+    regen, save : Bool
+        toggle for vf.gen_data()
+    inpdatpath: Str
+        path for vf.gen_data individual celldf pickled data
+    cellax, mbax : np array
+        range for mombud and cell-axis axes
+    binsvolbud, binsvolmom: np array
+        cell size bins
+    dy_dict : Str
+        type of DY for mombud plots
+
     """
     try:
         os.chdir(op.expanduser(os.sep.join(
             ('~', 'Documents', 'Github', 'sweepython', 'WorkingData'))))
 
-        def_args = {'regen': False,
-                    'save': False,  # toggle to save plots
+        def_args = {'save': False,  # toggle to save plots
                     'inpdatpath': 'celldata.pkl',
                     'mbax': np.linspace(0., 1., 6),  # pos. along mom/bud cell
                     'cellax': np.linspace(0, 1., 11),  # position along whole cell
@@ -356,13 +349,11 @@ def main(**kwargs):
                                       'DY_abs_mean_bud',
                                       'DY_abs_cell_mean'],  # plotGFP variables
                     'COL_ODR': ['MFB1', 'NUM1', 'YPT11',
-                                'WT', 'YPE', 'YPL', 'YPR']}
-        dydict = _dySet('DY')
-        def_args.update(dydict)
+                                'WT', 'YPE', 'YPL', 'YPR'],
+                    }
 
         def_args.update(kwargs)  # override default args with user kwargs, if any
         outputargs = postprocess_df(**def_args)  # call getdata(), process_ind_df()
-
 
         # =========================================================================
         # Plotting routines
@@ -373,8 +364,7 @@ def main(**kwargs):
             print "{key}: {func}".format(key=f, func=funcdict[f].__name__),
             print "{docs}".format(docs=funcdict[f].__doc__)
 
-        plot_switch = kwargs.get('plot_switch', True)
-        while plot_switch:
+        while True:
             try:
                 invar = raw_input('Please enter abbrev. two letter name '
                                   'of functions to plot,\n'
@@ -405,4 +395,4 @@ def main(**kwargs):
 # _____________________________________________________________________________
 if __name__ == '__main__':
     plt.close('all')
-    sys.exit(main(regen=False, plot_switch=True, save=True))
+    sys.exit(main())

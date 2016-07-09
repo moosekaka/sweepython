@@ -78,11 +78,6 @@ class labelhandler(object):
                                  .format(oldtitle,
                                          labeldic[oldtitle]))
 
-labelNormal = labelhandler()
-labelBudVol = labelhandler('rowfacet')
-labelFacet = labelhandler('facet')
-labelRsqr = labelhandler('rsqr')
-
 
 class plviol(object):
     """
@@ -93,27 +88,28 @@ class plviol(object):
     # plot instance level attr.
     allowed_kws_inner = ('data', 'group_key', 'save', 'savename', 'no_legend')
 
-    def __init__(self, plt_type='violinplot', **kwargs):
+    def __init__(self, plt_type='violinplot', nofig=False, **kwargs):
         self.pltobj = getattr(sns, plt_type)  # will be a plt axes obj
-        self.fig, self.ax = plt.subplots(1, 1)
+        if not nofig:  # toggle to disable subplot in case of FacetGrid
+            self.fig, self.ax = plt.subplots(1, 1)
         for name in type(self).allowed_kws_outer:
             try:
                 setattr(self, name, kwargs[name])
             except KeyError:
                 continue
 
-    def get_ylims(self, data):
+    def get_ylims(self, df):
         """
         get the ylims for the long form data set
         """
         try:
             self.default_ylims
-            y_lims = (data['value']
+            y_lims = (df['value']
                       .dropna()
                       .quantile(self.default_ylims)
                       .tolist())
         except AttributeError:
-            y_lims = (data.value.min(), data.value.max())
+            y_lims = (df.value.min(), df.value.max())
         return y_lims
 
     def get_group_counts(self, **kwargs):
@@ -133,7 +129,9 @@ class plviol(object):
         for name in type(self).allowed_kws_inner:  # check if kw allowed
             setattr(self, name, kwargs.get(name))
 
-        ylims = self.get_ylims(self.data)
+        ylims = kwargs.pop('ylim', None)
+        if ylims is None:
+            ylims = self.get_ylims(self.data)
         n_counts = self.get_group_counts(**kwargs)  # group counts
 
         # if COL_ODR is specified, get the subset of it
@@ -152,11 +150,16 @@ class plviol(object):
         except AttributeError:
             pass
 
-        if self.save:
-            self.fig.savefig(kwargs.get('savename',
-                             op.join(os.getcwd(), '_fig.png')))
-        if self.no_legend:
+    def save_figure(self, savepath=None):
+        if savepath is None:
+            savepath = op.join(os.getcwd(), '_fig.png')
+        self.fig.savefig(savepath)
+
+    def turn_off_legend(self):
+        try:
             self.ax.legend_.remove()
+        except AttributeError:
+            pass
 
 
 class plbox(plviol):
@@ -177,41 +180,44 @@ class plbox(plviol):
                     showbox=False,
                     showcaps=False,
                     showfliers=False,
+                    order=self.col_order,
                     medianprops={'linewidth': 0},
                     whiskerprops={'linewidth': 0},
                     meanprops={'marker': '_',
                                'c': 'w',
                                'ms': 5,
                                'markeredgewidth': 2}, **kws)
-        if self.no_legend:
-            self.ax.legend_.remove()
+
 
 class plfacet(plviol):
-    def __init__(self, plt_type='violinplot', **kwargs):
-        self.pltobj = getattr(sns, plt_type)
-        for name in type(self).allowed_kws_outer:
-            try:
-                setattr(self, name, kwargs[name])
-            except KeyError:
-                continue
+    def __init__(self, **kwargs):
+        super(plfacet, self).__init__(nofig=True, **kwargs)
         self.facet_obj = sns.FacetGrid
 
     def plt(self, **kwargs):
-        try:
+        try:  # args for map function of FacetGrid
             mapargs = tuple(kwargs.get('mapargs'))
         except TypeError:
             raise UsageError("Missing 'mapargs' kw as a list on {}"
                              .format(sys.exc_info()[-1].tb_lineno))
 
-        setargs = kwargs.get('setargs')
         data = kwargs.pop('data')
+
+        # add args for set function of FacetGrid
+        setargs = kwargs.get('setargs')
         allowable = inspect.getargspec(sns.FacetGrid.__init__).args
         kws = {k: v for k, v in kwargs.iteritems() if k in allowable}
         self.facet_obj = sns.FacetGrid(data, **kws)
+
         try:
             self.facet_obj.map(self.pltobj, *mapargs).set(**setargs)
         except TypeError:
             self.facet_obj.map(self.pltobj, *mapargs)
+
+    def save_figure(self, savepath=None):
+        if savepath is None:
+            savepath = op.join(os.getcwd(), '_fig.png')
+        self.facet_obj.savefig(savepath)
 
 
 def ranger(lst, mult):
@@ -235,85 +241,6 @@ def getrval(df, x, y, labeldic):
     r_sqr = {key: value**2 for key, value in pear.iteritems()}
 
     return df, r_sqr
-
-
-def plotDims(**kwargs):
-    """
-    Diameters of cells
-    """
-    df = kwargs.get('data')
-    save = kwargs.get('save', False)
-    datadir = kwargs.get('savefolder')
-    COL_ODR = kwargs.get('COL_ODR')
-    diameters = pd.melt(df,
-                        id_vars='media',
-                        value_vars=['bud_diameter', 'mom_diameter'])
-
-    with sns.plotting_context('talk'):
-        g = sns.FacetGrid(diameters,
-                          col='media',
-                          col_wrap=4,
-                          hue="variable",
-                          col_order=COL_ODR,
-                          size=3,
-                          aspect=1.5)
-        h = sns.FacetGrid(diameters,
-                          col='media',
-                          col_wrap=4,
-                          hue="variable",
-                          col_order=COL_ODR,
-                          size=3,
-                          aspect=1.5)
-        g = (g.map(sns.stripplot, "value", jitter=0.1)
-             .set(xlim=(0.), xlabel='diameter/microns'))
-
-        h = (h.map(sns.violinplot, "value")
-             .set(xlim=(0.), xlabel='diameter/microns'))
-
-        if save:
-            g.savefig(op.join(datadir, 'celldiameters_stripplot.png'))
-            h.savefig(op.join(datadir, 'celldiameters_violin.png'))
-
-
-def plotSizeDist(**kwargs):
-    """
-    Distribution of bud and mom volumes
-    """
-    df = kwargs.get('data')
-    datadir = kwargs.get('savefolder')
-    N = kwargs.get('counts')
-    save = kwargs.get('save', False)
-    COL_ODR = kwargs.get('COL_ODR')
-
-    budvol = df.ix[:, ['budvol', 'media']]
-    momvol = df.ix[:, ['momvol', 'media']]
-    budvol['N'] = budvol.groupby('media').transform('count')
-    momvol['N'] = momvol.groupby('media').transform('count')
-
-    sns.set_style('whitegrid')
-    with sns.plotting_context('talk', font_scale=1.1):
-        g = sns.FacetGrid(budvol,
-                          col='media',
-                          col_wrap=4,
-                          hue='media',
-                          col_order=COL_ODR)
-        g = (g.map(sns.distplot, "budvol")
-             .set(xlim=(0.)))
-        labelFacet(g, N)
-        if save:
-            g.savefig(op.join(datadir, 'budsize_dist.png'))
-
-        h = sns.FacetGrid(momvol,
-                          col='media',
-                          col_wrap=4,
-                          hue='media',
-                          col_order=COL_ODR)
-        h = (h.map(sns.distplot, "momvol")
-             .set(xlim=(0.)))
-        labelFacet(h, N)
-
-        if save:
-            h.savefig(op.join(datadir, 'momsize_dist.png'))
 
 
 def plotDyAxisDist(dfmom, dfbud, **kwargs):

@@ -2,6 +2,7 @@
 """
 Main module to analyze mom bud asymmetry
 """
+import sys
 import os
 import os.path as op
 import cPickle as pickle
@@ -15,7 +16,8 @@ from mombud.functions import vtk_mbplots as vp
 from wrappers import UsageError, swalk, ddwalk
 
 # pylint: disable=C0103
-
+datadir = op.join(os.getcwd(), 'mutants', 'transformedData', 'filtered')
+datadir_old = op.join(os.getcwd(), 'data', 'transformedData')
 
 def getFuncList(module, splitword):
     """
@@ -44,11 +46,6 @@ def getData():
         cell volume data
     """
 
-    datadir = op.join(os.getcwd(), 'mutants', 'transformedData', 'filtered')
-
-    # old data
-    datadir_old = op.join(os.getcwd(), 'data', 'transformedData')
-
     # DataFrames for new and old cell picked point
     try:
         with open(op.join(datadir, 'mombudtrans_new.pkl'), 'rb') as inpt:
@@ -66,8 +63,8 @@ def getData():
         vtkF = ddwalk(datadir, filext, stop=-4)
         vtkF_old = swalk(datadir_old, filext, stop=-4)
 
-    except UsageError as e:
-        print e.args[0]
+    except UsageError:
+        print ("Error on {}".format(sys.exc_info()[-1].tb_lineno))
         raise
 
     # file paths for VTKs
@@ -136,7 +133,7 @@ def _aggDY(df):
     return pd.concat([df_agg_mb, df_agg_cell, labels], axis=1)
 
 
-def _mombudDF(df, dic, dy_type='DY'):
+def _mombudDF(df, dic, dy_type='DY', **kwargs):
     """
     groupby bins of ind cell position
     """
@@ -208,14 +205,12 @@ def process_ind_df(vtkdf, mbax=None, cellax=None, **kwargs):
     dicout : dict
         dictionary of DataFrames for mom bud analyses
     """
-
-    if mbax is None:
-        raise UsageError('please specify kwargs for "mbax" '
-                         '(mom bud axis bins)')
-
-    if cellax is None:
-        raise UsageError('please specify kwargs for "cellax" '
-                         '(whole cell axis bins)')
+    try:
+        assert mbax is not None
+        assert cellax is not None
+    except AssertionError:
+        etype, val, tb = sys.exc_info()
+        raise UsageError("{} on {}".format(etype.__name__, tb.tb_lineno))
 
     # concat individual cell DFs and get individual cell data dic_in
     dfc, dic_in = _concatDF(vtkdf)
@@ -247,7 +242,7 @@ def process_ind_df(vtkdf, mbax=None, cellax=None, **kwargs):
     dicout['dfcell'] = pd.DataFrame.from_dict(dic_in['cell'], orient='index')
     dicout['dfcell'] = pd.concat([dicout['dfcell'], dfc_agg], axis=1)
     dicout['concat'] = dfc
-    _mombudDF(dfc, dicout, dy_type=kwargs.get('dy_type'))
+    _mombudDF(dfc, dicout, **kwargs)
     return dicout
 
 
@@ -275,7 +270,7 @@ def postprocess_df(**kwargs):
     cellall['momvol'] = kwargs['dfmb'].mom
 
     # v -> ratio of bud/mom Δψ
-    frac_par = kwargs.get('frac_vars')
+    frac_par = kwargs.get('frac_vars', ['DY_median_mom', 'DY_median_bud'])
     cellall = (cellall
                .assign(frac=cellall.loc[:, frac_par[1]] /
                        cellall.loc[:, frac_par[0]]))
@@ -346,68 +341,68 @@ def main(**kwargs):
     plotlist : List
         plotting function names
     """
+    try:
+        os.chdir(op.expanduser(os.sep.join(
+            ('~', 'Documents', 'Github', 'sweepython', 'WorkingData'))))
 
-    os.chdir(op.expanduser(os.sep.join(
-        ('~', 'Documents', 'Github', 'sweepython', 'WorkingData'))))
+        def_args = {'regen': False,
+                    'save': False,  # toggle to save plots
+                    'inpdatpath': 'celldata.pkl',
+                    'mbax': np.linspace(0., 1., 6),  # pos. along mom/bud cell
+                    'cellax': np.linspace(0, 1., 11),  # position along whole cell
+                    'binsvolbud': np.linspace(0, 40, 5),  # vol binning for bud
+                    'binsvolmom': np.array([0, 30, 40, 80.]),
+                    'gfp_plot_vars': ['DY_abs_mean_mom',
+                                      'DY_abs_mean_bud',
+                                      'DY_abs_cell_mean'],  # plotGFP variables
+                    'COL_ODR': ['MFB1', 'NUM1', 'YPT11',
+                                'WT', 'YPE', 'YPL', 'YPR']}
+        dydict = _dySet('DY')
+        def_args.update(dydict)
 
-#    outkws = dict(COL_ODR=outputargs['COL_ODR'],
-#                  q_lims=[0, 1],
-#                  labeller=labelhandler('normal'))
-
-  #set1 = dict(x='media', y='value', hue='variable', 'groupkey'='x',
-  #            data=gr.get_group('032016'), title='032016')
-    def_args = {'regen': False,
-                'save': False,  # toggle to save plots
-                'inpdatpath': 'celldata.pkl',
-                'mbax': np.linspace(0., 1., 6),  # pos. along mom/bud cell
-                'cellax': np.linspace(0, 1., 11),  # position along whole cell
-                'binsvolbud': np.linspace(0, 40, 5),  # vol binning for bud
-                'binsvolmom': np.array([0, 30, 40, 80.]),
-                'gfp_plot_vars': ['DY_abs_mean_mom',
-                                  'DY_abs_mean_bud',
-                                  'DY_abs_cell_mean'],  # plotGFP variables
-                'COL_ODR': ['MFB1', 'NUM1', 'YPT11',
-                            'WT', 'YPE', 'YPL', 'YPR']}
-    dydict = _dySet('DY')
-    def_args.update(dydict)
-
-    def_args.update(kwargs)  # override default args with user kwargs, if any
-    outputargs = postprocess_df(**def_args)  # call getdata(), process_ind_df()
+        def_args.update(kwargs)  # override default args with user kwargs, if any
+        outputargs = postprocess_df(**def_args)  # call getdata(), process_ind_df()
 
 
-    # =========================================================================
-    # Plotting routines
-    # =========================================================================
-    print "List abbr. for plotting function names\n"
-    abbrv_names, funcdict = getFuncList(vp, 'plot')
-    for f in abbrv_names:
-        print "{key}: {func}".format(key=f, func=funcdict[f].__name__),
-        print "{docs}".format(docs=funcdict[f].__doc__)
+        # =========================================================================
+        # Plotting routines
+        # =========================================================================
+        print "List abbr. for plotting function names\n"
+        abbrv_names, funcdict = getFuncList(vp, 'plot')
+        for f in abbrv_names:
+            print "{key}: {func}".format(key=f, func=funcdict[f].__name__),
+            print "{docs}".format(docs=funcdict[f].__doc__)
 
-    plot_switch = kwargs.get('plot_switch', True)
-    while plot_switch:
-        try:
-            invar = raw_input('Please enter abbrev. two letter name '
-                              'of functions to plot,\n'
-                              'or "a" for all plots, '
-                              'or "q" to quit (without quotes): ')
+        plot_switch = kwargs.get('plot_switch', True)
+        while plot_switch:
+            try:
+                invar = raw_input('Please enter abbrev. two letter name '
+                                  'of functions to plot,\n'
+                                  'or "a" for all plots, '
+                                  'or "q" to quit (without quotes): ')
 
-            if invar == 'q':
-                break
+                if invar == 'q':
+                    print 'Quitting!'
+                    break
 
-            if invar == 'a':
-                _ = [funcdict[f](**outputargs) for f in abbrv_names]
-                print "Finished plotting {} functions!".format(len(_))
-                break
+                if invar == 'a':
+                    _ = [funcdict[f](**outputargs) for f in abbrv_names]
+                    print "Finished plotting {} functions!".format(len(_))
+                    break
 
-            funcdict[invar](**outputargs)
-            print "{} has been executed!".format(funcdict[invar].__name__)
+                funcdict[invar](**outputargs)
+                print "{} has been executed!".format(funcdict[invar].__name__)
 
-        except KeyError as e:
-            print "{} is not in functions list".format(e)
-            continue
+            except KeyError as e:
+                print "{} is not in functions list".format(e)
+                continue
 
+        return 0
+
+    except UsageError as e:
+        print e
+        return 1
 # _____________________________________________________________________________
 if __name__ == '__main__':
     plt.close('all')
-    main(regen=False, plot_switch=True, save=True)
+    sys.exit(main(regen=False, plot_switch=True, save=True))

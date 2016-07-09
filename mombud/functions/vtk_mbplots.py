@@ -3,6 +3,7 @@
 Created on Sat Jun 11 16:10:16 2016
 Module for plots of analysis of mother bud function in budding yeast
 """
+import sys
 import os
 import os.path as op
 import inspect
@@ -11,6 +12,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from wrappers import UsageError
+#from mombud.vtk_mom_bud_analyse_refactored import postprocess_df, _dySet
 # pylint: disable=C0103
 
 plt.rcParams['font.family'] = 'DejaVu Sans'
@@ -82,89 +84,91 @@ labelFacet = labelhandler('facet')
 labelRsqr = labelhandler('rsqr')
 
 
-#set1 = dict(x='media', y='value', hue='variable', 'groupkey'='x',
-#            data=gr.get_group('032016'), title='032016')
-#set2 = dict(x='media', y='value', hue='variable',
-#            data=gr.get_group('032716'), title='032716')
-
-
-def get_group_counts(**kwargs):
-    """
-    Get counts of groups based on the first columns name or a groupkey
-    """
-    df = kwargs.get('data')
-    groupkey = kwargs.pop('groupkey', df.columns[0])
-    N = (df.groupby([groupkey, 'variable'])
-         .size()
-         .xs(df['variable'].iloc[0], level='variable'))
-    return N
-
-
 class plviol(object):
     """
     Wrapper class for generating violinplots
     """
-    def __init__(self, plt_type='violinplot', col_order=None,
-                 **kwargs):
-        self.plt_type = plt_type
-        self.col_order = col_order
-        self.q_lims = kwargs.get('q_lims')
-        self.labeller = kwargs.get('labeller')
-        self.ax = None
+    # class/wrapper level attr.
+    allowed_kws_outer = ('col_order', 'default_ylims', 'labeller')
+    # plot instance level attr.
+    allowed_kws_inner = ('data', 'group_key', 'save', 'savename', 'no_legend')
+
+    def __init__(self, plt_type='violinplot', **kwargs):
+        self.pltobj = getattr(sns, plt_type)  # will be a plt axes obj
+        self.fig, self.ax = plt.subplots(1, 1)
+        for name in type(self).allowed_kws_outer:
+            try:
+                setattr(self, name, kwargs[name])
+            except KeyError:
+                continue
 
     def get_ylims(self, data):
         """
         get the ylims for the long form data set
         """
-        if self.q_lims is not None:
-            y_lims = data['value'].dropna().quantile(self.q_lims).tolist()
-        else:
+        try:
+            self.default_ylims
+            y_lims = (data['value']
+                      .dropna()
+                      .quantile(self.default_ylims)
+                      .tolist())
+        except AttributeError:
             y_lims = (data.value.min(), data.value.max())
         return y_lims
 
-    def plt(self, ylims=None, save=False, **kwargs):
+    def get_group_counts(self, **kwargs):
+        """
+        Get counts of groups based on the first columns name or a groupkey
+        """
+        groupkey = kwargs.get('group_key', self.data.columns[0])
+        N = (self.data.groupby([groupkey, 'variable'])
+             .size()
+             .xs(self.data['variable'].iloc[0], level='variable'))
+        return N
+
+    def plt(self, **kwargs):
         """
         plot violinplots onto instance axes self.ax
         """
-        data = kwargs.get('data')
-        if ylims is None:  # if ylims is not specifice, get automatically
-            ylims = self.get_ylims(data)
+        for name in type(self).allowed_kws_inner:  # check if kw allowed
+            setattr(self, name, kwargs.get(name))
 
-        N = get_group_counts(**kwargs)  # group counts
+        ylims = self.get_ylims(self.data)
+        n_counts = self.get_group_counts(**kwargs)  # group counts
 
         # if COL_ODR is specified, get the subset of it
-        if self.col_order is not None:
-            col_order_sub = [i for i in self.col_order if i in N]
-        else:
+        try:
+            col_order_sub = [i for i in self.col_order if i in n_counts]
+        except AttributeError:
             col_order_sub = None
 
-        f, self.ax = plt.subplots(1, 1)
-        h = (getattr(sns, self.plt_type)(ax=self.ax,
-                                         order=col_order_sub,
-                                         **kwargs))
-
+        # instantiate the axes obj
+        h = self.pltobj(ax=self.ax, order=col_order_sub, **kwargs)
         h.set_ylim(ylims[0], ylims[1])
         h.set_title(kwargs.get('title'))
-        self.ax.legend(loc=0)
 
-        if self.labeller is not None:
-            self.labeller(h, N)
+        try:
+            self.labeller(h, n_counts)
+        except AttributeError:
+            pass
 
-        if save:
-            f.savefig(kwargs.get('savename',
-                                 op.join(os.getcwd(), '_fig.png')))
+        if self.save:
+            self.fig.savefig(kwargs.get('savename',
+                             op.join(os.getcwd(), '_fig.png')))
+        if self.no_legend:
+            self.ax.legend_.remove()
 
 
-class plboxer(plviol):
+class plbox(plviol):
     """
     subclass of plviol to have boxplot mean instead of violinplot medians
     """
 
-    def bxplt(self, **kwargs):
+    def plt(self, **kwargs):
         """
         extends plviol.plt to have boxplot mean markers
         """
-        self.plt(**kwargs)
+        super(plbox, self).plt(**kwargs)
         # plt.boxplot doesnt have kwargs, hence need to check kws allowed
         allowable = inspect.getargspec(sns.boxplot).args
         kws = {k: v for k, v in kwargs.iteritems() if k in allowable}
@@ -178,8 +182,36 @@ class plboxer(plviol):
                     meanprops={'marker': '_',
                                'c': 'w',
                                'ms': 5,
-                               'markeredgewidth': 2},
-                    **kws)
+                               'markeredgewidth': 2}, **kws)
+        if self.no_legend:
+            self.ax.legend_.remove()
+
+class plfacet(plviol):
+    def __init__(self, plt_type='violinplot', **kwargs):
+        self.pltobj = getattr(sns, plt_type)
+        for name in type(self).allowed_kws_outer:
+            try:
+                setattr(self, name, kwargs[name])
+            except KeyError:
+                continue
+        self.facet_obj = sns.FacetGrid
+
+    def plt(self, **kwargs):
+        try:
+            mapargs = tuple(kwargs.get('mapargs'))
+        except TypeError:
+            raise UsageError("Missing 'mapargs' kw as a list on {}"
+                             .format(sys.exc_info()[-1].tb_lineno))
+
+        setargs = kwargs.get('setargs')
+        data = kwargs.pop('data')
+        allowable = inspect.getargspec(sns.FacetGrid.__init__).args
+        kws = {k: v for k, v in kwargs.iteritems() if k in allowable}
+        self.facet_obj = sns.FacetGrid(data, **kws)
+        try:
+            self.facet_obj.map(self.pltobj, *mapargs).set(**setargs)
+        except TypeError:
+            self.facet_obj.map(self.pltobj, *mapargs)
 
 
 def ranger(lst, mult):
@@ -588,6 +620,89 @@ def plotRegr(**kwargs):
                                         labeldic[p])))
 
 
+#def main():
+#    try:
+#        def_args = {'regen': False,
+#                    'save': False,  # toggle to save plots
+#                    'inpdatpath': 'celldata.pkl',
+#                    'mbax': np.linspace(0., 1., 6),  # pos. along mom/bud cell
+#                    'cellax': np.linspace(0, 1., 11),  # position along whole cell
+#                    'binsvolbud': np.linspace(0, 40, 5),  # vol binning for bud
+#                    'binsvolmom': np.array([0, 30, 40, 80.]),
+#                    'gfp_plot_vars': ['DY_abs_mean_mom',
+#                                      'DY_abs_mean_bud',
+#                                      'DY_abs_cell_mean'],
+#                    'COL_ODR': ['MFB1', 'NUM1', 'YPT11',
+#                                'WT', 'YPE', 'YPL', 'YPR'],
+#                    'HUE_ODR': ['DY_abs_mean_mom',
+#                                'DY_abs_mean_bud',
+#                                'whole_cell_abs']}
+#
+#        dydict = _dySet('DY')
+#        def_args.update(dydict)
+#
+#        outputargs = postprocess_df(**def_args)  # calls inputdata(), mungedata()
+#
+#        kwargs = def_args
+#        df = outputargs.get('data')
+#        datadir = kwargs.get('savefolder')
+#        col_labels = kwargs.get('gfp_plot_vars')
+#        save = kwargs.get('save', False)
+#        N = kwargs.get('counts')
+#        COL_ODR = kwargs.get('COL_ODR')
+#        frac = pd.melt(df,
+#                       id_vars=['media'],
+#                       value_vars=['frac'])
+#        mb_dy = pd.melt(df,
+#                        id_vars=['media', 'date'],
+#                        value_vars=col_labels[:])
+#        diameters = pd.melt(df,
+#                            id_vars='media',
+#                            value_vars=['bud_diameter', 'mom_diameter'])
+#
+#
+#    #        h = (h.map(sns.violinplot, "value")
+#    #             .set(xlim=(0.), xlabel='diameter/microns'))
+#
+#        m = ['NUM1', 'MFB1', 'YPT11', 'WT']
+#
+#        mutants = mb_dy[mb_dy['media'].isin(m)].reset_index(drop=True)
+#        gr = mutants.groupby('date')
+#        outkws2 = dict(default_ylims=[0.05, 0.95],
+#                       labeller=labelhandler('normal'))
+#        set1 = dict(data=mutants,
+#                    x='date', y='value', hue='media', no_legend=False, # save=True,
+#                    group_key='date')
+#
+#        plv = plviol(**outkws2)
+#        plv.plt(**set1)
+#
+#        set2 = dict(data=frac,
+#                    x='media', y='value', hue='media',# save=True,
+#                    group_key='media', inner=None, no_legend=True)
+#        plv2 = plbox(**outkws2)
+#        plv2.plt(**set2)
+#
+#        set3 = dict(data=diameters, col_wrap=4, mapargs=['value',],
+#                    col='media', hue='variable',# save=True,
+#                    size=3, aspect=1.5,
+#                    setargs=dict(xlim=(0.), xlabel='diameter'))
+#        plv3 = plfacet()
+#        plv3.plt(**set3)
+#
+#        print "Finished plotting!"
+#        return 0
+#
+#    except UsageError as e:
+#        print e
+#        return 1
+#
+#
+#if __name__=='__main__':
+#    sys.exit(main())
+
+
+#    a = plfacet()
 #def example_utils():
 #    """
 #    Just a few functions shared between all the examples. Ensures example plots are

@@ -11,13 +11,14 @@ from collections import defaultdict
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from mombud.functions import vtk_mbfuncs as vf
-from mombud.functions import vtk_mbplots as vp
+import mombud.functions.vtk_mbfuncs as vf
 from wrappers import UsageError, swalk, ddwalk
-
 # pylint: disable=C0103
+COL_ODR = ['MFB1', 'NUM1', 'YPT11', 'WT', 'YPE', 'YPL', 'YPR']
+HUE_ODR = ['DY_abs_mean_mom', 'DY_abs_mean_bud', 'whole_cell_abs']
 datadir = op.join(os.getcwd(), 'mutants', 'transformedData', 'filtered')
 datadir_old = op.join(os.getcwd(), 'data', 'transformedData')
+
 
 def getFuncList(module, splitword):
     """
@@ -196,7 +197,7 @@ def process_ind_df(vtkdf, mbax=None, cellax=None, **kwargs):
         assert mbax is not None
         assert cellax is not None
     except AssertionError:
-        etype, val, tb = sys.exc_info()
+        etype, _, tb = sys.exc_info()
         raise UsageError("{} on {}".format(etype.__name__, tb.tb_lineno))
 
     # concat individual cell DFs and get individual cell data dic_in
@@ -237,6 +238,19 @@ def postprocess_df(**kwargs):
     """
     Set population level data ,update parameters dict for plotting and filter
     unwanted data
+
+    Parameters
+    ----------
+    regen, save : Bool
+        toggle for vf.gen_data()
+    inpdatpath: Str
+        path for vf.gen_data individual celldf pickled data
+    cellax, mbax : np array
+        range for mombud and cell-axis axes
+    binsvolbud, binsvolmom: np array
+        cell size bins
+    dy_dict : Str
+        type of DY for mombud plots (default = `DY`)
 
     Returns
     -------
@@ -289,104 +303,36 @@ def postprocess_df(**kwargs):
     for i in ['data', 'dfmom', 'dfbud']:
         outputdic[i] = outputdic[i][filtout['large_ypd']]
 
-    # get counts for each type
-    outputdic['counts'] = (outputdic['data']
-                           .groupby('media')
-                           .size().to_dict())
-    outputdic['counts_buds'] = (outputdic['data']
-                                .groupby(['media', 'binbudvol'])
-                                .size())
-    outputdic['counts_date'] = (outputdic['data']
-                                .groupby('date')
-                                .size().to_dict())
-
     # output as dict.
     outputdic.update(kwargs)
     outputdic.update(Dout)  # any leftover vars in Dout are returned
     return outputdic
 
 
-#def _dySet(string):
-#    """
-#    keyword builder for scaling Δψ types
-#    """
-#    mombud = [string + i for i in ['_median_mom', '_median_bud']]
-#
-#    return dict(dy_type=string,
-#                frac_vars=mombud,
-#                viol_plot_vars=mombud + ['DY_abs_cell_mean'])
-
-
 def main(**kwargs):
     """
     Main
 
-    kwargs
-    ------
-    regen, save : Bool
-        toggle for vf.gen_data()
-    inpdatpath: Str
-        path for vf.gen_data individual celldf pickled data
-    cellax, mbax : np array
-        range for mombud and cell-axis axes
-    binsvolbud, binsvolmom: np array
-        cell size bins
-    dy_dict : Str
-        type of DY for mombud plots
-
     """
+    plt.close('all')
     try:
         os.chdir(op.expanduser(os.sep.join(
             ('~', 'Documents', 'Github', 'sweepython', 'WorkingData'))))
 
-        def_args = {'save': False,  # toggle to save plots
+        def_args = {'save': False,
                     'inpdatpath': 'celldata.pkl',
-                    'mbax': np.linspace(0., 1., 6),  # pos. along mom/bud cell
-                    'cellax': np.linspace(0, 1., 11),  # position along whole cell
-                    'binsvolbud': np.linspace(0, 40, 5),  # vol binning for bud
-                    'binsvolmom': np.array([0, 30, 40, 80.]),
-                    'gfp_plot_vars': ['DY_abs_mean_mom',
-                                      'DY_abs_mean_bud',
-                                      'DY_abs_cell_mean'],  # plotGFP variables
-                    'COL_ODR': ['MFB1', 'NUM1', 'YPT11',
-                                'WT', 'YPE', 'YPL', 'YPR'],
-                    }
+                    'mbax': np.linspace(0., 1., 6),
+                    'cellax': np.linspace(0, 1., 11),
+                    'binsvolbud': np.linspace(0, 40, 5),
+                    'binsvolmom': np.array([0, 30, 40, 80.])}
 
-        def_args.update(kwargs)  # override default args with user kwargs, if any
-        outputargs = postprocess_df(**def_args)  # call getdata(), process_ind_df()
-
-        # =========================================================================
-        # Plotting routines
-        # =========================================================================
-        print "List abbr. for plotting function names\n"
-        abbrv_names, funcdict = getFuncList(vp, 'plot')
-        for f in abbrv_names:
-            print "{key}: {func}".format(key=f, func=funcdict[f].__name__),
-            print "{docs}".format(docs=funcdict[f].__doc__)
-
-        while True:
-            try:
-                invar = raw_input('Please enter abbrev. two letter name '
-                                  'of functions to plot,\n'
-                                  'or "a" for all plots, '
-                                  'or "q" to quit (without quotes): ')
-
-                if invar == 'q':
-                    print 'Quitting!'
-                    break
-
-                if invar == 'a':
-                    _ = [funcdict[f](**outputargs) for f in abbrv_names]
-                    print "Finished plotting {} functions!".format(len(_))
-                    break
-
-                funcdict[invar](**outputargs)
-                print "{} has been executed!".format(funcdict[invar].__name__)
-
-            except KeyError as e:
-                print "{} is not in functions list".format(e)
-                continue
-
+        def_args.update(kwargs)
+        outputargs = postprocess_df(**def_args)
+        print "\nFinished program, data is in dict with keys:"
+        print "*"*79
+        for f in sorted(outputargs.keys()):
+            print ("{key:18}: {datatype:15}"
+                   .format(key=f, datatype=type(outputargs[f]).__name__))
         return 0
 
     except UsageError as e:
@@ -394,5 +340,4 @@ def main(**kwargs):
         return 1
 # _____________________________________________________________________________
 if __name__ == '__main__':
-    plt.close('all')
     sys.exit(main())

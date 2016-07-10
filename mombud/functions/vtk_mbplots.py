@@ -20,7 +20,6 @@ plt.close('all')
 error_text = ("labelhandler() called with type {}, which does not exist for"
               " this handler. Defaulting to unlabelled title for subplot")
 
-
 class labelhandler(object):
     """ Callable object for labeling subplot titles"""
     def __init__(self, htype='normal'):
@@ -40,8 +39,7 @@ class labelhandler(object):
         for normal plots, i.e. 'unfacetted'
         """
         assert self._htype == 'normal'  # sanity check here
-        labels = [xtik.get_text().strip()
-                  for xtik in handle.axes.get_xticklabels()]
+        labels = [xtik.get_text().strip() for xtik in handle.axes.get_xticklabels()]
         new_labels = ['{}\n N={}'
                       .format(old_lab,
                               labeldic[old_lab]) for old_lab in labels]
@@ -84,19 +82,22 @@ class plviol(object):
     Wrapper class for generating violinplots
     """
     # class/wrapper level attr.
-    allowed_kws_outer = ('col_order', 'default_ylims', 'labeller')
-    # plot instance level attr.
-    allowed_kws_inner = ('data', 'group_key', 'save', 'savename', 'no_legend')
+    def_init_kwargs = ('col_order', 'default_ylims', 'labeller')
 
     def __init__(self, plt_type='violinplot', nofig=False, **kwargs):
         self.pltobj = getattr(sns, plt_type)  # will be a plt axes obj
         if not nofig:  # toggle to disable subplot in case of FacetGrid
             self.fig, self.ax = plt.subplots(1, 1)
-        for name in type(self).allowed_kws_outer:
+        for name in type(self).def_init_kwargs:
             try:
                 setattr(self, name, kwargs[name])
             except KeyError:
                 continue
+        self.data = None
+        self.x = None
+        self.y = None
+        self.n_counts = None
+        self.ylim = None
 
     def get_ylims(self, df):
         """
@@ -104,49 +105,80 @@ class plviol(object):
         """
         try:
             self.default_ylims
-            y_lims = (df['value']
+            y_lims = (df.iloc[:, -1]
                       .dropna()
                       .quantile(self.default_ylims)
                       .tolist())
         except AttributeError:
-            y_lims = (df.value.min(), df.value.max())
-        return y_lims
+            print "default_ylims not specified, returning minmax instead"
+            y_lims = (df.iloc[:, -1].min(), df.iloc[:, -1].max())
+        return tuple(y_lims)
 
     def get_group_counts(self, **kwargs):
         """
         Get counts of groups based on the first columns name or a groupkey
         """
         groupkey = kwargs.get('group_key', self.data.columns[0])
-        N = (self.data.groupby([groupkey, 'variable'])
-             .size()
-             .xs(self.data['variable'].iloc[0], level='variable'))
-        return N
 
-    def plt(self, **kwargs):
+        self.n_counts = (self.data.groupby([groupkey, 'variable'])
+                         .size()
+                         .xs(self.data['variable'].iloc[0], level='variable'))
+
+    def call_sns_plotter(self, order, ylims, **kwargs):
+            """
+            Draws the axes obj using the seaborn method self.pltobj
+            """
+            h = self.pltobj(data=self.data, ax=self.ax,
+                            order=order, **kwargs)
+            h.set_ylim(ylims[0], ylims[1])
+            h.set_title(kwargs.get('title'))
+
+            try:
+                self.labeller(h, self.n_counts)
+            except AttributeError:
+                "Skipping labels of categorical vars."
+                pass
+
+    def plt(self, data=None, ylim=None, **kwargs):
         """
-        plot violinplots onto instance axes self.ax
+        Parameters
+        ----------
+        data : DataFrame
+            data for plot input
+        ylim : [None | 'auto' | tuple]
+            `ylim` is an axes level parameter to manually set the y-limits,\
+            as the axes level seaborn plot functions do not have a `ylim`\
+            parameter, unlike FacetGrid. If set to `auto`, ylim is calculated
+            according to a default_ylims parameter during object instantiation
         """
-        for name in type(self).allowed_kws_inner:  # check if kw allowed
-            setattr(self, name, kwargs.get(name))
-
-        ylims = kwargs.pop('ylim', None)
-        if ylims is None:
-            ylims = self.get_ylims(self.data)
-        n_counts = self.get_group_counts(**kwargs)  # group counts
-
-        # if COL_ODR is specified, get the subset of it
+        self.data = data
         try:
-            col_order_sub = [i for i in self.col_order if i in n_counts]
+            assert self.data is not None
+        except AssertionError:
+            etype, val, tb = sys.exc_info()
+            raise UsageError("{} on {}".format(etype.__name__, tb.tb_lineno))
+
+        # get the y-axis limits
+        if ylim is not None:
+            if ylim == 'auto':
+                self.ylim = self.get_ylims(self.data)
+            else:
+                self.ylim = ylim
+
+        # get the counts for the categorical vars
+        self.get_group_counts(**kwargs)
+
+        # if a subset of data is chosen, make col_order a subset too
+        try:
+            col_order_sub = [i for i in self.col_order if i in self.n_counts]
         except AttributeError:
             col_order_sub = None
 
-        # instantiate the axes obj
-        h = self.pltobj(ax=self.ax, order=col_order_sub, **kwargs)
-        h.set_ylim(ylims[0], ylims[1])
-        h.set_title(kwargs.get('title'))
-
+        # tries to plot using the relevant seaborn plot type, except if this
+        # instance's  plt() is overriden
         try:
-            self.labeller(h, n_counts)
+            self.call_sns_plotter(order=col_order_sub,
+                                  ylims=self.ylim, **kwargs)
         except AttributeError:
             pass
 
@@ -171,7 +203,6 @@ class plbox(plviol):
         """
         extends plviol.plt to have boxplot mean markers
         """
-        super(plbox, self).plt(**kwargs)
         # plt.boxplot doesnt have kwargs, hence need to check kws allowed
         allowable = inspect.getargspec(sns.boxplot).args
         kws = {k: v for k, v in kwargs.iteritems() if k in allowable}
@@ -187,32 +218,60 @@ class plbox(plviol):
                                'c': 'w',
                                'ms': 5,
                                'markeredgewidth': 2}, **kws)
+        # plt this after boxplot so that labelling macros are preserved
+        super(plbox, self).plt(**kwargs)
 
 
 class plfacet(plviol):
     def __init__(self, **kwargs):
+        # nofig: ensure that the base class does not call plt.figure
         super(plfacet, self).__init__(nofig=True, **kwargs)
         self.facet_obj = sns.FacetGrid
+        self.ylim = None
 
-    def plt(self, **kwargs):
-        try:  # args for map function of FacetGrid
-            mapargs = tuple(kwargs.get('mapargs'))
-        except TypeError:
-            raise UsageError("Missing 'mapargs' kw as a list on {}"
-                             .format(sys.exc_info()[-1].tb_lineno))
+    def get_group_counts(self, **kwargs):
+        """
+        Get counts of groups based on the first columns name or a groupkey
+        """
+        groupkey = kwargs.get('group_key', self.data.columns[0])
+        try:
+            self.n_counts = (self.data.groupby([groupkey, 'variable'])
+                             .size()
+                             .xs(self.data['variable'].iloc[0],
+                                 level='variable'))
+        except KeyError:
+            # reshape data using pivot table
+            dfcopy = self.data.reset_index()
+            c1, c2, c3, c4, c5 = dfcopy.columns
+            self.n_counts = (pd.pivot_table
+                             (dfcopy, c1, index=c2, columns=c4, aggfunc=len)
+                             ).iloc[:, 0]
 
-        data = kwargs.pop('data')
+    def plt(self, data=None, mapargs=None, **kwargs):
+        super(plfacet, self).plt(data=data, **kwargs)  # consumes ylim
 
         # add args for set function of FacetGrid
-        setargs = kwargs.get('setargs')
+        setargs = kwargs.pop('setargs', None)
         allowable = inspect.getargspec(sns.FacetGrid.__init__).args
         kws = {k: v for k, v in kwargs.iteritems() if k in allowable}
+        kws.update({'ylim': self.ylim})
+        print "{}\n".format(kws)
         self.facet_obj = sns.FacetGrid(data, **kws)
 
         try:
             self.facet_obj.map(self.pltobj, *mapargs).set(**setargs)
         except TypeError:
-            self.facet_obj.map(self.pltobj, *mapargs)
+            try:
+                self.facet_obj.map(self.pltobj, *mapargs)
+            except TypeError:
+                raise UsageError("Missing kwargs `mapargs` on line {}"
+                                 .format(sys.exc_info()[-1].tb_lineno))
+
+        try:
+            self.labeller(self.facet_obj, self.n_counts)
+        except AttributeError as e:
+            print "Error: {}, labelling skipped.".format(e)
+            pass
 
     def save_figure(self, savepath=None):
         if savepath is None:

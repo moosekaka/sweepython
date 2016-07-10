@@ -74,86 +74,89 @@ def main():
         momdy = pd.melt(dfmom,
                         id_vars=['media', 'binvol'],
                         var_name='mom axis position',
-                        value_name=r'$\Delta\Psi$ scaled gradient',
+                        value_name=r'$\Delta\Psi$ scaled',
                         value_vars=outputargs['mbax'].tolist())
-        momdy = momdy.dropna()
+#        momdy = momdy.dropna()
         buddy= pd.melt(dfbud,
                        id_vars=['media', 'binvol'],
                        var_name='bud axis position',
-                       value_name=r'$\Delta\Psi$ scaled gradient',
+                       value_name=r'$\Delta\Psi$ scaled',
                        value_vars=outputargs['mbax'].tolist())
-        buddy = buddy.dropna()
+#        buddy = buddy.dropna()
     # mutant only subset
         mutants = (mb_dy[mb_dy['media']
                    .isin(['NUM1', 'MFB1', 'YPT11', 'WT'])]
                    .reset_index(drop=True))
         group = mutants.groupby('date')
 #==============================================================================
-        outkws1 = dict(default_ylims=[0.025, 0.975],
+        outkws1 = dict(#default_ylims=[0.05, 0.95],
                        labeller=labelNormal, col_order=COL_ODR)
 
-        outkws2 = dict(default_ylims=[0.01, 0.99],
+        outkws2 = dict(default_ylims=[0.15, 0.9],
                        labeller=labelFacet, col_order=COL_ODR)
 
-        set1 = dict(data=mutants, x='media', y='value',
+        set0 = dict(x='media', y='value',
                     hue='variable', group_key='media',
-                    title='mombud', ylims=(0, 1.)
+                    title='mombud', ylim=(0, 1.),
                     )
         plv = plviol(**outkws1)
-        plv.plt(**set1)
+        plv.plt(data=mutants, **set0)
         plv.turn_off_legend()
         plv.save_figure(op.join(savefolder, 'mutantsDY_mombud.png'))
 
-        set2 = dict(data=frac, x='media', y='value',
-                    hue='media', group_key='media', inner=None
+        set1 = dict(x='media', y='value',
+                    hue='variable', group_key='media',
+                    title='mombud', ylim=(0, 1.),
                     )
+        plv1 = plviol(**outkws1)
+        plv1.plt(data=mb_dy, **set1)
+        plv1.turn_off_legend()
+        plv1.save_figure(op.join(savefolder, 'violin_mombud.png'))
+
+        set2 = dict(x='media', y='value', ylim='auto',
+                    hue='media', group_key='media', inner=None,
+                    title='fracDY')
         plv2 = plbox(**outkws1)
-        plv2.plt(**set2)
+        plv2.plt(data=frac, **set2)
         plv2.turn_off_legend()
         plv2.save_figure(op.join(savefolder, 'fracDY.png'))
 
-        set3 = dict(data=diameters, col_wrap=4, col='media',
+        set3 = dict(col_wrap=4, col='media',
                     size=3, aspect=1.5, hue='variable',
-                    mapargs=['value', ], col_order=COL_ODR,
+                    col_order=COL_ODR,
                     setargs=dict(xlim=(0.), xlabel='diameter')
                     )
         plv3 = plfacet(plt_type='distplot', **outkws2)
-        plv3.plt(**set3)
+        plv3.plt(data=diameters, mapargs=['value', ], **set3)
         plv3.save_figure(op.join(savefolder, 'diameters.png'))
 
-        set4 = dict(data=size,
-                    col_wrap=4, col='media', hue='variable',
-                    mapargs=['value', ], col_order=COL_ODR,
+        set4 = dict(col_wrap=4, col='media', hue='variable',
+                    col_order=COL_ODR,
                     setargs=dict(xlim=(0.),  xlabel='volume')
                     )
         plv4 = plfacet(plt_type='distplot', **outkws2)
-        plv4.plt(**set4)
+        plv4.plt(data=size, mapargs=['value', ], **set4)
         plv4.save_figure(op.join(savefolder, 'size.png'))
 
-        set5 = dict(data=momdy,
-                    col_wrap=4, col='media', hue='media',
+        set5 = dict(col_wrap=4, col='media', hue='media',
                     sharex=True, sharey=True, col_order=COL_ODR,
-                    ylim=tuple(buddy[r'$\Delta\Psi$ scaled gradient']
-                               .quantile([0.025, 0.975])),
-                    mapargs=['mom axis position',
-                             r'$\Delta\Psi$ scaled gradient'],
+                    ylim=(0.78260942314103787, 1.5907407062613563),
                     )
-        plv5 = plfacet(plt_type='pointplot')
-        plv5.plt(**set5)
+        plv5 = plfacet(plt_type='pointplot', **outkws2)
+        plv5.plt(data=momdy,
+                 mapargs=['mom axis position', r'$\Delta\Psi$ scaled'],
+                 **set5)
         plv5.save_figure(op.join(savefolder, 'momDY.png'))
 
-        set6 = dict(data=buddy,
-                    col_wrap=4, col='media', hue='media',
+        set6 = dict(col_wrap=4, col='media', hue='media',
                     sharex=True, sharey=True, col_order=COL_ODR,
-                    ylim=tuple(buddy[r'$\Delta\Psi$ scaled gradient']
-                               .quantile([0.025, 0.975])),
-                    mapargs=['bud axis position',
-                             r'$\Delta\Psi$ scaled gradient'],
+                    ylim='auto',
                     )
-        plv6 = plfacet(plt_type='pointplot')
-        plv6.plt(**set6)
+        plv6 = plfacet(plt_type='pointplot', **outkws2)
+        plv6.plt(data=buddy,
+                 mapargs=['bud axis position', r'$\Delta\Psi$ scaled'],
+                 **set6)
         plv6.save_figure(op.join(savefolder, 'budDY.png'))
-
 
         print "Finished plotting!"
         return 0

@@ -11,9 +11,11 @@ import pandas as pd
 from tvtk.api import tvtk
 import vtk
 import numpy as np
+import traceback
 from wrappers import UsageError
 # pylint: disable=C0103
-
+class FalseException(Exception):
+    pass
 
 def gen_data(regen=False, **kwargs):
     """
@@ -40,26 +42,28 @@ def gen_data(regen=False, **kwargs):
         dictionary of DataFrames data for individual cells, output of calling
         cellpos()
     """
-
-    fpath = kwargs.get('inpdatpath')
-
-    # regenerates pickle file if not exist
-    if regen or not op.isfile(fpath):
-        F = {}
-
-        for k in ['dfvoldata', 'fkeys']:
-            if k not in kwargs:
-                raise UsageError('Missing {}'.format(k))
-        dfvol = kwargs.get('dfvoldata')
-        filepaths = kwargs.get('fkeys')
-
-        for k in sorted(filepaths):
-            F[k] = cellpos(filepaths[k], dfvol)
-        with open(fpath, 'wb') as out:
-            pickle.dump(F, out)
-    else:
+    F = {}
+    try:  # open the pickle file if exist
+        if regen:
+            raise FalseException
+        fpath = kwargs['inpdatpath']
         with open(fpath, 'rb') as inp:
             F = pickle.load(inp)
+
+    except (FalseException, AssertionError, KeyError, IOError):
+
+        try:  # try to regen the data
+            dfvol = kwargs['dfvoldata']
+            filepaths = kwargs['fkeys']
+            for k in sorted(filepaths):
+                F[k] = cellpos(filepaths[k], dfvol)
+            with open('celldata.pkl', 'wb') as out:
+                pickle.dump(F, out)
+
+        except KeyError:  # not enough input to regen data
+            traceback.print_stack(limit=4)
+            raise UsageError("Must have 'dfvoldata' and 'fkeys' kwargs")
+
     return F
 
 

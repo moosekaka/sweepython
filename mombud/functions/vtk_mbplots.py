@@ -3,14 +3,15 @@
 Created on Sat Jun 11 16:10:16 2016
 Module for plots of analysis of mother bud function in budding yeast
 """
-import sys
 import os
 import os.path as op
 import inspect
+import traceback
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
-from wrappers import UsageError
+from wrappers import FalseException, UsageError
+
 # pylint: disable=C0103
 
 plt.rcParams['font.family'] = 'DejaVu Sans'
@@ -138,7 +139,8 @@ class plviol(object):
                     dfcopy, c1, index=c2,
                     columns=c4, aggfunc=len)).iloc[:, 0]
             except ValueError:
-                print "not enough columns to do group counts, skipping"
+                traceback.print_stack(limit=4)
+                print "Not enough columns to do group counts, skipping"
 
     def call_sns_plotter(self, order, ylims, **kwargs):
             """
@@ -157,7 +159,7 @@ class plviol(object):
         try:
             self.labeller(obj, self.n_counts)
         except (AttributeError, TypeError):
-            print "Skipping labels of categorical vars."
+            print "Skipping labels of categorical vars \n"
 
     def plt(self, data=None, ylim=None, **kwargs):
         """
@@ -173,10 +175,11 @@ class plviol(object):
         """
         self.data = data
         try:
-            assert self.data is not None
-        except AssertionError:
-            etype, _, tb = sys.exc_info()
-            raise UsageError("{} on {}".format(etype.__name__, tb.tb_lineno))
+            if self.data is None:
+                raise FalseException
+        except FalseException:
+            traceback.print_stack(limit=4)
+            raise UsageError("Must provide 'data' arg")
 
         # get the y-axis limits
         if ylim is not None:
@@ -276,8 +279,8 @@ class plfacet(plviol):
             try:
                 self.facet_obj.map(self.pltobj, *mapargs)
             except TypeError:
-                raise UsageError("Missing kwargs `mapargs` on line {}"
-                                 .format(sys.exc_info()[-1].tb_lineno))
+                traceback.print_stack(limit=4)
+                raise UsageError("Missing kwargs `mapargs`")
 
         self.label_group_counts(self.facet_obj)
 

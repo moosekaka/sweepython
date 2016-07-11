@@ -7,6 +7,7 @@ Convenience functions for opening and iterating files
 import os
 import os.path as op
 import fnmatch
+import traceback
 from collections import defaultdict
 
 
@@ -14,6 +15,10 @@ class UsageError(Exception):
     """
     Class for user-facing (non-programming) errors
     """
+    pass
+
+class FalseException(Exception):
+    """ for raising false conditions"""
     pass
 
 
@@ -43,6 +48,7 @@ def swalk(ddir, txt, start=None, stop=None):
     if len(vtf):
         return vtf
     else:
+        traceback.print_stack(limit=5)
         raise UsageError('Search for file with ext. {} in dir {} failed'
                          .format(txt, ddir))
 
@@ -80,5 +86,6 @@ def ddwalk(ddir, txt, start=None, stop=None):
     if len(vtf):
         return vtf
     else:
+        traceback.print_stack(limit=5)
         raise UsageError('Search for file with ext. {} in dir {} failed'
                          .format(txt, ddir))

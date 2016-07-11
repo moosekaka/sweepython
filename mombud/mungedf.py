@@ -5,6 +5,7 @@ Main module to analyze mom bud asymmetry
 import sys
 import os
 import os.path as op
+import traceback
 import cPickle as pickle
 import inspect
 from collections import defaultdict
@@ -12,7 +13,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import mombud.functions.vtk_mbfuncs as vf
-from wrappers import UsageError, swalk, ddwalk
+from wrappers import FalseException, UsageError, swalk, ddwalk
 # pylint: disable=C0103
 COL_ODR = ['MFB1', 'NUM1', 'YPT11', 'WT', 'YPE', 'YPL', 'YPR']
 HUE_ODR = ['DY_abs_mean_mom', 'DY_abs_mean_bud', 'whole_cell_abs']
@@ -43,30 +44,34 @@ def getData():
     -------
     filekeys_f, datadir : dict(Str), Str
         filepaths of inputs and folder for data files
-    dfmb : DataFrame
-        cell volume data
+    df : DataFrame
+        cell size(volume) data
     """
 
     # DataFrames for new and old cell picked point
-    try:
-        with open(op.join(datadir, 'mombudtrans_new.pkl'), 'rb') as inpt:
-            dfmb = pickle.load(inpt)  # cols base, neck, tip, media, bud, mom
+    data = defaultdict(lambda: defaultdict(dict))
+    data['path']['df'] = op.join(datadir, 'mombudtrans_new.pkl')
+    data['path']['df_old'] = op.join(datadir_old, 'mombudtrans.pkl')
+    for path in data['path']:
+        try:
+            # cols base, neck, tip, media, bud, mom
+            with open(data['path'][path], 'rb') as inpt:
+                data['data'][path] = pickle.load(inpt)
+        except IOError:
+            traceback.print_stack(limit=4)
+            raise UsageError("Check path {}".format(data['path'][path]))
 
-        with open(op.join(datadir_old, 'mombudtrans.pkl'), 'rb') as inpt:
-            dfmb_o = pickle.load(inpt)
+    df = data['data']['df']
+    df_old = data['data']['df_old']
 
-        # reject candidates
-        rejectfold = op.join(datadir, os.pardir, 'reject')
-        reject = swalk(rejectfold, '*png', stop=-4)
+    # reject candidates
+    rejectfold = op.join(datadir, os.pardir, 'reject')
+    reject = swalk(rejectfold, '*png', stop=-4)
 
     # VTK files for new and old data
-        filext = "*vtk"
-        vtkF = ddwalk(datadir, filext, stop=-4)
-        vtkF_old = swalk(datadir_old, filext, stop=-4)
-
-    except UsageError:
-        print ("Error on {}".format(sys.exc_info()[-1].tb_lineno))
-        raise
+    filext = "*vtk"
+    vtkF = ddwalk(datadir, filext, stop=-4)
+    vtkF_old = swalk(datadir_old, filext, stop=-4)
 
     # file paths for VTKs
     filekeys_old = {item: vtkF_old[item] for item
@@ -81,8 +86,8 @@ def getData():
     filekeys_f = {f: filekeys[f] for f in filekeys if f not in reject}
     filekeys_f.update(filekeys_old)  # add YPE to dict
     # dataframe of neck, mom and bud tip positions, bud and mom volumes
-    dfmb = dfmb.append(dfmb_o[dfmb_o.media != 'YPD'])
-    return filekeys_f, dfmb, datadir
+    df = df.append(df_old[df_old.media != 'YPD'])
+    return filekeys_f, df, datadir
 
 
 def _concatDF(vtkdf):
@@ -154,7 +159,11 @@ def _update_dfMB(key, df_all, df_ind, **kwargs):
     """
     concatenate type and vol. data from df_all df to ind. mom/bud df_ind
     """
-    bins = kwargs['binsvol%s' % key]
+    try:
+        bins = kwargs['binsvol%s' % key]
+    except KeyError:
+        traceback.print_stack(limit=4)
+        raise UsageError("Must provide '{}' arg".format('binsvol%s' % key))
     df_ind = df_ind.assign(media=df_all.loc[:, 'media'],
                            date=df_all.loc[:, 'date'])
     df_ind['%svol' % key] = df_all['%svol' % key]
@@ -194,11 +203,11 @@ def process_ind_df(vtkdf, mbax=None, cellax=None, **kwargs):
         dictionary of DataFrames for mom bud analyses
     """
     try:
-        assert mbax is not None
-        assert cellax is not None
-    except AssertionError:
-        etype, _, tb = sys.exc_info()
-        raise UsageError("{} on {}".format(etype.__name__, tb.tb_lineno))
+        if mbax is None or cellax is None:
+            raise FalseException
+    except FalseException:
+        traceback.print_stack(limit=4)
+        raise UsageError("Must provide 'mbax' and 'cellax' args")
 
     # concat individual cell DFs and get individual cell data dic_in
     dfc, dic_in = _concatDF(vtkdf)

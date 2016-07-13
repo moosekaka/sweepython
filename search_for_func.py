@@ -33,5 +33,5 @@ if __name__ == '__main__':
     scrloc2 = op.join(scrloc, os.pardir, 'traits')
 
 
-    searchfunc('assert', scrloc)
+    searchfunc('fileMetas.pkl', scrloc)
 

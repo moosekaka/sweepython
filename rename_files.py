@@ -61,6 +61,7 @@ for dirs in os.listdir(os.getcwd()):
     oldstrL = oldstr.split("_")
     newstr = "_".join((oldstrL[0], oldstrL[1].zfill(3)))
     newdir = olddir.replace(oldstr, newstr)
+    print "renaming {} -->\n{}".format(olddir, newdir)
     os.rename(olddir, newdir)
 
 # 3) rename the files to switch labels
@@ -92,13 +93,13 @@ for root, dirs, files in os.walk(os.getcwd(), topdown=False):
 for dircell in dirs:
     for root, dirs, files in os.walk(dircell):
         for fil in files:
-            P = renamecopy(fil, root, '*RFP*skeleton*')  # change
+            P = renamecopy(fil, root, '*resampled*')  # change
             if P:
                 mkdir_exist(P[0])
                 sh.copy(op.join(root, fil), op.join(P[0], P[1]))
 
 
- for root, dirs, files in os.walk(os.getcwd()):
+for root, dirs, files in os.walk(os.getcwd()):
     for f in files:
         if fn.fnmatchcase(f, '*surface*'):
             folder = root.rsplit(os.sep)[-1]

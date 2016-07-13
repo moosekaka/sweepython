@@ -522,12 +522,12 @@ def main(*args):
         cells to be picked
     """
     # Read in the celltracing data into a Pandas Dataframe
-    DataSize = pd.read_table(op.join(datadir, 'csv', 'Results.txt'))
+    DataSize = pd.read_csv(op.join(datadir, 'csv', 'Results_combined.csv'))
     df = DataSize.ix[:, 1:]
     df['cell'] = df.ix[:, 'Label'].apply(lambda x: x.partition(':')[2])
     counter = df.groupby('cell').size()
     hasbuds = df[df.cell.isin(counter[counter > 1].index.values)]
-
+    hasbuds = hasbuds[hasbuds.cell.str.contains('071016')]
     for i in hasbuds.cell.unique()[slice(*args)]:
         filename = i
         foldername = filename.partition('_')[0]
@@ -557,4 +557,4 @@ def main(*args):
 # ===========================================================================
 if __name__ == "__main__":
     mlab.close(all=True)
-    main(1, 4, 2)
+    main(82,85)

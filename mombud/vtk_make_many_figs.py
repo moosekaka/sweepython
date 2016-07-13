@@ -41,8 +41,8 @@ def main(*args, **kwargs):
 
     try:
         vtkF = ddwalk(datadir, '*skeleton.vtk', start=5, stop=-13)
-        vtkS = ddwalk(op.join(inputdir, 'surfaceFiles'),
-                      '*surface.vtk', stop=-12)
+#        vtkS = ddwalk(op.join(inputdir, 'surfaceFiles'),
+#                      '*surface.vtk', stop=-12)
     except UsageError:
         raise
 
@@ -63,7 +63,7 @@ def main(*args, **kwargs):
         data = vf.callreader(vtkF[etype][key])
         node_data, edge_data, nxgrph = mg(data, key)
         vtkobj, _ = vf.cellplot(figone, filekeys[key])
-        vf.rendsurf(vtkS[etype][key])
+#        vf.rendsurf(vtkS[etype][key])
         vf.labelbpoints(nxgrph,
                         bsize=kwargs.get('bsize', 0.08),
                         esize=kwargs.get('esize', 0.08))
@@ -73,4 +73,4 @@ def main(*args, **kwargs):
 
 # filelist and graph list
 if __name__ == '__main__':
-    main(1, 5, save=True, offscreen=True)
+    main(None, None, save=True, offscreen=False)

@@ -23,18 +23,6 @@ def mkdir_exist(path):
             raise
 
 
-def renamecopy(f, r, word):
-    """
-    macro to change filename label to date and return path of file
-    """
-    if fn.fnmatch(f, word):
-        filename = f.partition("_")
-        pth = op.join(op.dirname(r), filename[0])
-        date = r.rsplit(os.sep)[-1]
-        newname = "_".join((date, filename[-1]))
-        return (pth, newname)
-
-
 def movefilesup(path):
     """
     Move files from `Pos0` folder up to top level of `path` folder
@@ -113,8 +101,11 @@ def switch_labels(pth):
 def main():
     try:
         try:
+            # change this path to where the preprocessed
+            # raw tif image stacks are
             os.chdir(op.expanduser(os.sep.join(
-                ('~', 'Desktop', '071006'))))
+                ('~', 'Documents', 'Github', 'sweepython',
+                 'WorkingData', '071016', 'preprocessed'))))
         except WindowsError:
             traceback.print_stack(limit=1)
             raise UsageError("Couldn't find folder, check path")

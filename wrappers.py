@@ -17,6 +17,7 @@ class UsageError(Exception):
     """
     pass
 
+
 class FalseException(Exception):
     """ for raising false conditions"""
     pass

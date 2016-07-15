@@ -1,20 +1,18 @@
-"""
-Pipeline to normalize'raw' vtk files and make mito network graph
-"""
 import os
 import os.path as op
-import errno
 import cPickle as pickle
 from wrappers import ddwalk, UsageError
+from post_mitograph import mkdir_exist
 from pipeline import pipefuncs as pf
 from pipeline import make_networkx as mn
 # pylint: disable=C0103
-
-
 datadir = op.join(os.getcwd())
 
-# filelist and graph list
-if __name__ == '__main__':
+
+def main():
+    """
+    Pipeline to normalize'raw' vtk files and make mito network graph
+    """
     try:
         with open(op.join(datadir, 'mutants', 'fileMetas.pkl'), 'rb') as inpt:
             filemetas = pickle.load(inpt)
@@ -23,7 +21,7 @@ if __name__ == '__main__':
 
     try:
         vtkSkel = ddwalk(op.join(datadir, 'mutants', 'SkelVTK'),
-                         '*skeleton.vtk', stop=-13)
+                         '*RFP*skeleton.vtk', stop=-13)
         vtkVolRfp = ddwalk(op.join(datadir, 'mutants', 'resampledFiles'),
                            '*RF*resampled.vtk', stop=-14)
         vtkVolGfp = ddwalk(op.join(datadir, 'mutants', 'resampledFiles'),
@@ -32,18 +30,8 @@ if __name__ == '__main__':
         raise
 
     for lab in sorted(vtkSkel.keys())[:]:
-        try:
-            folder = op.join(datadir, 'mutants', 'normalizedVTK', lab)
-            os.makedirs(folder)
-        except OSError as exception:
-            if exception.errno != errno.EEXIST:
-                raise  # for any other kinds of errors
-            else:
-                print "{} already exists".format(folder)
-
-        nlist = []
-        elist = []
-        glist = []
+        folder = op.join(datadir, 'mutants', 'normalizedVTK', lab)
+        mkdir_exist(folder)
 
         for key in sorted(vtkSkel[lab].keys())[:]:
             print 'processing %s: %s ' % (lab, key)
@@ -60,8 +48,7 @@ if __name__ == '__main__':
                     'bkstGFP': gb,
                     'WidthEq': wq}
             pf.writevtk(data, filename, **calc)
+#            nl, el, nxgrph = mn.makegraph(data, "_".join((lab, key)))
 
-            nl, el, nxgrph = mn.makegraph(data, "_".join((lab, key)))
-            nlist.append(nl)
-            elist.append(el)
-            glist.append(nxgrph)
+if __name__ == '__main__':
+    main()

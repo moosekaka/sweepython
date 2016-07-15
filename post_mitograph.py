@@ -25,7 +25,6 @@ def mkdir_exist(path):
     except OSError as error:
         if error.errno != errno.EEXIST:
             raise
-        print "{}/ already exists".format(path)
 
 
 def rename_copy(folder, fname):
@@ -47,16 +46,16 @@ def postmito_process():
 
     D = defaultdict(dict)
     D['SkelVTK'] = []
-    D['resampleFiles'] = []
+    D['resampledFiles'] = []
     D['surfaceFiles'] = []
     for dircell in dirs:
         for root, dirs, files in os.walk(dircell):
             for f in files:
-                if 'skeleton' in f:
+                if fn.fnmatch(f, '*RFP*skeleton*'):
                     D['SkelVTK'].append((root, f))
                 elif 'resampled' in f:
-                    D['resampleFiles'].append((root, f))
-                elif 'surface' in f:
+                    D['resampledFiles'].append((root, f))
+                elif fn.fnmatch(f, '*RFP*surface*'):
                     D['surfaceFiles'].append((root, f))
 
     basedir = op.dirname(D['SkelVTK'][0][0])
@@ -67,13 +66,15 @@ def postmito_process():
             media, filename = rename_copy(*items)
             subfolder = op.join(basedir, key, media)
             mkdir_exist(subfolder)
-            print ("copying {}-->\n{}"
-                   .format(op.join(*items), op.join(subfolder, filename)))
 
             # for compatibility with older naming system (refactor in future)
             if 'surface' in items[1]:
                 filename = "_".join((media, filename))
-            sh.copy(op.join(*items), op.join(subfolder, filename))
+            if not op.isfile(op.join(subfolder, filename)):
+                print ("copying {}-->\n{}"
+                       .format(op.join(*items), op.join(subfolder, filename)))
+                sh.copy(op.join(*items), op.join(subfolder, filename))
+
     return D
 
 

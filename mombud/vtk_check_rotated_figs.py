@@ -15,40 +15,43 @@ from wrappers import swalk, UsageError
 from mombud.functions import vtkvizfuncs as vz
 from mombud.classes.vtk_pick_mombud_class import CellEllipse
 # pylint: disable=C0103
-
-datadir = op.join(os.getcwd(), 'mutants', 'transformedData2')
-rawdir = op.join(os.getcwd(), 'mutants', 'transformedData2')
-surfdir = op.join(os.getcwd(), 'mutants', 'surfaceFiles')
 # xkcd palette colors for labels
 def_cols = dict(colors=['medium blue', 'bright green', 'red'],
                 labels=['base', 'tip', 'neck'])
 cur_col, palette = vz.generate_color_labels(**def_cols)
 
-# cell tracing info
-DataSize = pd.read_table(op.join(datadir, op.pardir, 'csv', 'Results.txt'))
-df_celltracing = DataSize.ix[:, 1:]
-df_celltracing['cell'] = \
-    df_celltracing.ix[:, 'Label'].apply(lambda x: x.partition(':')[2])
-counter = df_celltracing.groupby('cell').Label.count()
-hasbuds = \
-    df_celltracing[df_celltracing.cell.isin(counter[counter > 1].index.values)]
+datadir = op.join(os.getcwd(), 'mutants', 'transformedData4')
+rawdir = op.join(os.getcwd(), 'mutants', 'transformedData4')
+surfdir = op.join(os.getcwd(), 'mutants', 'surfaceFiles')
 
-# vtk data and picked bud, neck, tip inputs
-try:
+
+def getdata():
+    # cell tracing info
+    DataSize = pd.read_csv(op.join(datadir,
+                                   op.pardir,
+                                   'csv', 'Results_combined.csv'))
+    df_celltracing = DataSize.ix[:, 1:]
+    df_celltracing['cell'] = (df_celltracing
+                              .ix[:, 'Label']
+                              .apply(lambda x: x.partition(':')[2]))
+    counter = df_celltracing.groupby('cell').Label.count()
+    hasbuds = (df_celltracing
+               [df_celltracing['cell']
+               .isin(counter[counter > 1]
+               .index.values)])
+
+    # vtk data and picked bud, neck, tip inputs
     vtkF = swalk(op.join(rawdir),
                  '*.vtk', start=0, stop=-4)
     vtkS = swalk(surfdir,
                  '*.vtk', start=0, stop=-12)
     mombud = swalk(op.join(datadir), '*.csv', stop=-4)
 
-except UsageError:
-    raise
+    return df_celltracing, hasbuds, mombud, vtkF, vtkS
 
-##############################################################################
-if __name__ == "__main__":
-    WRITE_PICKLE = False  # don't overwrite old pickle file by default
-    WRITE_PNG = False
 
+def main(write_pickle=False, write_png=False):
+    df_celltracing, hasbuds, mombud, vtkF, vtkS = getdata()
     # Figure to render on
     figone = mlab.figure(size=(800, 600), bgcolor=(.1, .1, .1))
     figone.scene.off_screen_rendering = True
@@ -56,6 +59,7 @@ if __name__ == "__main__":
     D = {}  # holder for original bud,neck, tip points
     dfmb = pd.DataFrame(columns=['base', 'neck', 'tip', 'media'])
     for key in vtkF.keys()[:]:
+        print "now on {}".format(key)
         mlab.clf(figure=figone)  # clear current figure
 
         # get original cursor points
@@ -111,11 +115,14 @@ if __name__ == "__main__":
         dfmb = dfmb.append(df)
         mlab.view(0, 0)
 
-        if WRITE_PNG:
+        if write_png:
             mlab.savefig(op.join(rawdir, '%s.png' % key))
 
         # dump to pickle file for mom bud analysis
-        if WRITE_PICKLE:
+        if write_pickle:
             with open(op.join(datadir,
                               'mombudtrans.pkl'), 'wb') as output:
                 pickle.dump(dfmb, output)
+
+if __name__ == "__main__":
+    main(write_png=True, write_pickle=True)

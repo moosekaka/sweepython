@@ -50,7 +50,8 @@ def getData():
 
     # DataFrames for new and old cell picked point
     data = defaultdict(lambda: defaultdict(dict))
-    data['path']['df'] = op.join(datadir, 'mombudtrans_new.pkl')
+#    data['path']['df'] = op.join(datadir, 'mombudtrans_new_old.pkl')
+    data['path']['df'] = op.join(datadir, 'mombudtrans_new_old.pkl')
     data['path']['df_old'] = op.join(datadir_old, 'mombudtrans.pkl')
     for path in data['path']:
         try:

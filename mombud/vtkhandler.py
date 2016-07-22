@@ -96,7 +96,7 @@ def main():
                     title='mombud', ylim=(0, 1.),
                     )
         plv = plviol(**outkws1)
-        plv.plt(data=mutants, **set0)
+        plv.plt(data=group.get_group('032016'), **set0)
         plv.turn_off_legend()
         plv.save_figure(op.join(savefolder, 'mutantsDY_mombud.png'))
 

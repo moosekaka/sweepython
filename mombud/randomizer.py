@@ -8,6 +8,7 @@ import os
 import os.path as op
 import cPickle as pickle
 import seaborn as sns
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import mombud.mungedf as mdf
@@ -21,9 +22,10 @@ labelNormal = labelhandler()
 # pylint: disable=C0103
 COL_ODR = ['MFB1', 'NUM1', 'YPT11', 'WT', 'YPE', 'YPL', 'YPR']
 HUE_ODR = ['DY_abs_mean_mom', 'DY_abs_mean_bud', 'whole_cell_abs']
-datadir = op.join(os.getcwd(), 'mutants', 'transformedData', 'filtered')
-datadir_old = op.join(os.getcwd(), 'data', 'transformedData')
 mutants=['MFB1', 'NUM1', 'WT', 'YPT11']
+gfp_plot_vars =  ['DY_abs_mean_mom',
+                  'DY_abs_mean_bud',
+                ]
 mombud_dy_vars = ['DY_median_mom', 'DY_median_bud']
 
 kwargs = {}
@@ -38,25 +40,43 @@ def_args = {'regen':True,
 def_args.update(kwargs)
 outputargs = mdf.postprocess_df(**def_args)
 df = outputargs['data']
-df1 = df[df.media.isin(mutants)]
+df_mutants = df[df.media.isin(mutants)]
 
 subset = {}
 for med in ['MFB1', 'NUM1', 'WT', 'YPT11']:
-    subset[med] = df1[(df1['media'] == med) & (df1['date'] == '071016')]
+    subset[med] = df_mutants[(df_mutants['media'] == med) & (df_mutants['date'] == '071016')]
 
 rand_subset = {}
 for i in subset.keys():
-    rand_subset[i] = subset[i].sample(frac=0.5)
+    rand_subset[i] = subset[i].sample(frac=0.45)
+
+
+changedates = [vals for key in rand_subset.keys() for vals in rand_subset[key].index.values]
+rowind = df_mutants.index[df_mutants.index.isin(changedates)]
+df_mutants.loc[rowind, 'date'] = '071116'
+df_mutants = df_mutants[~(df_mutants.date=='032716')]
+mb_dy = pd.melt(df_mutants, ['media', 'date'], mombud_dy_vars)
+mb_gfp = pd.melt(df_mutants, ['media', 'date'], gfp_plot_vars)
 
 plt.close('all')
-changedates = [vals for key in D.keys() for vals in D[key].index.values]
-rowind = df1.index[df1.index.isin(changedates)]
-df1.loc[rowind, 'date'] = '071116'
-#df1 = df1[~(df1.date=='032716')]
-dat = pd.melt(df1, ['media', 'date'], mombud_dy_vars)
+outkws = dict(default_ylims=[0.025, 0.975],
+              labeller=labelNormal, col_order=COL_ODR)
+set1 = dict(x='media', y='value',
+            hue='variable', group_key='media',
+             ylim='auto',
+            )
 
+# mom bud gfp uptake
+for i in df_mutants.date.unique():
+    plv = plviol(**outkws)
+    plv.plt(data=mb_gfp[mb_gfp.date==i], title=i, **set1)
+#        plv.turn_off_legend()
 
-seta = dict(x='media', y='value', hue='variable')
-plva = sns.FacetGrid(data=dat, row='date')
-plva.map(sns.violinplot, 'media', 'value', 'variable',
-         order=COL_ODR[:4]).set(ylim=(0, 1.))
+#  mom bud dy
+set2 = dict(x='media', y='value',
+            hue='variable', group_key='media',
+             ylim=(0, 1.),
+)
+for i in df_mutants.date.unique():
+    plv = plviol(**outkws)
+    plv.plt(data=mb_dy[mb_dy.date==i], title=i, **set2)

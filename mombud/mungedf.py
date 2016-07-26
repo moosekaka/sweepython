@@ -146,25 +146,28 @@ def _mombudDF(df, dic, dy_type='DY', **kwargs):
     """
     groupby bins of ind cell position
     """
+    # group for binning by mom or bud
     gr = df.groupby(['name', 'type', 'ind_cell_binpos'])
-    gr_notype = df.groupby(['name', 'ind_cell_binpos'])
+    # group for binning by whole cell
+    gr_notype = df.groupby(['name', 'whole_cell_binpos'])
 
     dfbinned = (gr[dy_type].mean()
                 .unstack(level='ind_cell_binpos'))
     dfbinned.columns = dfbinned.columns.astype('float')
 
     # scale by whole cell mean Δψ
-    df = dic['dfcell']['DY_cell_mean']
-    dfminmax = gr_notype.DY.agg(['min', 'max'])
-    minmaxw = dfminmax.unstack(level='ind_cell_binpos')
-    m_min = minmaxw.min(axis=1)
-    m_max = minmaxw.max(axis=1)
+#    df = dic['dfcell']['DY_cell_mean']
+    dfmean = gr_notype[dy_type].mean().unstack(level='whole_cell_binpos')
+    m_min = dfmean.min(axis=1)
+    m_max = dfmean.max(axis=1)
+    denom = m_max - m_min
 
 #    df = dic['dfcell']
 
     for i in ['dfbud', 'dfmom']:
         dic[i] = dfbinned.xs(i[2:], level='type')
-        dic[i] = dic[i].div(df, axis=0)  # scaling by whole cell mean Δψ
+#        dic[i] = dic[i].div(df, axis=0)  # scaling by whole cell mean Δψ
+        dic[i] = dic[i].subtract(m_min, axis=0).div(denom, axis=0)
 
 
 def _update_dfMB(key, df_all, df_ind, **kwargs):

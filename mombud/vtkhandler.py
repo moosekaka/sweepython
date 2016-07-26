@@ -136,7 +136,7 @@ def main():
 
         set5 = dict(col_wrap=4, col='media', hue='media',
                     sharex=True, sharey=True, col_order=COL_ODR,
-                    ylim=(0.78260942314103787, 1.5907407062613563),
+                    ylim=(0.0, 1.),
                     )
         plv5 = plfacet(plt_type='pointplot', **outkws2)
         plv5.plt(data=momdy,
@@ -146,7 +146,7 @@ def main():
 
         set6 = dict(col_wrap=4, col='media', hue='media',
                     sharex=True, sharey=True, col_order=COL_ODR,
-                    ylim='auto',
+                    ylim=(0.0, 1.0),
                     )
         plv6 = plfacet(plt_type='pointplot', **outkws2)
         plv6.plt(data=buddy,

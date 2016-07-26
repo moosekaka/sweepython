@@ -50,8 +50,10 @@ def getData():
 
     # DataFrames for new and old cell picked point
     data = defaultdict(lambda: defaultdict(dict))
+    data['path']['df'] = op.join(datadir, 'newdf.pkl')
+#    data['path']['df'] = op.join(datadir, 'mombudtrans.pkl')
 #    data['path']['df'] = op.join(datadir, 'mombudtrans_new_old.pkl')
-    data['path']['df'] = op.join(datadir, 'mombudtrans_new_old.pkl')
+
     data['path']['df_old'] = op.join(datadir_old, 'mombudtrans.pkl')
     for path in data['path']:
         try:
@@ -145,7 +147,7 @@ def _mombudDF(df, dic, dy_type='DY', **kwargs):
     groupby bins of ind cell position
     """
     gr = df.groupby(['name', 'type', 'ind_cell_binpos'])
-#    gr = df.groupby(['name', 'ind_cell_binpos'])
+    gr_notype = df.groupby(['name', 'ind_cell_binpos'])
 
     dfbinned = (gr[dy_type].mean()
                 .unstack(level='ind_cell_binpos'))
@@ -153,8 +155,12 @@ def _mombudDF(df, dic, dy_type='DY', **kwargs):
 
     # scale by whole cell mean Δψ
     df = dic['dfcell']['DY_cell_mean']
-    # scale by binned whole cell min-max Δψ
-#    df = gr.DY.agg(['min', 'max'])
+    dfminmax = gr_notype.DY.agg(['min', 'max'])
+    minmaxw = dfminmax.unstack(level='ind_cell_binpos')
+    m_min = minmaxw.min(axis=1)
+    m_max = minmaxw.max(axis=1)
+
+#    df = dic['dfcell']
 
     for i in ['dfbud', 'dfmom']:
         dic[i] = dfbinned.xs(i[2:], level='type')

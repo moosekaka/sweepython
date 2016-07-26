@@ -35,8 +35,7 @@ def getdata():
                               .ix[:, 'Label']
                               .apply(lambda x: x.partition(':')[2]))
     counter = df_celltracing.groupby('cell').Label.count()
-    hasbuds = (df_celltracing
-               [df_celltracing['cell']
+    hasbuds = (df_celltracing[df_celltracing['cell']
                .isin(counter[counter > 1]
                .index.values)])
 
@@ -45,12 +44,12 @@ def getdata():
                  '*.vtk', start=0, stop=-4)
     vtkS = swalk(surfdir,
                  '*.vtk', start=0, stop=-12)
-    mombud = swalk(op.join(datadir), '*.csv', stop=-4)
+    mombud_csv = swalk(op.join(datadir), '*.csv', stop=-4)
 
-    return df_celltracing, hasbuds, mombud, vtkF, vtkS
+    return df_celltracing, hasbuds, mombud_csv, vtkF, vtkS
 
 
-def main(write_pickle=False, write_png=False):
+def main(start=None, end=None, write_pickle=False, write_png=False):
     df_celltracing, hasbuds, mombud, vtkF, vtkS = getdata()
     # Figure to render on
     figone = mlab.figure(size=(800, 600), bgcolor=(.1, .1, .1))
@@ -58,7 +57,7 @@ def main(write_pickle=False, write_png=False):
 
     D = {}  # holder for original bud,neck, tip points
     dfmb = pd.DataFrame(columns=['base', 'neck', 'tip', 'media'])
-    for key in vtkF.keys()[:]:
+    for key in sorted(vtkF.keys())[slice(start, end)]:
         print "now on {}".format(key)
         mlab.clf(figure=figone)  # clear current figure
 
@@ -99,7 +98,6 @@ def main(write_pickle=False, write_png=False):
         # transform original bud, neck and tip points of arrow to be
         # parallel to x-axis unit vector
         for part in D:
-            center = D[part]
             src = tvtk.SphereSource(center=D[part], radius=.15,
                                     theta_resolution=32,
                                     phi_resolution=32)
@@ -125,4 +123,4 @@ def main(write_pickle=False, write_png=False):
                 pickle.dump(dfmb, output)
 
 if __name__ == "__main__":
-    main(write_png=True, write_pickle=True)
+    main(write_png=False, write_pickle=True)

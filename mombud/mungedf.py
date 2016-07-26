@@ -145,12 +145,17 @@ def _mombudDF(df, dic, dy_type='DY', **kwargs):
     groupby bins of ind cell position
     """
     gr = df.groupby(['name', 'type', 'ind_cell_binpos'])
+#    gr = df.groupby(['name', 'ind_cell_binpos'])
+
     dfbinned = (gr[dy_type].mean()
                 .unstack(level='ind_cell_binpos'))
     dfbinned.columns = dfbinned.columns.astype('float')
 
     # scale by whole cell mean Δψ
     df = dic['dfcell']['DY_cell_mean']
+    # scale by binned whole cell min-max Δψ
+#    df = gr.DY.agg(['min', 'max'])
+
     for i in ['dfbud', 'dfmom']:
         dic[i] = dfbinned.xs(i[2:], level='type')
         dic[i] = dic[i].div(df, axis=0)  # scaling by whole cell mean Δψ

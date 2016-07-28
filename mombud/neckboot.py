@@ -136,7 +136,7 @@ def plotNeck(**kwargs):
         plt.setp(leg, bbox_to_anchor=(0.85, 0.7, .3, .3))
         if save:
             plt.savefig(op.join(datadir, "neckregionDY.png"))
-
+#
         _, ax2 = plt.subplots()
         sns.violinplot(x='type',
                        y='value',
@@ -185,7 +185,8 @@ def main(**kwargs):
     """
     sns.set_style('whitegrid')
     data = defaultdict(dict)
-    params = {'celldfdatapath': 'celldata.pkl',
+    params = {#'celldfdatapath': 'celldata.pkl',
+              'celldfdatapath': 'filtered_neckbootdf.pkl',
               'num_runs': 1,
               'boot_savepath': 'neck_boot.pkl',
               'neck_act_savepath': 'neck_actual.pkl',
@@ -237,4 +238,4 @@ def main(**kwargs):
 # _____________________________________________________________________________
 if __name__ == '__main__':
     plt.close('all')
-    main(run_boot=True, num_runs=50,)
+    main(run_boot=True, num_runs=35,)

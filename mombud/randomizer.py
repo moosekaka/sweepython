@@ -4,10 +4,8 @@ Created on Mon Jul 18 21:43:21 2016
 
 @author: sweel_Rafelski
 """
-import os
 import os.path as op
 import cPickle as pickle
-import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -37,46 +35,78 @@ def_args = {'regen':True,
             'binsvolbud': np.linspace(0, 40, 5),
             'binsvolmom': np.array([0, 30, 40, 80.])}
 
-def_args.update(kwargs)
-outputargs = mdf.postprocess_df(**def_args)
-df = outputargs['data']
-df_mutants = df[df.media.isin(mutants)]
 
-subset = {}
-for med in ['MFB1', 'NUM1', 'WT', 'YPT11']:
-    subset[med] = df_mutants[(df_mutants['media'] == med) & (df_mutants['date'] == '071016')]
+def main(randomize=False, **kwargs):
+    plt.close('all')
+    def_args.update(kwargs)
+    outputargs = mdf.postprocess_df(**def_args)
+    df = outputargs['data']
+    df_mutants = df[df.media.isin(mutants)]
 
-rand_subset = {}
-for i in subset.keys():
-    rand_subset[i] = subset[i].sample(frac=0.45)
+    subset = {}
+    for med in ['MFB1', 'NUM1', 'WT', 'YPT11']:
+        subset[med] = df_mutants[(df_mutants['media'] == med) &
+                                 (df_mutants['date'] == '071016')]
+
+    try:
+        with open('rowindex.pkl', 'rb') as inpt:
+            rowind = pickle.load(inpt)
+    except IOError:
+        raise
+#        if randomize:
+#            rand_subset = {}
+#        for i in subset.keys():
+#            rand_subset[i] = subset[i].sample(frac=0.5)
+#            changedates = [vals
+#                           for key in rand_subset.keys()
+#                           for vals in rand_subset[key].index.values]
+#            rowind = df_mutants.index[df_mutants.index.isin(changedates)]
+#            with open('rowindex.pkl', 'wb') as outp:
+#                pickle.dump(rowind, outp)
 
 
-changedates = [vals for key in rand_subset.keys() for vals in rand_subset[key].index.values]
-rowind = df_mutants.index[df_mutants.index.isin(changedates)]
-df_mutants.loc[rowind, 'date'] = '071116'
-df_mutants = df_mutants[~(df_mutants.date=='032716')]
-mb_dy = pd.melt(df_mutants, ['media', 'date'], mombud_dy_vars)
-mb_gfp = pd.melt(df_mutants, ['media', 'date'], gfp_plot_vars)
+    df_mutants.loc[rowind, 'date'] = '071116'
+    df_mutants = df_mutants[~(df_mutants.date == '032716')]
+    hiind = df_mutants.DY_abs_cell_mean.sort_values()
+    df_mutants = df_mutants.loc[~(hiind>7000)]
 
-plt.close('all')
-outkws = dict(default_ylims=[0.025, 0.975],
-              labeller=labelNormal, col_order=COL_ODR)
-set1 = dict(x='media', y='value',
-            hue='variable', group_key='media',
-             ylim='auto',
-            )
+    mb_dy_date = pd.melt(df_mutants, ['media', 'date'], mombud_dy_vars)
+    mb_gfp = pd.melt(df_mutants, ['media', 'date'], gfp_plot_vars)
+    mb_dy = pd.melt(df_mutants, ['media'], mombud_dy_vars)
 
-# mom bud gfp uptake
-for i in df_mutants.date.unique():
+    outkws = dict(default_ylims=[0.025, 0.975],
+                  labeller=labelNormal, col_order=COL_ODR)
+    set1 = dict(x='media', y='value',
+                hue='variable', group_key='media',
+                 ylim=(0,5000),
+                )
+
+    # mom bud gfp uptake
+    for i in df_mutants.date.unique():
+        plv = plviol(**outkws)
+        plv.plt(data=mb_gfp[mb_gfp.date==i], title=i, **set1)
+        plv.save_figure(op.join(mdf.datadir,
+                                'gfpuptake_{}.png'.format(i)))
+
+    #  mom bud dy
+    set2 = dict(x='media', y='value',
+                hue='variable', group_key='media',
+                 ylim=(0, 1.),
+    )
+    for i in df_mutants.date.unique():
+        plv = plviol(**outkws)
+        plv.plt(data=mb_dy_date[mb_dy_date.date==i], title=i, **set2)
+        plv.save_figure(op.join(mdf.datadir,
+                                'mombud_dy_{}.png'.format(i)))
+
     plv = plviol(**outkws)
-    plv.plt(data=mb_gfp[mb_gfp.date==i], title=i, **set1)
-#        plv.turn_off_legend()
+    plv.plt(data=mb_dy, title='mom-bud-DY', **set2)
+    plv.save_figure(op.join(mdf.datadir,
+                            'mombud_dy.png'.format(i)))
 
-#  mom bud dy
-set2 = dict(x='media', y='value',
-            hue='variable', group_key='media',
-             ylim=(0, 1.),
-)
-for i in df_mutants.date.unique():
-    plv = plviol(**outkws)
-    plv.plt(data=mb_dy[mb_dy.date==i], title=i, **set2)
+    df_mutants_and_old = pd.concat([df_mutants, df[~df.media.isin(mutants)]])
+    with open('df_mombud_filtered.pkl', 'wb') as outp:
+        pickle.dump(df_mutants_and_old, outp)
+
+if __name__=='__main__':
+    main(randomize=False)

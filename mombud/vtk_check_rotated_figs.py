@@ -20,8 +20,8 @@ def_cols = dict(colors=['medium blue', 'bright green', 'red'],
                 labels=['base', 'tip', 'neck'])
 cur_col, palette = vz.generate_color_labels(**def_cols)
 
-datadir = op.join(os.getcwd(), 'mutants', 'transformedData4')
-rawdir = op.join(os.getcwd(), 'mutants', 'transformedData4')
+datadir = op.join(os.getcwd(), 'mutants', 'transformedData')
+rawdir = op.join(os.getcwd(), 'mutants', 'transformedData', 'filtered')
 surfdir = op.join(os.getcwd(), 'mutants', 'surfaceFiles')
 
 
@@ -44,7 +44,8 @@ def getdata():
                  '*.vtk', start=0, stop=-4)
     vtkS = swalk(surfdir,
                  '*.vtk', start=0, stop=-12)
-    mombud_csv = swalk(op.join(datadir), '*.csv', stop=-4)
+    mombud_csv = swalk(op.join(datadir, op.pardir, 'csv'),
+                       '*.csv', stop=-4)
 
     return df_celltracing, hasbuds, mombud_csv, vtkF, vtkS
 
@@ -123,4 +124,4 @@ def main(start=None, end=None, write_pickle=False, write_png=False):
                 pickle.dump(dfmb, output)
 
 if __name__ == "__main__":
-    main(write_png=False, write_pickle=True)
+    main(write_png=True, write_pickle=False)

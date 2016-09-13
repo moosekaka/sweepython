@@ -144,6 +144,7 @@ def plotNeck(**kwargs):
                        data=actual,
                        order=kwargs.get('COL_ODR'),
                        ax=ax2).set(title='Actual', ylim=(0, 0.95))
+    return actual
 
 
 def plotBoot(gen_boot_data, **kwargs):
@@ -177,7 +178,7 @@ def plotBoot(gen_boot_data, **kwargs):
                        order=kwargs.get('COL_ODR'),
                        data=boot,
                        ax=ax1).set(title='Bootstrapped', ylim=(0, 0.95))
-
+    return boot
 
 def main(**kwargs):
     """
@@ -232,10 +233,19 @@ def main(**kwargs):
     params['neckdata'].index.names = ['cellname', 'dist']
     params['neckdata'].reset_index(level='dist', inplace=True)
 
-    plotNeck(**params)
-    plotBoot(data['boot'], **params)
+    actual = plotNeck(**params)
+    actual  = actual.replace({'variable':{'bud':'actual_bud', 'mom':'actual_mom'}})
+    boot = plotBoot(data['boot'], **params)
+    combined = pd.concat([actual, boot])
+    _, ax3 = plt.subplots()
+    sns.violinplot(x='type',
+                   y='value',
+                   hue='variable',
+                   data=combined,
+                   order=kwargs.get('COL_ODR'),
+                   ax=ax3).set(title='Combined', ylim=(0, 0.95))
 
 # _____________________________________________________________________________
 if __name__ == '__main__':
     plt.close('all')
-    main(run_boot=True, num_runs=35,)
+    main(run_boot=False, num_runs=35,)

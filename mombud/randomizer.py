@@ -55,7 +55,7 @@ def main(randomize=False, write_pickle=False, **kwargs):
     def_args.update(kwargs)
     outputargs = mdf.postprocess_df(**def_args)
     df = outputargs['data']
-    df_mutants = df[df.media.isin(mutants)]
+    df_mutants = df[df.media.isin(mutants)].copy()
 
     subset = {}
     for med in ['MFB1', 'NUM1', 'WT', 'YPT11']:
@@ -83,7 +83,7 @@ def main(randomize=False, write_pickle=False, **kwargs):
     df_mutants = df_mutants[~(df_mutants.date == '032716')]
     hiind = df_mutants.DY_abs_cell_mean.sort_values()
     df_mutants = df_mutants.loc[~(hiind>7000)]
-    df_num1_norm = df_mutants[df_mutants.index.isin(normal_num1)].reset_index()
+    df_num1_norm = df_mutants[df_mutants.index.isin(normal_num1)].copy()
     df_num1_norm['media'] = 'normal_NUM1'
 
     mb_dy_date = pd.melt(df_mutants, ['media', 'date'], mombud_dy_vars)
@@ -139,6 +139,7 @@ def main(randomize=False, write_pickle=False, **kwargs):
     if write_pickle:
         with open('df_mombud_filtered.pkl', 'wb') as outp:
             pickle.dump(df_mutants_and_old, outp)
+    return df, df_mutants
 
 if __name__=='__main__':
-    main(randomize=False)
+    a,b = main(randomize=False)

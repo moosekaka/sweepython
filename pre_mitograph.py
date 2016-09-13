@@ -104,8 +104,7 @@ def main():
             # change this path to where the preprocessed
             # raw tif image stacks are
             os.chdir(op.expanduser(os.sep.join(
-                ('~', 'Documents', 'Github', 'sweepython',
-                 'WorkingData', '071016', 'preprocessed'))))
+                ('~', 'Desktop', 'New folder'))))
         except WindowsError:
             traceback.print_stack(limit=1)
             raise UsageError("Couldn't find folder, check path")

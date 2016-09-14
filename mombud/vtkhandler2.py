@@ -119,6 +119,13 @@ plv1.save_figure(op.join(savefolder, 'violin_mombud.png'))
 
  # mombudDY plot
 with sns.plotting_context('talk', font_scale=1.2):
+    _, ax1 = plt.subplots(figsize=(20,16))
+    set1 = dict(x='media', y='value', data=frac, width=.75,
+                 order=COL_ODR, join=False, n_boot=10000)
+    g = sns.pointplot(ax=ax1, **set1)
+    plt.savefig(op.join(savefolder, 'CI.png'))
+
+
     _, ax2 = plt.subplots(figsize=(20,16))
     set2 = dict(x='media', y='value', data=frac, width=.75,
                  order=COL_ODR, notch=True, bootstrap=100000)

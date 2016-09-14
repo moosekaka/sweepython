@@ -180,72 +180,85 @@ def plotBoot(gen_boot_data, **kwargs):
                        ax=ax1).set(title='Bootstrapped', ylim=(0, 0.95))
     return boot
 
-def main(**kwargs):
-    """
-    main
-    """
-    sns.set_style('whitegrid')
-    data = defaultdict(dict)
-    params = {#'celldfdatapath': 'celldata.pkl',
-              'celldfdatapath': 'filtered_neckbootdf.pkl',
-              'num_runs': 1,
-              'boot_savepath': 'neck_boot.pkl',
-              'neck_act_savepath': 'neck_actual.pkl',
-              'datadict': data,
-              'COL_ODR': ['MFB1', 'NUM1',
-                          'YPT11', 'WT',
-                          'YPE', 'YPL', 'YPR']}
-    params.update(kwargs)
-    datobj = GenData(**params)
+#def main(**kwargs):
+#    """
+#    main
+#    """
+plt.close('all')
 
-    run_boot = params.get('run_boot', False)
+kwargs = dict(run_boot=False, num_runs=35)
+sns.set_style('whitegrid')
+data = defaultdict(dict)
+params = {#'celldfdatapath': 'celldata.pkl',
+          'celldfdatapath': 'filtered_neckbootdf.pkl',
+          'num_runs': 1,
+          'boot_savepath': 'neck_boot.pkl',
+          'neck_act_savepath': 'neck_actual.pkl',
+          'datadict': data,
+          'COL_ODR': ['MFB1', 'NUM1',
+                      'YPT11', 'WT',
+                      'YPE', 'WT_COMBINED', 'YPL', 'YPR']}
+params.update(kwargs)
+datobj = GenData(**params)
 
-    # if run_boot switch is False, will try to read in the pickle files below;
-    # except if the file is not found, will regenerate the files anyway
-    while not run_boot:
-        for files in ['neck_boot', 'neck_actual']:
-            keyname = files.split('_')[1]
+run_boot = params.get('run_boot', False)
 
-            try:
-                with open('{}.pkl'.format(files), 'rb') as inp:
-                    data[keyname] = pickle.load(inp)
+# if run_boot switch is False, will try to read in the pickle files below;
+# except if the file is not found, will regenerate the files anyway
+while not run_boot:
+    for files in ['neck_boot', 'neck_actual']:
+        keyname = files.split('_')[1]
 
-            except IOError as e:
-                print "{} not found, will regenerate".format(e.filename)
-                run_boot = True
-                break
+        try:
+            with open('{}.pkl'.format(files), 'rb') as inp:
+                data[keyname] = pickle.load(inp)
 
-        break
+        except IOError as e:
+            print "{} not found, will regenerate".format(e.filename)
+            run_boot = True
+            break
 
-    if run_boot:
-        for files in ['neck_boot', 'neck_actual']:
-            keyname = files.split('_')[1]
-            getattr(datobj, 'gen_%s' % files)(**params)
-            data[keyname] = getattr(datobj, 'outdata')[keyname]
+    break
 
-    cell_id = []
-    frames = []
-    for ids, d in data['actual'].iteritems():
-        cell_id.append(ids)
-        frames.append(pd.DataFrame.from_dict(d, orient='columns'))
-    pd.concat(frames, keys=cell_id)
-    params['neckdata'] = pd.concat(frames, keys=cell_id)
-    params['neckdata'].index.names = ['cellname', 'dist']
-    params['neckdata'].reset_index(level='dist', inplace=True)
+if run_boot:
+    for files in ['neck_boot', 'neck_actual']:
+        keyname = files.split('_')[1]
+        getattr(datobj, 'gen_%s' % files)(**params)
+        data[keyname] = getattr(datobj, 'outdata')[keyname]
 
-    actual = plotNeck(**params)
-    actual  = actual.replace({'variable':{'bud':'actual_bud', 'mom':'actual_mom'}})
-    boot = plotBoot(data['boot'], **params)
-    combined = pd.concat([actual, boot])
+cell_id = []
+frames = []
+for ids, d in data['actual'].iteritems():
+    cell_id.append(ids)
+    frames.append(pd.DataFrame.from_dict(d, orient='columns'))
+pd.concat(frames, keys=cell_id)
+params['neckdata'] = pd.concat(frames, keys=cell_id)
+params['neckdata'].index.names = ['cellname', 'dist']
+params['neckdata'].reset_index(level='dist', inplace=True)
+
+actual = plotNeck(**params)
+actual  = actual.replace({'variable':{'bud':'actual_bud', 'mom':'actual_mom'}})
+boot = plotBoot(data['boot'], **params)
+combined = pd.concat([actual, boot])
+wt = combined[combined.type.isin(['YPE', 'WT'])].copy()
+wt.loc[:, 'type'] = 'WT_COMBINED'
+combined = pd.concat([combined, wt])
+c2=combined[combined.variable.isin(['actual_mom', 'actual_bud'])]
+with sns.plotting_context('talk', font_scale=1.35):
     _, ax3 = plt.subplots()
-    sns.violinplot(x='type',
-                   y='value',
-                   hue='variable',
-                   data=combined,
-                   order=kwargs.get('COL_ODR'),
-                   ax=ax3).set(title='Combined', ylim=(0, 0.95))
+    sns.boxplot(x='type',
+               y='value',
+               hue='variable',
+               data=combined,
+               order=params.get('COL_ODR'),
+               notch=True,
+               ax=ax3).set(title='Neck DY')
 
-# _____________________________________________________________________________
-if __name__ == '__main__':
-    plt.close('all')
-    main(run_boot=False, num_runs=35,)
+    _, ax4 = plt.subplots()
+    sns.boxplot(x='type',
+               y='value',
+               hue='variable',
+               data=c2,
+               order=params.get('COL_ODR'),
+               notch=True,
+               ax=ax4).set(title='Neck DY')

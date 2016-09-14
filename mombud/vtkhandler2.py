@@ -11,10 +11,11 @@ import pandas as pd
 import seaborn as sns
 import mombud.mungedf as munge
 import mombud.functions.vtk_mbplots as mbfuncs
-
+sns.set_style('whitegrid')
+plt.rcParams['font.family'] = 'DejaVu Sans'
 labelhandler, plviol, plbox, plfacet = (mbfuncs.labelhandler,
                                         mbfuncs.plviol,
-                                        mbfuncs.plbox2,
+                                        mbfuncs.plbox,
                                         mbfuncs.plfacet)
 COL_ODR = ['MFB1', 'DEFECT. NUM1', 'NORM. NUM1', 'NUM1', 'YPT11',
            'WT', 'YPE', 'WT_COMBINED',  'YPL', 'YPR', ]
@@ -117,19 +118,23 @@ plv1.turn_off_legend()
 plv1.save_figure(op.join(savefolder, 'violin_mombud.png'))
 
  # mombudDY plot
-set2 = dict(x='media', y='value', data=frac, width=.75,
-             order=COL_ODR, notch=True, bootstrap=100000)
-g = sns.boxplot(**set2)
-g.set(ylim=(0, 3.5))
-plt.savefig(op.join(savefolder, 'fracDY.png'))
+with sns.plotting_context('talk', font_scale=1.2):
+    _, ax2 = plt.subplots(figsize=(20,16))
+    set2 = dict(x='media', y='value', data=frac, width=.75,
+                 order=COL_ODR, notch=True, bootstrap=100000)
+    g = sns.boxplot(ax=ax2, **set2)
+    g.set(ylim=(0, 3.5))
+    plt.savefig(op.join(savefolder, 'fracDY.png'))
 
-set2v = dict(x='media', y='value',
-           group_key='media', inner=None,
-            title='fracDY', ylim='auto')
-plv2 = plviol(**outkws1)
-plv2.plt(data=frac, **set2v)
-plv2.turn_off_legend()
-#plv2.save_figure(op.join(savefolder, 'test.png'))
+with sns.plotting_context('talk', font_scale=1.15):
+    plt.rcParams['figure.figsize']=(20,16)
+    set2v = dict(x='media', y='value', size=(20,16),
+               group_key='media', inner=None,
+                title='fracDY', ylim='auto')
+    plv2 = plviol(**outkws1)
+    plv2.plt(data=frac, **set2v)
+    plv2.turn_off_legend()
+    plv2.save_figure(op.join(savefolder, 'test.png'))
 
  # mom and bud cell axis DY plots
 momdy = pd.melt(dfmom,

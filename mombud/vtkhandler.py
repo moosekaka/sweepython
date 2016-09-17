@@ -21,9 +21,9 @@ labelhandler, plviol, plbox, plfacet = (mbfuncs.labelhandler,
 COL_ODR = munge.COL_ODR
 HUE_ODR = munge.HUE_ODR
 savefolder = munge.datadir
-gfp_plot_vars =  ['DY_abs_mean_mom',
-                  'DY_abs_mean_bud',
-                  'DY_abs_cell_mean']
+gfp_plot_vars = ['DY_abs_mean_mom',
+                 'DY_abs_mean_bud',
+                 'DY_abs_cell_mean']
 mombud_dy_vars = ['DY_median_mom', 'DY_median_bud']
 
 
@@ -67,7 +67,7 @@ def main():
 # =============================================================================
         frac = pd.melt(df, id_vars=['media'],
                        value_vars=['frac'])
-        frac_cellcycle = (df[['media','bin_budprog', 'frac']]
+        frac_cellcycle = (df[['media', 'bin_budprog', 'frac']]
                           .reset_index(drop=True))
         mb_dy = pd.melt(df, id_vars=['media', 'date'],
                         value_vars=mombud_dy_vars)
@@ -75,7 +75,7 @@ def main():
                          value_vars=gfp_plot_vars)
         diameters = pd.melt(df, id_vars='media',
                             value_vars=['bud_diameter', 'mom_diameter'])
-        size = pd.melt(df.loc[:, ['media', 'budvol', 'momvol']],'media')
+        size = pd.melt(df.loc[:, ['media', 'budvol', 'momvol']], 'media')
         momdy = pd.melt(dfmom,
                         id_vars=['media', 'binvol'],
                         var_name='mom axis position',
@@ -132,7 +132,7 @@ def main():
 
         set4 = dict(col_wrap=4, col='media', hue='variable',
                     col_order=COL_ODR,
-                    setargs=dict(xlim=(0.),  xlabel='volume')
+                    setargs=dict(xlim=(0.), xlabel='volume')
                     )
         plv4 = plfacet(plt_type='distplot', **outkws2)
         plv4.plt(data=size, mapargs=['value', ], **set4)

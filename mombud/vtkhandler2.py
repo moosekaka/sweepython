@@ -18,13 +18,13 @@ labelhandler, plviol, plbox, plfacet = (mbfuncs.labelhandler,
                                         mbfuncs.plbox,
                                         mbfuncs.plfacet)
 COL_ODR = ['MFB1', 'DEFECT. NUM1', 'NORM. NUM1', 'NUM1', 'YPT11',
-           'WT', 'YPE', 'WT_COMBINED',  'YPL', 'YPR', ]
+           'WT', 'YPE', 'WT_COMBINED', 'YPL', 'YPR', ]
 
 HUE_ODR = munge.HUE_ODR
 savefolder = r"C:\Users\sweel_Rafelski\Dropbox\SusanneSweeShared\091316"
 mombud_dy_vars = ['DY_median_mom', 'DY_median_bud']
 
-date_order = ['042515', '042715', '052315','032016', '071016', '071116']
+date_order = ['042515', '042715', '052315', '032016', '071016', '071116']
 normal_num1 = ['NUM1_032016_003_RFPstack_021',
                'NUM1_032016_007_RFPstack_027',
                'NUM1_032016_009_RFPstack_029',
@@ -89,15 +89,15 @@ dfbud.loc[dfbud.name.isin(num1_mutant), 'media2'] = 'DEFECT. NUM1'
 frac = pd.melt(df, id_vars=['media'],
                value_vars=['frac'])
 frac1 = pd.melt(df, id_vars=['media2'],
-               value_vars=['frac']).dropna()
-frac1.rename(columns = {'media2':'media'}, inplace=True)
+                value_vars=['frac']).dropna()
+frac1.rename(columns={'media2': 'media'}, inplace=True)
 frac = frac.append(frac1)
 
 mb_dy = pd.melt(df, id_vars=['media'],
                 value_vars=mombud_dy_vars)
 mb_dy1 = pd.melt(df, id_vars=['media2'],
-                value_vars=mombud_dy_vars).dropna()
-mb_dy1.rename(columns = {'media2':'media'}, inplace=True)
+                 value_vars=mombud_dy_vars).dropna()
+mb_dy1.rename(columns={'media2': 'media'}, inplace=True)
 mb_dy = mb_dy.append(mb_dy1)
 
 outkws1 = dict(default_ylims=[0.05, 0.95],
@@ -106,7 +106,14 @@ outkws1 = dict(default_ylims=[0.05, 0.95],
 outkws2 = dict(default_ylims=[0.15, 0.9],
                labeller=labelFacet, col_order=COL_ODR)
 
- # FracDY plot
+# mombudDY plot
+with sns.plotting_context('talk', font_scale=1.2):
+    _, ax0 = plt.subplots(figsize=(20, 16))
+    set0 = dict(x='media', y='value', hue='variable', data=mb_dy, width=.75,
+                order=COL_ODR, notch=True, bootstrap=100000)
+    g = sns.boxplot(ax=ax0, **set0)
+    plt.savefig(op.join(savefolder, 'boxplot_mombud.png'))
+
 set1 = dict(x='media', y='value',
             hue='variable', group_key='media',
             title='mombud', ylim=(0, 1.),
@@ -117,33 +124,32 @@ plv1.plt(data=mb_dy, **set1)
 plv1.turn_off_legend()
 plv1.save_figure(op.join(savefolder, 'violin_mombud.png'))
 
- # mombudDY plot
+# fracDY plot
 with sns.plotting_context('talk', font_scale=1.2):
-    _, ax1 = plt.subplots(figsize=(20,16))
+    _, ax1 = plt.subplots(figsize=(20, 16))
     set1 = dict(x='media', y='value', data=frac, width=.75,
-                 order=COL_ODR, join=False, n_boot=10000)
+                order=COL_ODR, join=False, n_boot=10000)
     g = sns.pointplot(ax=ax1, **set1)
     plt.savefig(op.join(savefolder, 'CI.png'))
 
-
-    _, ax2 = plt.subplots(figsize=(20,16))
+    _, ax2 = plt.subplots(figsize=(20, 16))
     set2 = dict(x='media', y='value', data=frac, width=.75,
-                 order=COL_ODR, notch=True, bootstrap=100000)
+                order=COL_ODR, notch=True, bootstrap=100000)
     g = sns.boxplot(ax=ax2, **set2)
     g.set(ylim=(0, 3.5))
     plt.savefig(op.join(savefolder, 'fracDY.png'))
 
 with sns.plotting_context('talk', font_scale=1.15):
-    plt.rcParams['figure.figsize']=(20,16)
-    set2v = dict(x='media', y='value', size=(20,16),
-               group_key='media', inner=None,
-                title='fracDY', ylim='auto')
+    plt.rcParams['figure.figsize'] = (20, 16)
+    set2v = dict(x='media', y='value', size=(20, 16),
+                 group_key='media', inner=None,
+                 title='fracDY', ylim='auto')
     plv2 = plviol(**outkws1)
     plv2.plt(data=frac, **set2v)
     plv2.turn_off_legend()
     plv2.save_figure(op.join(savefolder, 'test.png'))
 
- # mom and bud cell axis DY plots
+# mom and bud cell axis DY plots
 momdy = pd.melt(dfmom,
                 id_vars=['media', 'binvol'],
                 var_name='mom axis position',
@@ -155,7 +161,7 @@ momdy1 = pd.melt(dfmom,
                  var_name='mom axis position',
                  value_name=r'$\Delta\Psi$ scaled',
                  value_vars=outputargs['mbax'].tolist()).dropna()
-momdy1.rename(columns = {'media2':'media'}, inplace=True)
+momdy1.rename(columns={'media2': 'media'}, inplace=True)
 momdy = momdy.append(momdy1)
 
 buddy = pd.melt(dfbud,
@@ -169,7 +175,7 @@ buddy1 = pd.melt(dfbud,
                  var_name='bud axis position',
                  value_name=r'$\Delta\Psi$ scaled',
                  value_vars=outputargs['mbax'].tolist()).dropna()
-buddy1.rename(columns = {'media2':'media'}, inplace=True)
+buddy1.rename(columns={'media2': 'media'}, inplace=True)
 buddy = buddy.append(buddy1)
 
 

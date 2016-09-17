@@ -343,7 +343,7 @@ def main(**kwargs):
         os.chdir(op.expanduser(os.sep.join(
             ('~', 'Documents', 'Github', 'sweepython', 'WorkingData'))))
 
-        def_args = {'regen':True,
+        def_args = {'regen': True,
                     'save': False,
                     'inpdatpath': 'celldata.pkl',
                     'mbax': np.linspace(0., 1., 6),

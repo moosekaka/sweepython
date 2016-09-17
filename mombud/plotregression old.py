@@ -5,6 +5,7 @@ Created on Sun Jul 10 00:16:45 2016
 @author: sweel_Rafelski
 """
 
+
 def getrval(df, x, y, labeldic):
     """
     return a subset DataFrame and R^2 values for columns x, y in original df
@@ -17,6 +18,7 @@ def getrval(df, x, y, labeldic):
     r_sqr = {key: value**2 for key, value in pear.iteritems()}
 
     return df, r_sqr
+
 
 def plotRegr(**kwargs):
     """
@@ -110,8 +112,6 @@ def plotDyAxisDist(dfmom, dfbud, **kwargs):
 
         if save:
             m0.savefig(op.join(datadir, 'bud_cell_dy_facetted.png'))
-
-
 
         # =========================================================================
         # Plotting routines

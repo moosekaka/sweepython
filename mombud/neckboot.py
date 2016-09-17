@@ -18,6 +18,7 @@ class GenData(object):
     """
     wrapper class to autogenerate missing data
     """
+
     def __init__(self, **kwargs):
         self.celldfpath = kwargs.get('celldfdatapath')
         self.outdata = kwargs.get('datadict')
@@ -180,7 +181,7 @@ def plotBoot(gen_boot_data, **kwargs):
                        ax=ax1).set(title='Bootstrapped', ylim=(0, 0.95))
     return boot
 
-#def main(**kwargs):
+# def main(**kwargs):
 #    """
 #    main
 #    """
@@ -189,13 +190,13 @@ plt.close('all')
 kwargs = dict(run_boot=False, num_runs=35)
 sns.set_style('whitegrid')
 data = defaultdict(dict)
-params = {#'celldfdatapath': 'celldata.pkl',
-          'celldfdatapath': 'filtered_neckbootdf.pkl',
-          'num_runs': 1,
-          'boot_savepath': 'neck_boot.pkl',
-          'neck_act_savepath': 'neck_actual.pkl',
-          'datadict': data,
-          'COL_ODR': ['MFB1', 'NUM1',
+params = {  # 'celldfdatapath': 'celldata.pkl',
+    'celldfdatapath': 'filtered_neckbootdf.pkl',
+    'num_runs': 1,
+    'boot_savepath': 'neck_boot.pkl',
+    'neck_act_savepath': 'neck_actual.pkl',
+    'datadict': data,
+    'COL_ODR': ['MFB1', 'NUM1',
                       'YPT11', 'WT',
                       'YPE', 'WT_COMBINED', 'YPL', 'YPR']}
 params.update(kwargs)
@@ -237,28 +238,29 @@ params['neckdata'].index.names = ['cellname', 'dist']
 params['neckdata'].reset_index(level='dist', inplace=True)
 
 actual = plotNeck(**params)
-actual  = actual.replace({'variable':{'bud':'actual_bud', 'mom':'actual_mom'}})
+actual = actual.replace(
+    {'variable': {'bud': 'actual_bud', 'mom': 'actual_mom'}})
 boot = plotBoot(data['boot'], **params)
 combined = pd.concat([actual, boot])
 wt = combined[combined.type.isin(['YPE', 'WT'])].copy()
 wt.loc[:, 'type'] = 'WT_COMBINED'
 combined = pd.concat([combined, wt])
-c2=combined[combined.variable.isin(['actual_mom', 'actual_bud'])]
+c2 = combined[combined.variable.isin(['actual_mom', 'actual_bud'])]
 with sns.plotting_context('talk', font_scale=1.35):
     _, ax3 = plt.subplots()
     sns.boxplot(x='type',
-               y='value',
-               hue='variable',
-               data=combined,
-               order=params.get('COL_ODR'),
-               notch=True,
-               ax=ax3).set(title='Neck DY')
+                y='value',
+                hue='variable',
+                data=combined,
+                order=params.get('COL_ODR'),
+                notch=True,
+                ax=ax3).set(title='Neck DY')
 
     _, ax4 = plt.subplots()
     sns.boxplot(x='type',
-               y='value',
-               hue='variable',
-               data=c2,
-               order=params.get('COL_ODR'),
-               notch=True,
-               ax=ax4).set(title='Neck DY')
+                y='value',
+                hue='variable',
+                data=c2,
+                order=params.get('COL_ODR'),
+                notch=True,
+                ax=ax4).set(title='Neck DY')

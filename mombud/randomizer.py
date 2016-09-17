@@ -82,7 +82,7 @@ def main(randomize=False, write_pickle=False, **kwargs):
     df_mutants.loc[rowind, 'date'] = '071116'
     df_mutants = df_mutants[~(df_mutants.date == '032716')]
     hiind = df_mutants.DY_abs_cell_mean.sort_values()
-    df_mutants = df_mutants.loc[~(hiind>7000)]
+    df_mutants = df_mutants.loc[~(hiind > 7000)]
     df_num1_norm = df_mutants[df_mutants.index.isin(normal_num1)].copy()
     df_num1_norm['media'] = 'normal_NUM1'
 
@@ -99,13 +99,13 @@ def main(randomize=False, write_pickle=False, **kwargs):
                   labeller=labelNormal, col_order=COL_ODR)
     set1 = dict(x='media', y='value',
                 hue='variable', group_key='media',
-                 ylim=(0,5000),
+                ylim=(0, 5000),
                 )
 
     #  mom bud dy
     set2 = dict(x='media', y='value',
                 hue='variable', group_key='media',
-                 ylim=(0, 1.))
+                ylim=(0, 1.))
 
     set3 = dict(x='media', y='value',
                 hue='media', group_key='media',
@@ -141,5 +141,5 @@ def main(randomize=False, write_pickle=False, **kwargs):
             pickle.dump(df_mutants_and_old, outp)
     return df, df_mutants
 
-if __name__=='__main__':
-    a,b = main(randomize=False)
+if __name__ == '__main__':
+    a, b = main(randomize=False)

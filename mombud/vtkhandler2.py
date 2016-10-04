@@ -21,7 +21,7 @@ COL_ODR = ['MFB1', 'DEFECT. NUM1', 'NORM. NUM1', 'NUM1', 'YPT11',
            'WT', 'YPE', 'WT_COMBINED', 'YPL', 'YPR', ]
 
 HUE_ODR = munge.HUE_ODR
-savefolder = r"C:\Users\sweel_Rafelski\Dropbox\SusanneSweeShared\091316"
+savefolder = r"C:\Users\sweel_Rafelski\Dropbox\SusanneSweeShared\aftermeet"
 mombud_dy_vars = ['DY_median_mom', 'DY_median_bud']
 
 date_order = ['042515', '042715', '052315', '032016', '071016', '071116']
@@ -110,7 +110,8 @@ outkws2 = dict(default_ylims=[0.15, 0.9],
 with sns.plotting_context('talk', font_scale=1.2):
     _, ax0 = plt.subplots(figsize=(20, 16))
     set0 = dict(x='media', y='value', hue='variable', data=mb_dy, width=.75,
-                order=COL_ODR, notch=True, bootstrap=100000)
+                order=COL_ODR, notch=True, bootstrap=10000,
+                medianprops={'c': '#ffb16d', 'markeredgewidth': 2})
     g = sns.boxplot(ax=ax0, **set0)
     plt.savefig(op.join(savefolder, 'boxplot_mombud.png'))
 
@@ -128,15 +129,17 @@ plv1.save_figure(op.join(savefolder, 'violin_mombud.png'))
 with sns.plotting_context('talk', font_scale=1.2):
     _, ax1 = plt.subplots(figsize=(20, 16))
     set1 = dict(x='media', y='value', data=frac, width=.75,
-                order=COL_ODR, join=False, n_boot=10000)
-    g = sns.pointplot(ax=ax1, **set1)
+                order=COL_ODR, join=False, n_boot=1000)
+    g = sns.pointplot(ax=ax1, estimator=np.median, **set1)
+    g.set(ylim=(0, 2.5))
     plt.savefig(op.join(savefolder, 'CI.png'))
 
     _, ax2 = plt.subplots(figsize=(20, 16))
     set2 = dict(x='media', y='value', data=frac, width=.75,
-                order=COL_ODR, notch=True, bootstrap=100000)
+                order=COL_ODR, notch=True, bootstrap=20000,
+                medianprops={'c': '#ed0dd9', 'markeredgewidth': 2})
     g = sns.boxplot(ax=ax2, **set2)
-    g.set(ylim=(0, 3.5))
+    g.set(ylim=(0, 2.5))
     plt.savefig(op.join(savefolder, 'fracDY.png'))
 
 with sns.plotting_context('talk', font_scale=1.15):

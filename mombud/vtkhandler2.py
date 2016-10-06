@@ -17,8 +17,8 @@ labelhandler, plviol, plbox, plfacet = (mbfuncs.labelhandler,
                                         mbfuncs.plviol,
                                         mbfuncs.plbox,
                                         mbfuncs.plfacet)
-COL_ODR = ['MFB1', 'DEFECT. NUM1', 'NORM. NUM1', 'NUM1', 'YPT11',
-           'WT', 'YPE', 'WT_COMBINED', 'YPL', 'YPR', ]
+COL_ODR = ['MFB1','NUM1', 'YPT11',
+           'WT_COMBINED', 'YPL', 'YPR', ]
 
 HUE_ODR = munge.HUE_ODR
 savefolder = r"C:\Users\sweel_Rafelski\Dropbox\SusanneSweeShared\aftermeet"
@@ -182,7 +182,7 @@ buddy1.rename(columns={'media2': 'media'}, inplace=True)
 buddy = buddy.append(buddy1)
 
 
-set5 = dict(col_wrap=5, col='media', hue='media',
+set5 = dict(col_wrap=3, col='media', hue='media',
             sharex=True, sharey=True, col_order=COL_ODR,
             ylim=(0.0, 1.),
             )
@@ -192,7 +192,7 @@ plv5.plt(data=momdy,
          **set5)
 plv5.save_figure(op.join(savefolder, 'momDY.png'))
 
-set6 = dict(col_wrap=5, col='media', hue='media',
+set6 = dict(col_wrap=3, col='media', hue='media',
             sharex=True, sharey=True, col_order=COL_ODR,
             ylim=(0.0, 1.0),
             )

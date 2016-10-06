@@ -37,16 +37,19 @@ DUL = pd.DataFrame()
 # ==============================================================================
 for mtype in sorted(vtkF.keys())[:]:
     for cell in vtkF[mtype].keys():
-        with open(op.join(rawdir,
-                          'fitted_data_scaled',
-                          '%s.pkl' % cell), 'rb') as inpt:
-            (lNorm, lNormP, randNDY, randUDY, llineId) = pickle.load(inpt)
+        try:
+            with open(op.join(rawdir,
+                              'fitted_data_scaled',
+                              '%s.pkl' % cell), 'rb') as inpt:
+                (lNorm, lNormP, randNDY, randUDY, llineId) = pickle.load(inpt)
 
-            DYL = DYL.append(iterlagspd(lNorm, mtype), ignore_index=True)
-            SHL = SHL.append(iterlagspd(lNormP, mtype), ignore_index=True)
-            DNL = DNL.append(iterlagspd(randNDY, mtype), ignore_index=True)
-            DUL = DUL.append(iterlagspd(randUDY, mtype), ignore_index=True)
-            print "done {}".format(cell)
+                DYL = DYL.append(iterlagspd(lNorm, mtype), ignore_index=True)
+                SHL = SHL.append(iterlagspd(lNormP, mtype), ignore_index=True)
+                DNL = DNL.append(iterlagspd(randNDY, mtype), ignore_index=True)
+                DUL = DUL.append(iterlagspd(randUDY, mtype), ignore_index=True)
+                print "done {}".format(cell)
+        except IOError:
+            pass
 
 DYL['type'] = r'$\Delta \Psi$ actual'
 SHL['type'] = 'Shuffled'

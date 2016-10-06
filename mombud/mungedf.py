@@ -111,18 +111,18 @@ def _concatDF(vtkdf):
     return df_concat, dic
 
 
-def _scaleDY(df):
-    """
-    scaling for group date variations in Δψ
-    """
-    grd = df.groupby('date')
-    # normalize by date mean DYunscl
-    df['DYun_f'] = (grd['DY_unscl']
-                    .transform(lambda x: (x - x.mean()) / x.std()))
-    df['DYun_f2'] = (grd['DY_unscl']
-                     .transform(lambda x: x - x.mean()))
-    df['DYun_f3'] = (grd['DY_unscl']
-                     .transform(lambda x: (x - x.min()) / (x.max() - x.min())))
+#def _scaleDY(df):
+#    """
+#    scaling for group date variations in Δψ
+#    """
+#    grd = df.groupby('date')
+#    # normalize by date mean DYunscl
+#    df['DYun_f'] = (grd['DY_unscl']
+#                    .transform(lambda x: (x - x.mean()) / x.std()))
+#    df['DYun_f2'] = (grd['DY_unscl']
+#                     .transform(lambda x: x - x.mean()))
+#    df['DYun_f3'] = (grd['DY_unscl']
+#                     .transform(lambda x: (x - x.min()) / (x.max() - x.min())))
 
 
 def _aggDY(df):
@@ -130,13 +130,11 @@ def _aggDY(df):
     labels = gr.first()[['date', 'media']]
     # groupby mom/buds , get agg. stats for Δψ
     df_agg_mb = (df.groupby(['name', 'type'])
-                 [['DY', 'DY_abs', 'DY_unscl',
-                   'DYun_f', 'DYun_f2', 'DYun_f3']]
+                 [['DY', 'DY_abs', 'DY_unscl']]
                  .agg([np.mean, np.median]).unstack())
     df_agg_mb.columns = ['_'.join(c) for c in df_agg_mb.columns.values]
 
-    df_agg_cell = (gr[['DY', 'DY_abs', 'DY_unscl',
-                       'DYun_f', 'DYun_f2', 'DYun_f3']].agg('mean'))
+    df_agg_cell = (gr[['DY', 'DY_abs', 'DY_unscl']].agg('mean'))
     df_agg_cell.rename(columns=lambda x: x + '_cell_mean', inplace=True)
 
     return pd.concat([df_agg_mb, df_agg_cell, labels], axis=1)
@@ -245,7 +243,7 @@ def process_ind_df(vtkdf, mbax=None, cellax=None, **kwargs):
                    for x in split]
 
     # Calc. scaling factor for raw GFP daily variations
-    _scaleDY(dfc)
+#    _scaleDY(dfc)
     # aggregated mean Δψ by date and by cell
     dfc_agg = _aggDY(dfc)
 

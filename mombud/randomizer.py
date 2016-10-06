@@ -50,7 +50,7 @@ normal_num1 = ['NUM1_032016_003_RFPstack_021',
                'NUM1_071016_032_RFPstack_116']
 
 
-def main(randomize=False, write_pickle=False, **kwargs):
+def main(randomize=False, write_pickle=True, **kwargs):
     plt.close('all')
     def_args.update(kwargs)
     outputargs = mdf.postprocess_df(**def_args)

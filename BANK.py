@@ -43,7 +43,7 @@ dataJ = pd.read_csv('Checking.CSV',
 debit = dataJ[dataJ.Type == 'DEBIT']
 
 #   exclude credit card purchases,bill me later/paypal and rent/utilities
-pattern = 'Payment.*Chase|^CHASE|ALLY|\
+pattern = 'Payment.*Chase|^CHASE|ALLY|PAYMENT.*CHASE|\
 BILL.*LATER|UC IRVINE|SO CAL EDISON|CARDMEMBER'
 debit = debit[~debit.Desc.str.contains(pattern)]
 spend = pd.concat([sales, returns, debit]).reset_index(drop=True)
@@ -64,46 +64,53 @@ spend.loc[spend.Desc.str.contains('ATM'), ['Category']] = 'ATMcash'
 pattern = r'COF|PEE|STARBU|ARAMARK UCI|BED'
 spend.loc[spend.Desc.str.contains(pattern), ['Category']] = 'Coffee'
 
-spend.loc[spend.Desc.str.contains(
-    'BCD|BOIL|Boil|YOGURT|MEET FRESH\
-    |MITSUWA-BEER'), ['Category']] = 'AsianFood'
-
 pattern = 'JACK|^CHICK|MCD|DEL TACO|IN-N-OUT|DAPHNE|RAISING\
 |TACO BELL|SUBWAY|PANERA|EL POLLO LOCO|CHIPOTLE|BLAZE|HABIT|IKEA R\
-|SEAFOOD C|DENNY|IHOP|POPEY|SLAPFISH|PHO SAIGON|Flame|FLAME|KFC|Pizza 90\
-|CHRONIC'
+|SEAFOOD C|DENNY|IHOP|POPEY|SLAPFISH|Flame|FLAME|KFC|Pizza 90\
+|CHRONIC|PHO.*1|BRUXIE|MENDOCINO|TLT FOOD|YOGURT|MEET FRESH|MITSUWA-BEER'
 spend.loc[spend.Desc.str.contains(pattern), ['Category']] = 'FastFood'
 
 pattern = 'J J BAKE|NORM|TENDER GR|URBAN SEOUL|KAISEN|KULA|BLAKES\
-|NANA SAN|TAPS|ORIGINAL FISH|DODDY|FOGO|RUTH|URBAN|BAJA|Baja'
+|NANA SAN|TAPS|ORIGINAL FISH|DODDY|FOGO|RUTH|URBAN|BAJA|Baja|CA FISH\
+|WOKCANO|BLACK BEAR DINER|CURRY.*AMERICA|I HEART PANCAKES|LUNA GRILL\
+|DICKIE\'S|PHO.*PEARL|BCD|BOIL|Boil'
 spend.loc[spend.Desc.str.contains(pattern), ['Category']] = 'Restaurants'
 
 spend.loc[spend.Desc.str.contains('LAZY'), ['Category']] = 'Lazy'
 
-spend.loc[spend.Desc.str.contains('USA|A[Rr][Cc]'), ['Category']] = 'Gas'
+spend.loc[spend.Desc.str.contains('USA|A[Rr][Cc]|76 - UNION\
+|UNITED OIL'), ['Category']] = 'Gas'
 
 pattern = '99 RAN|PAVILIONS|VONS|ALBERT\
 |RALP|TARG|^WAL|WM|^TRADER|MITSUWA MAR|WHOLESOME|H MART|SPROUTS\
 |MITSUWA MRKTPLACE|WHOLEFDS'
 spend.loc[spend.Desc.str.contains(pattern), ['Category']] = 'Market'
 
-pattern = 'AMC|FANDANGO|CINEMA|EDWARD|Kindle|MICRO CENTER|FRY\'S\
-|DSW METRO POINT|UCI CAMPUS RECREATION|IRVINE-BOOKSTORE-HILL|T-MOBI|SAMY'
-spend.loc[spend.Desc.str.contains(pattern), ['Category']] = '_\
-Books, Elec. etc.'
+pattern = 'Kindle|MICRO CENTER|FRY\'S\
+|DSW METRO POINT|IRVINE-BOOKSTORE-HILL|T-MOBI|SAMY'
+spend.loc[spend.Desc.str.contains(pattern), ['Category']] = '_Books, Electro.'
 
-pattern = 'FARMERS IN|AM SOC|USPS 053711025|U-HAUL\
+pattern = 'UCI CAMPUS RECREATION|AMC|FANDANGO|CINEMA|EDWARD'
+spend.loc[spend.Desc.str.contains(pattern), ['Category']] = '_Gym, movies'
+
+pattern = 'FARMERS IN|AM SOC|ASCB|U-HAUL|CA DMV\
 |UCI TRANSPO|VISTA DEL|IMAGE D|COINBASE|EVA|UMI|PRIME TIME|VR|HARBOR J \
 |BIOMEDICAL ENGINEERING|AUTOZONE|PERFORMANCE BIKE SHOP\
-|STATE OF CALIF DMV|OPTOMETRIC|TOWING|AAA|CAPGOWN|TARGET PHOTO\
-|H AND J AUTO REPAIR '
+|STATE OF CALIF DMV|OPTOMETRIC|TOWING|AAA|CAPGOWN\
+|H AND J AUTO REPAIR|COMFORT INN|CASA LOMA|PALA CHOICES\
+|BIOPSYCHOSOCIAL|ENTERPRISE RENT|INSURE.*RENTAL|SEQUOIA KINGS|VILLAGE MARKET\
+|PRINCE FOOD|DNPSKINGSCANYONGROCERY|SEQUOIA- LODGEPOLE'
 spend.loc[spend.Desc.str.contains(pattern), ['Category']] = '_One-offs, Fees'
+spend.loc[spend.Desc.str.contains('IKEA') &
+         (spend.Amount < -12), ['Category']] = '_One-offs, Fees'
+spend.loc[spend.Desc.str.contains('TARGET') &
+         (spend.Date=='2016-07-08'), ['Category']] = '_One-offs, Fees'
 
-pattern = 'UCI PARK|GOOGLE *|UCI TRANS'
+pattern = 'UCI PARK|GOOGLE.*PRO|UCI TRANS'
 spend.loc[spend.Desc.str.contains(pattern), ['Category']] = 'Phone, Parking'
 
 pattern = 'AMZ  STORECARD|PAYPAL|AMAZON'
-spend.loc[spend.Desc.str.contains(pattern), ['Category']] = '_Deferred'
+spend.loc[spend.Desc.str.contains(pattern), ['Category']] = '_Installments'
 
 
 #   find cashback items, exclude cashback items from original set
@@ -135,9 +142,9 @@ total = total.set_value(uncat.index, 'Category', 'Uncat')
 # =============================================================================
 #    Pivot to group by cat and months and plot
 # =============================================================================
-date_range = '2015-10'
+date_range = '2016-01'
 dollar_lim = 2200
-mth_lim = 300
+mth_lim = 350
 MthlySpd = - MthlySpd.ix[date_range:]
 df = pd.pivot_table(total,
                     index='Date',
@@ -176,7 +183,7 @@ plt.xticks(rotation=0)
 # =============================================================================
 # Pivot table
 # =============================================================================
-x = total[(total.Date > '2015-01-30')].reset_index(drop=True)
+x = total[(total.Date > '2016-01-31')].reset_index(drop=True)
 y = x.groupby(['Date', 'Category']).sum()
 y1 = y.reset_index()
 ycount = x.groupby(['Date', 'Category']).count()

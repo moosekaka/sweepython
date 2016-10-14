@@ -100,6 +100,13 @@ mb_dy1 = pd.melt(df, id_vars=['media2'],
 mb_dy1.rename(columns={'media2': 'media'}, inplace=True)
 mb_dy = mb_dy.append(mb_dy1)
 
+size = pd.melt(df, id_vars=['media'],
+                value_vars='momvol')
+size1 = pd.melt(df, id_vars=['media2'],
+                 value_vars='momvol').dropna()
+size1.rename(columns={'media2': 'media'}, inplace=True)
+size = size.append(size1)
+
 outkws1 = dict(default_ylims=[0.05, 0.95],
                labeller=labelNormal, col_order=COL_ODR)
 

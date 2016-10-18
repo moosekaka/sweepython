@@ -41,7 +41,7 @@ class labelhandler(object):
         assert self._htype == 'normal'  # sanity check here
         labels = [xtik.get_text().strip()
                   for xtik in handle.axes.get_xticklabels()]
-        new_labels = ['{}\n N={}'
+        new_labels = [u'{}\n N={}'
                       .format(old_lab,
                               labeldic[old_lab]) for old_lab in labels]
         handle.axes.set_xticklabels(new_labels)
@@ -61,7 +61,7 @@ class labelhandler(object):
                 budv = float(oldtitle   # budvol label
                              .split('=')[-1]
                              .strip())
-                newtitle = ('{}, N = {}'
+                newtitle = (u'{}, N = {}'
                             .format(media,
                                     labeldic.xs(media).get([budv])[0]))
                 ax.set_title(newtitle)
@@ -69,11 +69,11 @@ class labelhandler(object):
             else:
                 oldtitle = oldtitle.split('=')[1].strip()
                 if self._htype != 'rsqr':  # defaults for "facet"
-                    ax.set_title('{}, N={}'
+                    ax.set_title(u'{}, N={}'
                                  .format(oldtitle,
                                          labeldic[oldtitle]))
                 else:
-                    ax.set_title('{}, R^2={:5.3f}'  # adds R^2 corr. labels"
+                    ax.set_title(u'{}, R^2={:5.3f}'  # adds R^2 corr. labels"
                                  .format(oldtitle,
                                          labeldic[oldtitle]))
 

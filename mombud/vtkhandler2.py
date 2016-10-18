@@ -11,14 +11,17 @@ import pandas as pd
 import seaborn as sns
 import mombud.mungedf as munge
 import mombud.functions.vtk_mbplots as mbfuncs
+from pandas.compat import u
+
 sns.set_style('whitegrid')
 plt.rcParams['font.family'] = 'DejaVu Sans'
 labelhandler, plviol, plbox, plfacet = (mbfuncs.labelhandler,
                                         mbfuncs.plviol,
                                         mbfuncs.plbox,
                                         mbfuncs.plfacet)
-COL_ODR = ['MFB1','NUM1', 'YPT11',
-           'WT_COMBINED', 'YPL', 'YPR', ]
+yes_unicode = pd.Series(map(u,['tea', 'ΔMFB1', 'beer']))
+
+COL_ODR = [u'ΔMFB1', u'ΔNUM1', u'ΔYPT11', 'WT_YPE', 'WT_YPL', 'WT_YPR', ]
 
 HUE_ODR = munge.HUE_ODR
 savefolder = r"C:\Users\sweel_Rafelski\Dropbox\SusanneSweeShared\aftermeet"
@@ -47,19 +50,29 @@ labelNormal = labelhandler()
 labelRowFacet = labelhandler('rowfacet')
 
 # args for postprocess_df(), which calls inputdata(), mungedata()
+#MOM segment into three parts (mbax)
 inp_args = {'inpdatpath': 'celldata.pkl',
-            'mbax': np.linspace(0., 1., 6),  # pos. mom/bud cell
+            'mbax': np.linspace(0., 1., 4),  # pos. mom/bud cell
             'cellax': np.linspace(0, 1., 11),  # whole cell pos.
             'binsvolbud': np.linspace(0, 40, 5),  # vol bins for bud
             'binsvolmom': np.array([0, 30, 40, 80.]),
             }
+#BUD segment into two parts (mbax)
+inp_args2 = {'inpdatpath': 'celldata.pkl',
+            'mbax': np.linspace(0., 1., 3),  # pos. mom/bud cell
+            'cellax': np.linspace(0, 1., 11),  # whole cell pos.
+            'binsvolbud': np.linspace(0, 40, 5),  # vol bins for bud
+            'binsvolmom': np.array([0, 30, 40, 80.]),
+            }
+
 outputargs = munge.postprocess_df(**inp_args)
+outputargs2 = munge.postprocess_df(**inp_args2)
 
 with open('df_mombud_filtered.pkl', 'rb') as inpt:
     df = pickle.load(inpt)
 
 df['media2'] = np.nan
-df.loc[df.media.isin(['YPE', 'WT']), 'media2'] = 'WT_COMBINED'
+df.loc[df.media.isin(['YPE', 'WT']), 'media2'] = 'WT_YPE'
 df.loc[df.index.isin(normal_num1), 'media2'] = 'NORM. NUM1'
 num1_all = df.loc[df.media == 'NUM1'].index
 num1_mutant = num1_all[~num1_all.isin(normal_num1)]
@@ -67,22 +80,40 @@ df.loc[num1_mutant, 'media2'] = 'DEFECT. NUM1'
 
 dfmom = outputargs.get('dfmom')
 dfmom = dfmom[dfmom.index.isin(df.index)].reset_index()
-dfbud = outputargs.get('dfbud')
+dfbud = outputargs2.get('dfbud')
 dfbud = dfbud[dfbud.index.isin(df.index)].reset_index()
 
 dfmom['media2'] = np.nan
-dfmom.loc[dfmom.media.isin(['YPE', 'WT']), 'media2'] = 'WT_COMBINED'
+dfmom.loc[dfmom.media.isin(['YPE', 'WT']), 'media2'] = 'WT_YPE'
 dfmom.loc[dfmom.name.isin(normal_num1), 'media2'] = 'NORM. NUM1'
 num1_all = dfmom.loc[dfmom.media == 'NUM1'].name
 num1_mutant = num1_all[~num1_all.isin(normal_num1)]
 dfmom.loc[dfmom.name.isin(num1_mutant), 'media2'] = 'DEFECT. NUM1'
 
 dfbud['media2'] = np.nan
-dfbud.loc[dfbud.media.isin(['YPE', 'WT']), 'media2'] = 'WT_COMBINED'
+dfbud.loc[dfbud.media.isin(['YPE', 'WT']), 'media2'] = 'WT_YPE'
 dfbud.loc[dfbud.name.isin(normal_num1), 'media2'] = 'NORM. NUM1'
 num1_all = dfbud.loc[dfbud.media == 'NUM1'].name
 num1_mutant = num1_all[~num1_all.isin(normal_num1)]
 dfbud.loc[dfbud.name.isin(num1_mutant), 'media2'] = 'DEFECT. NUM1'
+
+dfmerge = dfmom.merge(dfbud, on='name', suffixes=['_mom', '_bud'])
+labs = sorted(dfmerge.columns.values)
+labs2 = [el for lis in [labs[:5], labs[7:8], labs[-4:-1]] for el in lis]
+dfmerge2 = dfmerge.loc[:, labs2]
+(dfmerge2.loc[dfmerge2.loc[:, 'media_bud']
+ .isin(['WT', 'YPE']), 'media_bud']) = 'WT_YPE'
+medbud =  dfmerge2.groupby('media_bud').budvol.quantile([0.35, 0.5, 0.65])
+grp = dfmerge2.groupby('media_bud')
+meds = pd.concat([grp
+                 .get_group(key)
+                 [(grp.get_group(key).budvol>medbud[key, 0.35]) &
+                  (grp.get_group(key).budvol < medbud[key, 0.65])]
+                  for key in grp.groups.keys()])
+meds.rename(columns={0.5: 1.5,
+                     meds.columns[0]: 0.33,
+                     meds.columns[2]: 0.67, u'1.0_bud': 2,
+                     u'1.0_mom':1}, inplace=True)
 # =============================================================================
 # Data long form
 # =============================================================================
@@ -112,6 +143,9 @@ outkws1 = dict(default_ylims=[0.05, 0.95],
 
 outkws2 = dict(default_ylims=[0.15, 0.9],
                labeller=labelFacet, col_order=COL_ODR)
+
+
+
 
 # mombudDY plot
 with sns.plotting_context('talk', font_scale=1.2):
@@ -178,15 +212,22 @@ buddy = pd.melt(dfbud,
                 id_vars=['media', 'binvol'],
                 var_name='bud axis position',
                 value_name=r'$\Delta\Psi$ scaled',
-                value_vars=outputargs['mbax'].tolist())
+                value_vars=outputargs2['mbax'].tolist())
 
 buddy1 = pd.melt(dfbud,
                  id_vars=['media2', 'binvol'],
                  var_name='bud axis position',
                  value_name=r'$\Delta\Psi$ scaled',
-                 value_vars=outputargs['mbax'].tolist()).dropna()
+                 value_vars=outputargs2['mbax'].tolist()).dropna()
 buddy1.rename(columns={'media2': 'media'}, inplace=True)
 buddy = buddy.append(buddy1)
+
+buddy_meds = pd.melt(meds,
+                 id_vars=['media_bud'],
+                 var_name='cell axis position',
+                 value_name=r'$\Delta\Psi$ scaled',
+                 value_vars=meds.columns[:5].values.tolist())
+
 
 
 set5 = dict(col_wrap=3, col='media', hue='media',
@@ -208,3 +249,14 @@ plv6.plt(data=buddy,
          mapargs=['bud axis position', r'$\Delta\Psi$ scaled'],
          **set6)
 plv6.save_figure(op.join(savefolder, 'budDY.png'))
+
+set7 = dict(col_wrap=3, col='media_bud', hue='media_bud',
+            sharex=True, sharey=True, col_order=COL_ODR,
+            ylim=(0.0, 1.0),
+            )
+
+plv7 = plfacet(plt_type='pointplot', **outkws2)
+plv7.plt(data=buddy_meds,
+         mapargs=['cell axis position', r'$\Delta\Psi$ scaled'],
+         **set7)
+plv7.save_figure(op.join(savefolder, 'medbuds.png'))

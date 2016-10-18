@@ -176,14 +176,14 @@ momdy = pd.melt(dfmom,
                 id_vars=['media', 'binvol'],
                 var_name='mom axis position',
                 value_name=u'ΔΨ scaled',
-                value_vars=outputargs['mbax'])
+                value_vars=outputargs['mbax'][1:])
 momdy.replace({'media': labels}, inplace=True)
 
 buddy = pd.melt(dfbud,
                 id_vars=['media', 'binvol'],
                 var_name='bud axis position',
                 value_name=u'ΔΨ scaled',
-                value_vars=outputargs2['mbax'].tolist())
+                value_vars=outputargs2['mbax'].tolist()[1:])
 buddy.replace({'media': labels}, inplace=True)
 
 buddy_meds = pd.melt(meds,
@@ -227,3 +227,29 @@ plv7.plt(data=buddy_meds,
          mapargs=['cell axis position', u'ΔΨ scaled'],
          **set7)
 plv7.save_figure(op.join(savefolder, 'medbuds.png'))
+
+
+#BOX PLOTS VERSION
+g0 = sns.factorplot('mom axis position',
+                   u'ΔΨ scaled',
+                   data=momdy,
+                   kind='box', col='media',
+                   col_order=COL_ODR_F, notch=True, col_wrap=3)
+g0.set(ylim=tuple([0, 1.0]))
+plt.savefig(op.join(savefolder, 'box mom dy.png'))
+
+g1 = sns.factorplot('bud axis position',
+                   u'ΔΨ scaled',
+                   data=buddy,
+                   kind='box', col='media',
+                   col_order=COL_ODR_F, notch=True, col_wrap=3)
+g1.set(ylim=tuple([0, 1.0]))
+plt.savefig(op.join(savefolder, 'box bud dy.png'))
+
+g2 = sns.factorplot('cell axis position',
+                   u'ΔΨ scaled',
+                   data=buddy_meds,
+                   kind='box', col='media_bud',
+                   col_order=COL_ODR_F, notch=True, col_wrap=3)
+g2.set(ylim=tuple([0, 1.0]))
+plt.savefig(op.join(savefolder, 'box medbuds.png'))

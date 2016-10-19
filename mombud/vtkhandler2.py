@@ -88,6 +88,9 @@ meds.reset_index(drop=True, inplace=True)
 meds = meds.loc[:,
                 meds.columns.isin([0.33, 0.67, 1.0, 1.5, 2.0,
                                    u'media_bud', u'binvol_bud'])]
+alls = dfmerge.loc[:,
+                   dfmerge.columns.isin([0.33, 0.67, 1.0, 1.5, 2.0,
+                                        u'media_bud', u'binvol_bud'])]
 # =============================================================================
 # Data long form
 # =============================================================================
@@ -187,6 +190,11 @@ buddy_meds = pd.melt(meds,
                      value_name=u'ΔΨ scaled',
                      value_vars=meds.columns[:5].values.tolist())
 
+allsizes = pd.melt(alls,
+                   id_vars=['media_bud', 'binvol_bud'],
+                   var_name='cell axis position',
+                   value_name=u'ΔΨ scaled',
+                   value_vars=meds.columns[:5].values.tolist())
 # =============================================================================
 # PLOTS FACETTED
 # =============================================================================
@@ -222,6 +230,17 @@ plv7.plt(data=buddy_meds,
          **set7)
 plv7.save_figure(op.join(savefolder, 'medbuds.png'))
 
+set8 = dict(col_wrap=3, col='media_bud', hue='media_bud',
+            sharex=True, sharey=True, col_order=COL_ODR,
+            ylim=(0.0, 1.0),
+            )
+
+plv8 = plfacet(plt_type='pointplot', **outkws2)
+plv8.plt(data=allsizes,
+         mapargs=['cell axis position', u'ΔΨ scaled'],
+         **set8)
+plv8.save_figure(op.join(savefolder, 'allsizes_ptplt.png'))
+
 
 # BOX PLOTS VERSION
 g0 = sns.factorplot('mom axis position',
@@ -247,3 +266,11 @@ g2 = sns.factorplot('cell axis position',
                     col_order=COL_ODR, notch=True, col_wrap=3)
 g2.set(ylim=tuple([0, 1.0]))
 plt.savefig(op.join(savefolder, 'box medbuds.png'))
+
+g3 = sns.factorplot('cell axis position',
+                    u'ΔΨ scaled',
+                    data=allsizes,
+                    kind='box', col='media_bud',
+                    col_order=COL_ODR, notch=True, col_wrap=3)
+g3.set(ylim=tuple([0, 1.0]))
+plt.savefig(op.join(savefolder, 'box all.png'))

@@ -20,7 +20,6 @@ labelhandler, plviol, plbox, plfacet = (mbfuncs.labelhandler,
                                         mbfuncs.plfacet)
 
 COL_ODR = [u'ΔMFB1', u'ΔNUM1', u'ΔYPT11', u'WT_YPE', u'WT_YPL', u'WT_YPR', ]
-COL_ODR_F = ['mfb1', 'num1', 'ypt11', u'WT_YPE', u'WT_YPL', u'WT_YPR', ]
 savefolder = r"C:\Users\sweel_Rafelski\Dropbox\SusanneSweeShared\aftermeet"
 mombud_dy_vars = ['DY_median_mom', 'DY_median_bud']
 
@@ -104,8 +103,8 @@ size = pd.melt(df, id_vars=['media_new'],
 outkws1 = dict(default_ylims=[0.05, 0.95],
                labeller=labelNormal, col_order=COL_ODR)
 
-outkws2 = dict(default_ylims=[0.15, 0.9],
-               labeller=labelFacet, col_order=COL_ODR_F)
+outkws2 = dict(default_ylims=[0.1, 0.9],
+               labeller=labelFacet, col_order=COL_ODR)
 # =============================================================================
 # mombudDY plot
 # =============================================================================
@@ -168,36 +167,31 @@ with sns.plotting_context('talk', font_scale=1.15):
     plv2.save_figure(op.join(savefolder, 'test.png'))
 
 # =============================================================================
-# mom, bud,  cell axis DY plots
-# seaborn map unable to handle unicode in values, so map back greeks
+# mom, bud,  cell axis long form DF
 # =============================================================================
-labels = {u'ΔNUM1': u'num1', u'ΔMFB1': u'mfb1', u'ΔYPT11': u'ypt11'}
 momdy = pd.melt(dfmom,
                 id_vars=['media', 'binvol'],
                 var_name='mom axis position',
                 value_name=u'ΔΨ scaled',
                 value_vars=outputargs['mbax'][1:])
-momdy.replace({'media': labels}, inplace=True)
 
 buddy = pd.melt(dfbud,
                 id_vars=['media', 'binvol'],
                 var_name='bud axis position',
                 value_name=u'ΔΨ scaled',
                 value_vars=outputargs2['mbax'].tolist()[1:])
-buddy.replace({'media': labels}, inplace=True)
 
 buddy_meds = pd.melt(meds,
                      id_vars=['media_bud', 'binvol_bud'],
                      var_name='cell axis position',
                      value_name=u'ΔΨ scaled',
                      value_vars=meds.columns[:5].values.tolist())
-buddy_meds.replace({'media_bud': labels}, inplace=True)
 
 # =============================================================================
 # PLOTS FACETTED
 # =============================================================================
 set5 = dict(col_wrap=3, col='media', hue='media',
-            sharex=True, sharey=True, col_order=COL_ODR_F,
+            sharex=True, sharey=True, col_order=COL_ODR,
             ylim=(0.0, 1.))
 
 plv5 = plfacet(plt_type='pointplot', **outkws2)
@@ -207,7 +201,7 @@ plv5.plt(data=momdy,
 plv5.save_figure(op.join(savefolder, 'momDY.png'))
 
 set6 = dict(col_wrap=3, col='media', hue='media',
-            sharex=True, sharey=True, col_order=COL_ODR_F,
+            sharex=True, sharey=True, col_order=COL_ODR,
             ylim=(0.0, 1.0),
             )
 
@@ -218,7 +212,7 @@ plv6.plt(data=buddy,
 plv6.save_figure(op.join(savefolder, 'budDY.png'))
 
 set7 = dict(col_wrap=3, col='media_bud', hue='media_bud',
-            sharex=True, sharey=True, col_order=COL_ODR_F,
+            sharex=True, sharey=True, col_order=COL_ODR,
             ylim=(0.0, 1.0),
             )
 
@@ -229,27 +223,27 @@ plv7.plt(data=buddy_meds,
 plv7.save_figure(op.join(savefolder, 'medbuds.png'))
 
 
-#BOX PLOTS VERSION
+# BOX PLOTS VERSION
 g0 = sns.factorplot('mom axis position',
-                   u'ΔΨ scaled',
-                   data=momdy,
-                   kind='box', col='media',
-                   col_order=COL_ODR_F, notch=True, col_wrap=3)
+                    u'ΔΨ scaled',
+                    data=momdy,
+                    kind='box', col='media',
+                    col_order=COL_ODR, notch=True, col_wrap=3)
 g0.set(ylim=tuple([0, 1.0]))
 plt.savefig(op.join(savefolder, 'box mom dy.png'))
 
 g1 = sns.factorplot('bud axis position',
-                   u'ΔΨ scaled',
-                   data=buddy,
-                   kind='box', col='media',
-                   col_order=COL_ODR_F, notch=True, col_wrap=3)
+                    u'ΔΨ scaled',
+                    data=buddy,
+                    kind='box', col='media',
+                    col_order=COL_ODR, notch=True, col_wrap=3)
 g1.set(ylim=tuple([0, 1.0]))
 plt.savefig(op.join(savefolder, 'box bud dy.png'))
 
 g2 = sns.factorplot('cell axis position',
-                   u'ΔΨ scaled',
-                   data=buddy_meds,
-                   kind='box', col='media_bud',
-                   col_order=COL_ODR_F, notch=True, col_wrap=3)
+                    u'ΔΨ scaled',
+                    data=buddy_meds,
+                    kind='box', col='media_bud',
+                    col_order=COL_ODR, notch=True, col_wrap=3)
 g2.set(ylim=tuple([0, 1.0]))
 plt.savefig(op.join(savefolder, 'box medbuds.png'))

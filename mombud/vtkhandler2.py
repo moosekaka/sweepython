@@ -20,6 +20,7 @@ labelhandler, plviol, plbox, plfacet = (mbfuncs.labelhandler,
                                         mbfuncs.plfacet)
 
 COL_ODR = [u'ΔMFB1', u'ΔNUM1', u'ΔYPT11', u'WT_YPE', u'WT_YPL', u'WT_YPR', ]
+HUE_ODR = [u'WT_YPE', u'ΔMFB1', u'ΔNUM1', u'ΔYPT11']
 savefolder = r"C:\Users\sweel_Rafelski\Dropbox\SusanneSweeShared\aftermeet"
 mombud_dy_vars = ['DY_median_mom', 'DY_median_bud']
 
@@ -243,34 +244,58 @@ plv8.save_figure(op.join(savefolder, 'allsizes_ptplt.png'))
 
 
 # BOX PLOTS VERSION
-g0 = sns.factorplot('mom axis position',
-                    u'ΔΨ scaled',
-                    data=momdy,
-                    kind='box', col='media',
-                    col_order=COL_ODR, notch=True, col_wrap=3)
-g0.set(ylim=tuple([0, 1.0]))
-plt.savefig(op.join(savefolder, 'box mom dy.png'))
+with sns.plotting_context('talk', font_scale=1.15):
+    g0 = sns.factorplot('mom axis position',
+                        u'ΔΨ scaled',
+                        data=momdy,
+                        kind='box', col='media',
+                        col_order=COL_ODR, notch=True, col_wrap=3)
+    g0.set(ylim=tuple([0, 1.25]))
+    plt.savefig(op.join(savefolder, 'box mom dy.png'))
 
-g1 = sns.factorplot('bud axis position',
-                    u'ΔΨ scaled',
-                    data=buddy,
-                    kind='box', col='media',
-                    col_order=COL_ODR, notch=True, col_wrap=3)
-g1.set(ylim=tuple([0, 1.0]))
-plt.savefig(op.join(savefolder, 'box bud dy.png'))
+    g1 = sns.factorplot('bud axis position',
+                        u'ΔΨ scaled',
+                        data=buddy,
+                        kind='box', col='media',
+                        col_order=COL_ODR, notch=True, col_wrap=3)
+    g1.set(ylim=tuple([0, 1.25]))
+    plt.savefig(op.join(savefolder, 'box bud dy.png'))
 
-g2 = sns.factorplot('cell axis position',
-                    u'ΔΨ scaled',
-                    data=buddy_meds,
-                    kind='box', col='media_bud',
-                    col_order=COL_ODR, notch=True, col_wrap=3)
-g2.set(ylim=tuple([0, 1.0]))
-plt.savefig(op.join(savefolder, 'box medbuds.png'))
+    g2 = sns.factorplot('cell axis position',
+                        u'ΔΨ scaled',
+                        data=buddy_meds,
+                        kind='box', col='media_bud',
+                        col_order=COL_ODR, notch=True, col_wrap=3)
+    g2.set(ylim=tuple([0, 1.25]))
+    plt.savefig(op.join(savefolder, 'box medbuds.png'))
 
-g3 = sns.factorplot('cell axis position',
-                    u'ΔΨ scaled',
-                    data=allsizes,
-                    kind='box', col='media_bud',
-                    col_order=COL_ODR, notch=True, col_wrap=3)
-g3.set(ylim=tuple([0, 1.0]))
-plt.savefig(op.join(savefolder, 'box all.png'))
+    g3 = sns.factorplot('cell axis position',
+                        u'ΔΨ scaled',
+                        data=allsizes,
+                        kind='box', col='media_bud',
+                        col_order=COL_ODR, notch=True, col_wrap=3)
+    g3.set(ylim=tuple([0, 1.25]))
+    plt.savefig(op.join(savefolder, 'box all.png'))
+
+    with sns.color_palette('colorblind'):
+        _, ax4 = plt.subplots(figsize=(20, 16))
+        g4 = sns.boxplot(x='cell axis position',
+                         y=u'ΔΨ scaled',
+                         data=allsizes,
+                         hue='media_bud',
+                         hue_order=HUE_ODR,
+                         ax=ax4,
+                         notch=True)
+        g4.set(ylim=tuple([0, 1.25]))
+        plt.savefig(op.join(savefolder, 'box all onerow.png'))
+
+        _, ax5 = plt.subplots(figsize=(20, 16))
+        g5 = sns.boxplot(x='cell axis position',
+                         y=u'ΔΨ scaled',
+                         data=buddy_meds,
+                         hue='media_bud',
+                         hue_order=HUE_ODR,
+                         ax=ax5,
+                         notch=True)
+        g5.set(ylim=tuple([0, 1.25]))
+        plt.savefig(op.join(savefolder, 'box medbuds onerow.png'))

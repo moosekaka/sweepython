@@ -104,7 +104,7 @@ mb_dy = pd.melt(df, id_vars=['media_new'],
 size = pd.melt(df, id_vars=['media_new'],
                value_vars='budvol')
 
-outkws1 = dict(default_ylims=[0.05, 0.95],
+outkws1 = dict(default_ylims=[0.05, 0.95], plt_type='boxplot',
                labeller=labelNormal, col_order=COL_ODR)
 
 outkws2 = dict(default_ylims=[0.1, 0.9],
@@ -161,9 +161,11 @@ with sns.plotting_context('talk', font_scale=1.2):
 
 with sns.plotting_context('talk', font_scale=1.15):
     plt.rcParams['figure.figsize'] = (20, 16)
-    set2v = dict(x='media_new', y='value', size=(20, 16),
-                 group_key='media_new', inner=None,
-                 title='fracDY', ylim='auto')
+    set2v = dict(x='media_new', y='value',
+#                 size=(20, 16),
+#                 group_key='media_new', inner=None,
+#                 title='fracDY', ylim='auto')
+                 )
     plv2 = plviol(**outkws1)
     plv2.plt(data=frac, **set2v)
     plv2.ax.axhline(1.0)

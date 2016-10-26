@@ -148,8 +148,11 @@ class plviol(object):
             """
             h = self.pltobj(data=self.data, ax=self.ax,
                             order=order, **kwargs)
-            h.set_ylim(ylims[0], ylims[1])
-            h.set_title(kwargs.get('title'))
+            try:
+                h.set_ylim(ylims[0], ylims[1])
+                h.set_title(kwargs.get('title'))
+            except TypeError:
+                pass
             try:
                 h.set(**kwargs['setargs'])
             except KeyError:

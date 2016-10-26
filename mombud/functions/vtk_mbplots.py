@@ -146,8 +146,10 @@ class plviol(object):
             """
             Draws the axes obj using the seaborn method self.pltobj
             """
+            allowable = inspect.getargspec(self.pltobj).args
+            kws = {k: v for k, v in kwargs.iteritems() if k in allowable}
             h = self.pltobj(data=self.data, ax=self.ax,
-                            order=order, **kwargs)
+                            order=order, **kws)
             try:
                 h.set_ylim(ylims[0], ylims[1])
                 h.set_title(kwargs.get('title'))

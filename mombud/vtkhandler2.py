@@ -3,6 +3,7 @@
 Created on Sat Jun 11 16:10:16 2016
 Module for plots of analysis of mother bud function in budding yeast
 """
+import os
 import os.path as op
 import cPickle as pickle
 import matplotlib.pyplot as plt
@@ -21,7 +22,8 @@ labelhandler, plviol, plbox, plfacet = (mbfuncs.labelhandler,
 
 COL_ODR = [u'ΔMFB1', u'ΔNUM1', u'ΔYPT11', u'WT_YPE', u'WT_YPL', u'WT_YPR', ]
 HUE_ODR = [u'WT_YPE', u'ΔMFB1', u'ΔNUM1', u'ΔYPT11']
-savefolder = r"C:\Users\sweel_Rafelski\Dropbox\SusanneSweeShared\aftermeet"
+savefolder = op.expanduser(os.sep.join(['~', 'Dropbox', 'SusanneSweeShared',
+                                        'figures_for_mutants']))
 mombud_dy_vars = ['DY_median_mom', 'DY_median_bud']
 
 plt.close('all')
@@ -96,10 +98,14 @@ alls = dfmerge.loc[:,
 # Data long form
 # =============================================================================
 frac = pd.melt(df, id_vars=['media_new'],
+               value_name=u'ΔΨ scaled',
                value_vars=['frac'])
 
+relabels = {'DY_median_mom': u'ΔΨ Mom', 'DY_median_bud': u'ΔΨ Bud'}
 mb_dy = pd.melt(df, id_vars=['media_new'],
+                value_name=u'ΔΨ scaled',
                 value_vars=mombud_dy_vars)
+mb_dy.replace({'variable': relabels}, inplace=True)
 
 size = pd.melt(df, id_vars=['media_new'],
                value_vars='budvol')
@@ -115,34 +121,36 @@ outkws3 = dict(default_ylims=[0.05, 0.95], plt_type='boxplot',
 # =============================================================================
 # mombudDY plot
 # =============================================================================
-with sns.plotting_context('talk', font_scale=1.15):
+with sns.plotting_context('talk', font_scale=1.5):
     plt.rcParams['figure.figsize'] = (20, 16)
-    set1 = dict(x='media_new', y='value',
+    set1 = dict(x='media_new', y=u'ΔΨ scaled',
                 hue='variable', group_key='media_new',
-                title='mombud', ylim=(0, 1.), notch=True,
+                title=u'ΔΨ mother vs bud', ylim=(0, 1.), notch=True,
                 )
 
     plv1 = plviol(**outkws1)
     plv1.plt(data=mb_dy, **set1)
-    plv1.turn_off_legend()
-    plv1.save_figure(op.join(savefolder, 'boxplot_mombud.png'))
+    plv1.ax.xaxis.label.set_visible(False)
+    plv1.ax.get_legend().set_title('')
+    plv1.save_figure(op.join(savefolder, 'boxplot mombud dy.png'))
 
 # =============================================================================
 # fracDY plot
 # =============================================================================
 
-with sns.plotting_context('talk', font_scale=1.15):
+with sns.plotting_context('talk', font_scale=1.5):
     plt.rcParams['figure.figsize'] = (20, 16)
-    set2v = dict(x='media_new', y='value',
+    set2v = dict(x='media_new', y=u'ΔΨ scaled',
                  size=(20, 16),
                  group_key='media_new', inner=None, notch=True,
-                 title='fracDY', ylim=[0, 2.5])
+                 title=u'Ratio of average bud to mother ΔΨ', ylim=[0, 2.5])
 
     plv2 = plviol(**outkws1)
     plv2.plt(data=frac, **set2v)
     plv2.ax.axhline(1.0)
+    plv2.ax.xaxis.label.set_visible(False)
     plv2.turn_off_legend()
-    plv2.save_figure(op.join(savefolder, 'boxplot_frac.png'))
+    plv2.save_figure(op.join(savefolder, 'boxplot frac dy.png'))
 
 # =============================================================================
 # mom, bud,  cell axis long form DF
@@ -216,9 +224,9 @@ with sns.plotting_context('talk', font_scale=.95):
     plv8.plt(data=allsizes,
              mapargs=['cell axis position', u'ΔΨ scaled'],
              **set8)
-    plv8.save_figure(op.join(savefolder, 'allsizes_ptplt.png'))
+    plv8.save_figure(op.join(savefolder, 'allsizes ptplt.png'))
 
-## BOX PLOTS VERSION
+# BOX PLOTS VERSION
 with sns.plotting_context('talk', font_scale=1.1):
     g0 = sns.factorplot('mom axis position',
                         u'ΔΨ scaled',
@@ -245,7 +253,7 @@ with sns.plotting_context('talk', font_scale=1.1):
                         col_order=COL_ODR, notch=True, col_wrap=3)
     labelFacet(g2, mbfuncs.get_group_counts(g2.data))
     g2.set(ylim=tuple([0, 1.25]))
-    plt.savefig(op.join(savefolder, 'box medbuds.png'))
+    plt.savefig(op.join(savefolder, 'box med sized buds.png'))
 
     g3 = sns.factorplot('cell axis position',
                         u'ΔΨ scaled',
@@ -254,21 +262,28 @@ with sns.plotting_context('talk', font_scale=1.1):
                         col_order=COL_ODR, notch=True, col_wrap=3)
     labelFacet(g3, mbfuncs.get_group_counts(g3.data))
     g3.set(ylim=tuple([0, 1.25]))
-    plt.savefig(op.join(savefolder, 'box all.png'))
+    plt.savefig(op.join(savefolder, 'box all bud sizes.png'))
 
+with sns.plotting_context('talk', font_scale=1.25):
     with sns.color_palette('colorblind'):
         plt.rcParams['figure.figsize'] = (20, 16)
         set10 = dict(x='cell axis position', y=u'ΔΨ scaled',
                      hue='media_bud', hue_order=HUE_ODR,
+                     title=(u'Average population ΔΨ along cell axis '
+                            '(cells with all sizes of buds)'),
                      group_key='media_bud', notch=True, ylim=(0.0, 1.25))
 
         plv10 = plviol(**outkws3)
         plv10.plt(data=allsizes, **set10)
+        plv10.ax.get_legend().set_title('')
         plt.savefig(op.join(savefolder, 'box all onerow.png'))
 
         set11 = dict(x='cell axis position', y=u'ΔΨ scaled',
                      hue='media_bud', hue_order=HUE_ODR,
+                     title=(u'Average population ΔΨ along cell axis '
+                            '(only cells with medium sized buds)'),
                      notch=True, ylim=(0.0, 1.25))
         plv11 = plviol(**outkws3)
         plv11.plt(data=buddy_meds, **set11)
+        plv11.ax.get_legend().set_title('')
         plt.savefig(op.join(savefolder, 'box medbuds onerow.png'))

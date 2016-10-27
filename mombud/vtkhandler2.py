@@ -109,68 +109,40 @@ outkws1 = dict(default_ylims=[0.05, 0.95], plt_type='boxplot',
 
 outkws2 = dict(default_ylims=[0.1, 0.9],
                labeller=labelFacet, col_order=COL_ODR)
+
+outkws3 = dict(default_ylims=[0.05, 0.95], plt_type='boxplot',
+               labeller=labelNormal, hue_order=HUE_ODR)
 # =============================================================================
 # mombudDY plot
 # =============================================================================
-with sns.plotting_context('talk', font_scale=1.2):
-    _, ax0 = plt.subplots(figsize=(20, 16))
-    set0 = dict(
-        x='media_new',
-        y='value',
-        hue='variable',
-        data=mb_dy,
-        width=.75,
-        order=COL_ODR,
-        notch=True,
-        bootstrap=10000,
-        medianprops={
-            'c': '#ffb16d',
-            'markeredgewidth': 2})
-    g = sns.boxplot(ax=ax0, **set0)
-    plt.savefig(op.join(savefolder, 'boxplot_mombud.png'))
+with sns.plotting_context('talk', font_scale=1.15):
+    plt.rcParams['figure.figsize'] = (20, 16)
+    set1 = dict(x='media_new', y='value',
+                hue='variable', group_key='media_new',
+                title='mombud', ylim=(0, 1.), notch=True,
+                )
 
-set1 = dict(x='media_new', y='value',
-            hue='variable', group_key='media_new',
-            title='mombud', ylim=(0, 1.),
-            )
-
-plv1 = plviol(**outkws1)
-plv1.plt(data=mb_dy, **set1)
-plv1.turn_off_legend()
-plv1.save_figure(op.join(savefolder, 'violin_mombud.png'))
+    plv1 = plviol(**outkws1)
+    plv1.plt(data=mb_dy, **set1)
+    plv1.turn_off_legend()
+    plv1.save_figure(op.join(savefolder, 'boxplot_mombud.png'))
 
 # =============================================================================
 # fracDY plot
 # =============================================================================
-with sns.plotting_context('talk', font_scale=1.2):
-    _, ax1 = plt.subplots(figsize=(20, 16))
-    set1 = dict(x='media_new', y='value', data=frac, width=.75,
-                order=COL_ODR, join=False, n_boot=1000)
-    g = sns.pointplot(ax=ax1, estimator=np.median, **set1)
-    g.set(ylim=(0, 2.5))
-    plt.savefig(op.join(savefolder, 'CI.png'))
-
-    _, ax2 = plt.subplots(figsize=(20, 16))
-    set2 = dict(x='media_new', y='value', data=frac, width=.75,
-                order=COL_ODR, notch=True, bootstrap=20000,
-                medianprops={'c': '#ed0dd9', 'markeredgewidth': 2})
-    g = sns.boxplot(ax=ax2, **set2)
-    g.set(ylim=(0, 2.5))
-    g.axhline(1.0)
-    plt.savefig(op.join(savefolder, 'fracDY.png'))
 
 with sns.plotting_context('talk', font_scale=1.15):
     plt.rcParams['figure.figsize'] = (20, 16)
     set2v = dict(x='media_new', y='value',
-#                 size=(20, 16),
-#                 group_key='media_new', inner=None,
-#                 title='fracDY', ylim='auto')
-                 )
+                 size=(20, 16),
+                 group_key='media_new', inner=None, notch=True,
+                 title='fracDY', ylim=[0, 2.5])
+
     plv2 = plviol(**outkws1)
     plv2.plt(data=frac, **set2v)
     plv2.ax.axhline(1.0)
     plv2.turn_off_legend()
-    plv2.save_figure(op.join(savefolder, 'test.png'))
+    plv2.save_figure(op.join(savefolder, 'boxplot_frac.png'))
 
 # =============================================================================
 # mom, bud,  cell axis long form DF
@@ -201,57 +173,59 @@ allsizes = pd.melt(alls,
 # =============================================================================
 # PLOTS FACETTED
 # =============================================================================
-set5 = dict(col_wrap=3, col='media', hue='media',
-            sharex=True, sharey=True, col_order=COL_ODR,
-            ylim=(0.0, 1.))
+with sns.plotting_context('talk', font_scale=1.1):
+    set5 = dict(col_wrap=3, col='media', hue='media',
+                sharex=True, sharey=True, col_order=COL_ODR,
+                ylim=(0.0, 1.))
 
-plv5 = plfacet(plt_type='pointplot', **outkws2)
-plv5.plt(data=momdy,
-         mapargs=['mom axis position', u'ΔΨ scaled'],
-         **set5)
-plv5.save_figure(op.join(savefolder, 'momDY.png'))
+    plv5 = plfacet(plt_type='pointplot', **outkws2)
+    plv5.plt(data=momdy,
+             mapargs=['mom axis position', u'ΔΨ scaled'],
+             **set5)
+    plv5.save_figure(op.join(savefolder, 'momDY.png'))
 
-set6 = dict(col_wrap=3, col='media', hue='media',
-            sharex=True, sharey=True, col_order=COL_ODR,
-            ylim=(0.0, 1.0),
-            )
+    set6 = dict(col_wrap=3, col='media', hue='media',
+                sharex=True, sharey=True, col_order=COL_ODR,
+                ylim=(0.0, 1.0),
+                )
 
-plv6 = plfacet(plt_type='pointplot', **outkws2)
-plv6.plt(data=buddy,
-         mapargs=['bud axis position', u'ΔΨ scaled'],
-         **set6)
-plv6.save_figure(op.join(savefolder, 'budDY.png'))
+    plv6 = plfacet(plt_type='pointplot', **outkws2)
+    plv6.plt(data=buddy,
+             mapargs=['bud axis position', u'ΔΨ scaled'],
+             **set6)
+    plv6.save_figure(op.join(savefolder, 'budDY.png'))
 
-set7 = dict(col_wrap=3, col='media_bud', hue='media_bud',
-            sharex=True, sharey=True, col_order=COL_ODR,
-            ylim=(0.0, 1.0),
-            )
+    set7 = dict(col_wrap=3, col='media_bud', hue='media_bud',
+                sharex=True, sharey=True, col_order=COL_ODR,
+                ylim=(0.0, 1.0),
+                )
 
-plv7 = plfacet(plt_type='pointplot', **outkws2)
-plv7.plt(data=buddy_meds,
-         mapargs=['cell axis position', u'ΔΨ scaled'],
-         **set7)
-plv7.save_figure(op.join(savefolder, 'medbuds.png'))
+with sns.plotting_context('talk', font_scale=.95):
+    plv7 = plfacet(plt_type='pointplot', **outkws2)
+    plv7.plt(data=buddy_meds,
+             mapargs=['cell axis position', u'ΔΨ scaled'],
+             **set7)
+    plv7.save_figure(op.join(savefolder, 'medbuds.png'))
 
-set8 = dict(col_wrap=3, col='media_bud', hue='media_bud',
-            sharex=True, sharey=True, col_order=COL_ODR,
-            ylim=(0.0, 1.0),
-            )
+    set8 = dict(col_wrap=3, col='media_bud', hue='media_bud',
+                sharex=True, sharey=True, col_order=COL_ODR,
+                ylim=(0.0, 1.0),
+                )
 
-plv8 = plfacet(plt_type='pointplot', **outkws2)
-plv8.plt(data=allsizes,
-         mapargs=['cell axis position', u'ΔΨ scaled'],
-         **set8)
-plv8.save_figure(op.join(savefolder, 'allsizes_ptplt.png'))
+    plv8 = plfacet(plt_type='pointplot', **outkws2)
+    plv8.plt(data=allsizes,
+             mapargs=['cell axis position', u'ΔΨ scaled'],
+             **set8)
+    plv8.save_figure(op.join(savefolder, 'allsizes_ptplt.png'))
 
-
-# BOX PLOTS VERSION
-with sns.plotting_context('talk', font_scale=1.15):
+## BOX PLOTS VERSION
+with sns.plotting_context('talk', font_scale=1.1):
     g0 = sns.factorplot('mom axis position',
                         u'ΔΨ scaled',
                         data=momdy,
                         kind='box', col='media',
                         col_order=COL_ODR, notch=True, col_wrap=3)
+    labelFacet(g0, mbfuncs.get_group_counts(g0.data))
     g0.set(ylim=tuple([0, 1.25]))
     plt.savefig(op.join(savefolder, 'box mom dy.png'))
 
@@ -260,6 +234,7 @@ with sns.plotting_context('talk', font_scale=1.15):
                         data=buddy,
                         kind='box', col='media',
                         col_order=COL_ODR, notch=True, col_wrap=3)
+    labelFacet(g1, mbfuncs.get_group_counts(g1.data))
     g1.set(ylim=tuple([0, 1.25]))
     plt.savefig(op.join(savefolder, 'box bud dy.png'))
 
@@ -268,6 +243,7 @@ with sns.plotting_context('talk', font_scale=1.15):
                         data=buddy_meds,
                         kind='box', col='media_bud',
                         col_order=COL_ODR, notch=True, col_wrap=3)
+    labelFacet(g2, mbfuncs.get_group_counts(g2.data))
     g2.set(ylim=tuple([0, 1.25]))
     plt.savefig(op.join(savefolder, 'box medbuds.png'))
 
@@ -276,28 +252,23 @@ with sns.plotting_context('talk', font_scale=1.15):
                         data=allsizes,
                         kind='box', col='media_bud',
                         col_order=COL_ODR, notch=True, col_wrap=3)
+    labelFacet(g3, mbfuncs.get_group_counts(g3.data))
     g3.set(ylim=tuple([0, 1.25]))
     plt.savefig(op.join(savefolder, 'box all.png'))
 
     with sns.color_palette('colorblind'):
-        _, ax4 = plt.subplots(figsize=(20, 16))
-        g4 = sns.boxplot(x='cell axis position',
-                         y=u'ΔΨ scaled',
-                         data=allsizes,
-                         hue='media_bud',
-                         hue_order=HUE_ODR,
-                         ax=ax4,
-                         notch=True)
-        g4.set(ylim=tuple([0, 1.25]))
+        plt.rcParams['figure.figsize'] = (20, 16)
+        set10 = dict(x='cell axis position', y=u'ΔΨ scaled',
+                     hue='media_bud', hue_order=HUE_ODR,
+                     group_key='media_bud', notch=True, ylim=(0.0, 1.25))
+
+        plv10 = plviol(**outkws3)
+        plv10.plt(data=allsizes, **set10)
         plt.savefig(op.join(savefolder, 'box all onerow.png'))
 
-        _, ax5 = plt.subplots(figsize=(20, 16))
-        g5 = sns.boxplot(x='cell axis position',
-                         y=u'ΔΨ scaled',
-                         data=buddy_meds,
-                         hue='media_bud',
-                         hue_order=HUE_ODR,
-                         ax=ax5,
-                         notch=True)
-        g5.set(ylim=tuple([0, 1.25]))
+        set11 = dict(x='cell axis position', y=u'ΔΨ scaled',
+                     hue='media_bud', hue_order=HUE_ODR,
+                     notch=True, ylim=(0.0, 1.25))
+        plv11 = plviol(**outkws3)
+        plv11.plt(data=buddy_meds, **set11)
         plt.savefig(op.join(savefolder, 'box medbuds onerow.png'))

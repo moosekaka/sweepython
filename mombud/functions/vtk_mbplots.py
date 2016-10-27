@@ -20,6 +20,31 @@ error_text = ("labelhandler() called with type {}, which does not exist for"
               " this handler. Defaulting to unlabelled title for subplot")
 
 
+def get_group_counts(data, **kwargs):
+    """
+    Get counts of groups based on the first columns name or a groupkey
+    """
+    try:
+        groupkey = kwargs.get('group_key', data.columns[0])
+        n_counts = (data
+                    .groupby([groupkey, 'variable'])
+                    .size()
+                    .xs(data['variable']
+                        .iloc[0],
+                        level='variable'))
+    except KeyError:
+            try:
+                dfcopy = data.reset_index()
+                c1, c2, _, c4, _ = dfcopy.columns
+                n_counts = (pd.pivot_table(
+                            dfcopy, c1, index=c2,
+                            columns=c4, aggfunc=len)).iloc[:, 0]
+            except ValueError:
+                traceback.print_stack(limit=4)
+                print "Not enough columns to do group counts, skipping"
+    return n_counts
+
+
 class labelhandler(object):
     """ Callable object for labeling subplot titles"""
     def __init__(self, htype='normal'):
@@ -155,6 +180,7 @@ class plviol(object):
                 h.set_title(kwargs.get('title'))
             except TypeError:
                 pass
+
             try:
                 h.set(**kwargs['setargs'])
             except KeyError:
@@ -283,9 +309,10 @@ class plfacet(plviol):
         except TypeError:
             try:
                 self.facet_obj.map(self.pltobj, *mapargs)
-            except TypeError:
-                traceback.print_stack(limit=4)
-                raise UsageError("Missing kwargs `mapargs`")
+            except:
+                raise
+#                traceback.print_stack(limit=4)
+#                raise UsageError("Missing kwargs `mapargs`")
 
         self.label_group_counts(self.facet_obj)
 

@@ -122,7 +122,7 @@ outkws3 = dict(default_ylims=[0.05, 0.95], plt_type='boxplot',
 # mombudDY plot
 # =============================================================================
 with sns.plotting_context('talk', font_scale=1.5):
-    plt.rcParams['figure.figsize'] = (20, 16)
+    plt.rcParams['figure.figsize'] = (16, 11)
     set1 = dict(x='media_new', y=u'ΔΨ scaled',
                 hue='variable', group_key='media_new',
                 title=u'ΔΨ mother vs bud', ylim=(0, 1.), notch=True,
@@ -139,11 +139,11 @@ with sns.plotting_context('talk', font_scale=1.5):
 # =============================================================================
 
 with sns.plotting_context('talk', font_scale=1.5):
-    plt.rcParams['figure.figsize'] = (20, 16)
+    plt.rcParams['figure.figsize'] = (16, 11)
     set2v = dict(x='media_new', y=u'ΔΨ scaled',
-                 size=(20, 16),
                  group_key='media_new', inner=None, notch=True,
-                 title=u'Ratio of average bud to mother ΔΨ', ylim=[0, 2.5])
+                 title=u'',
+                 ylim=[0, 2.5])
 
     plv2 = plviol(**outkws1)
     plv2.plt(data=frac, **set2v)
@@ -181,11 +181,11 @@ allsizes = pd.melt(alls,
 # =============================================================================
 # PLOTS FACETTED
 # =============================================================================
-with sns.plotting_context('talk', font_scale=1.1):
+with sns.plotting_context('talk', font_scale=.95):
+    plt.rcParams['figure.figsize'] = (16, 11)
     set5 = dict(col_wrap=3, col='media', hue='media',
                 sharex=True, sharey=True, col_order=COL_ODR,
                 ylim=(0.0, 1.))
-
     plv5 = plfacet(plt_type='pointplot', **outkws2)
     plv5.plt(data=momdy,
              mapargs=['mom axis position', u'ΔΨ scaled'],
@@ -208,7 +208,6 @@ with sns.plotting_context('talk', font_scale=1.1):
                 ylim=(0.0, 1.0),
                 )
 
-with sns.plotting_context('talk', font_scale=.95):
     plv7 = plfacet(plt_type='pointplot', **outkws2)
     plv7.plt(data=buddy_meds,
              mapargs=['cell axis position', u'ΔΨ scaled'],
@@ -266,7 +265,7 @@ with sns.plotting_context('talk', font_scale=1.1):
 
 with sns.plotting_context('talk', font_scale=1.25):
     with sns.color_palette('colorblind'):
-        plt.rcParams['figure.figsize'] = (20, 16)
+        plt.rcParams['figure.figsize'] = (16, 11)
         set10 = dict(x='cell axis position', y=u'ΔΨ scaled',
                      hue='media_bud', hue_order=HUE_ODR,
                      title=(u'Average population ΔΨ along cell axis '
@@ -275,7 +274,7 @@ with sns.plotting_context('talk', font_scale=1.25):
 
         plv10 = plviol(**outkws3)
         plv10.plt(data=allsizes, **set10)
-        plv10.ax.get_legend().set_title('')
+        plv10.ax.legend(loc=2, title='')
         plt.savefig(op.join(savefolder, 'box all onerow.png'))
 
         set11 = dict(x='cell axis position', y=u'ΔΨ scaled',
@@ -285,5 +284,5 @@ with sns.plotting_context('talk', font_scale=1.25):
                      notch=True, ylim=(0.0, 1.25))
         plv11 = plviol(**outkws3)
         plv11.plt(data=buddy_meds, **set11)
-        plv11.ax.get_legend().set_title('')
+        plv11.ax.legend(loc=2, title='')
         plt.savefig(op.join(savefolder, 'box medbuds onerow.png'))

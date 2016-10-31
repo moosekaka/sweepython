@@ -67,7 +67,8 @@ spend.loc[spend.Desc.str.contains(pattern), ['Category']] = 'Coffee'
 pattern = 'JACK|^CHICK|MCD|DEL TACO|IN-N-OUT|DAPHNE|RAISING\
 |TACO BELL|SUBWAY|PANERA|EL POLLO LOCO|CHIPOTLE|BLAZE|HABIT|IKEA R\
 |SEAFOOD C|DENNY|IHOP|POPEY|SLAPFISH|Flame|FLAME|KFC|Pizza 90\
-|CHRONIC|PHO.*1|BRUXIE|MENDOCINO|TLT FOOD|YOGURT|MEET FRESH|MITSUWA-BEER'
+|CHRONIC|PHO.*1|BRUXIE|MENDOCINO|TLT FOOD|YOGURT|MEET FRESH|MITSUWA-BEER\
+|VEGGIE GRILL|CREAMISTRY|CAPITAL NOODLE|MOD PIZZA'
 spend.loc[spend.Desc.str.contains(pattern), ['Category']] = 'FastFood'
 
 pattern = 'J J BAKE|NORM|TENDER GR|URBAN SEOUL|KAISEN|KULA|BLAKES\
@@ -99,7 +100,8 @@ pattern = 'FARMERS IN|AM SOC|ASCB|U-HAUL|CA DMV\
 |STATE OF CALIF DMV|OPTOMETRIC|TOWING|AAA|CAPGOWN\
 |H AND J AUTO REPAIR|COMFORT INN|CASA LOMA|PALA CHOICES\
 |BIOPSYCHOSOCIAL|ENTERPRISE RENT|INSURE.*RENTAL|SEQUOIA KINGS|VILLAGE MARKET\
-|PRINCE FOOD|DNPSKINGSCANYONGROCERY|SEQUOIA- LODGEPOLE'
+|PRINCE FOOD|DNPSKINGSCANYONGROCERY|SEQUOIA- LODGEPOLE|HADLEY TOW\
+|Chase QuickPay'
 spend.loc[spend.Desc.str.contains(pattern), ['Category']] = '_One-offs, Fees'
 spend.loc[spend.Desc.str.contains('IKEA') &
          (spend.Amount < -12), ['Category']] = '_One-offs, Fees'
@@ -183,7 +185,7 @@ plt.xticks(rotation=0)
 # =============================================================================
 # Pivot table
 # =============================================================================
-x = total[(total.Date > '2016-01-31')].reset_index(drop=True)
+x = total[(total.Date > '2016-08-31')].reset_index(drop=True)
 y = x.groupby(['Date', 'Category']).sum()
 y1 = y.reset_index()
 ycount = x.groupby(['Date', 'Category']).count()

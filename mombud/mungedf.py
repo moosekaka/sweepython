@@ -117,7 +117,7 @@ def _aggDY(df):
     # groupby mom/buds , get agg. stats for Δψ
     df_agg_mb = (df.groupby(['name', 'type'])
                  [['DY', 'DY_abs', 'DY_unscl']]
-                 .agg([np.mean, np.median]).unstack())
+                 .agg([np.mean, np.median, np.var]).unstack())
     df_agg_mb.columns = ['_'.join(c) for c in df_agg_mb.columns.values]
 
     df_agg_cell = (gr[['DY', 'DY_abs', 'DY_unscl']].agg('mean'))
@@ -288,6 +288,7 @@ def postprocess_df(**kwargs):
 
     cellall['budvolratio'] = (cellall['budvol']
                               .div(cellall['budvol_q90'], axis=0))
+    cellall['bud_dy_var'] = cellall['DY_var_bud']
 
     # Output dict. for cellall, Δψ binned by mom and bud ind. cells
     outputdic = {'data': cellall}  # for all cells

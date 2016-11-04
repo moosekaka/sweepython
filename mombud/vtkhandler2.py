@@ -38,6 +38,7 @@ newlabels = {'YPR': u'WT_YPR', 'YPL': u'WT_YPL', 'YPE': u'WT_YPE',
              'WT': u'WT_YPE', 'NUM1': u'ΔNUM1', 'MFB1': u'ΔMFB1',
              'YPT11': u'ΔYPT11'}
 df['media_new'] = df.media.map(newlabels)
+lowerthresh = 0.25
 
 # =============================================================================
 # Run postprocess_df(), which calls inputdata(), mungedata()
@@ -60,7 +61,9 @@ inp_args2 = {'inpdatpath': 'celldata.pkl',
 # Run postprocess using two different binnings for mom and buds
 outputargs = munge.postprocess_df(**inp_args)
 outputargs2 = munge.postprocess_df(**inp_args2)
-
+df2 = outputargs['data']
+df = pd.concat([df, df2.loc[:, 'bud_dy_var']], axis=1, join='inner')
+#df = df[df.bud_dy_var<0.04]
 # =============================================================================
 # dfmom and dfbud Dataframes, filtered using keys from df
 # =============================================================================
@@ -80,12 +83,13 @@ dfmerge.rename(columns={0.5: 1.5,
                         u'1.0_bud': 2.0,
                         u'1.0_mom': 1.0},
                inplace=True)
-medbud = dfmerge.groupby('media_bud').budvol.quantile([0.35, 0.5, 0.65])
+medbud = dfmerge.groupby('media_bud').budvol.quantile([lowerthresh,
+                                                       0.5, 0.999])
 grp = dfmerge.groupby('media_bud')
 meds = pd.concat([grp
                   .get_group(key)
-                  [(grp.get_group(key).budvol > medbud[key, 0.35]) &
-                      (grp.get_group(key).budvol < medbud[key, 0.65])]
+                  [(grp.get_group(key).budvol >= medbud[key, lowerthresh]) &
+                      (grp.get_group(key).budvol < medbud[key, 0.999])]
                   for key in grp.groups.keys()])
 meds.reset_index(drop=True, inplace=True)
 meds = meds.loc[:,
@@ -107,8 +111,15 @@ mb_dy = pd.melt(df, id_vars=['media_new'],
                 value_vars=mombud_dy_vars)
 mb_dy.replace({'variable': relabels}, inplace=True)
 
-size = pd.melt(df, id_vars=['media_new'],
-               value_vars='budvol')
+size = pd.melt(df, id_vars=['media_new', 'bud_dy_var'],
+               value_vars='bud_diameter')
+size.rename(columns={'value': 'bud_diameter',
+                     'bud_dy_var': u'ΔΨ Bud (var)'},
+            inplace=True)
+size = size[size['media_new'].isin([u'WT_YPE',
+                                    u'ΔMFB1',
+                                    u'ΔNUM1',
+                                    u'ΔYPT11'])]
 
 outkws1 = dict(default_ylims=[0.05, 0.95], plt_type='boxplot',
                labeller=labelNormal, col_order=COL_ODR)
@@ -118,6 +129,20 @@ outkws2 = dict(default_ylims=[0.1, 0.9],
 
 outkws3 = dict(default_ylims=[0.05, 0.95], plt_type='boxplot',
                labeller=labelNormal, hue_order=HUE_ODR)
+
+
+#==============================================================================
+# test of sizes
+#==============================================================================
+def vertical_mean_line(x, **kwargs):
+    plt.axvline(x.quantile(0.1), color='r', linewidth=1),
+    plt.axvline(x.quantile(0.15), linewidth=1),
+    plt.axvline(x.quantile(0.2), color='g', linewidth=1)
+    plt.axvline(x.quantile(0.25), color='m', linewidth=1)
+g = sns.FacetGrid(size, col='media_new', col_wrap=2)
+g.map(vertical_mean_line, 'bud_diameter')
+g.map(plt.scatter, 'bud_diameter', u'ΔΨ Bud (var)')
+
 # =============================================================================
 # mombudDY plot
 # =============================================================================
@@ -204,18 +229,26 @@ with sns.plotting_context('talk', font_scale=.95):
     plv6.save_figure(op.join(savefolder, 'budDY.png'))
 
     set7 = dict(col_wrap=3, col='media_bud', hue='media_bud',
-                sharex=True, sharey=True, col_order=COL_ODR,
-                ylim=(0.0, 1.0),
-                )
+                hue_order=HUE_ODR,
+                sharex=True, sharey=True, col_order=COL_ODR[:3],
+                ylim=(0.0, 1.0))
 
     plv7 = plfacet(plt_type='pointplot', **outkws2)
     plv7.plt(data=buddy_meds,
              mapargs=['cell axis position', u'ΔΨ scaled'],
              **set7)
+    for i in plv7.facet_obj.axes:
+        wt = sns.pointplot('cell axis position', u'ΔΨ scaled',
+                           data=buddy_meds[buddy_meds.media_bud==u'WT_YPE'],
+                           ax=i, markers='x',)
+        [j.set_alpha(.75) for j in wt.axes.collections]
+        [j.set_alpha(.75) for j in wt.axes.lines]
+
     plv7.save_figure(op.join(savefolder, 'medbuds.png'))
 
     set8 = dict(col_wrap=3, col='media_bud', hue='media_bud',
-                sharex=True, sharey=True, col_order=COL_ODR,
+                hue_order=HUE_ODR,
+                sharex=True, sharey=True, col_order=COL_ODR[:3],
                 ylim=(0.0, 1.0),
                 )
 
@@ -223,6 +256,12 @@ with sns.plotting_context('talk', font_scale=.95):
     plv8.plt(data=allsizes,
              mapargs=['cell axis position', u'ΔΨ scaled'],
              **set8)
+    for i in plv8.facet_obj.axes:
+        wt = sns.pointplot('cell axis position', u'ΔΨ scaled',
+                           data=allsizes[allsizes.media_bud==u'WT_YPE'],
+                           ax=i, markers='x')
+        [j.set_alpha(.75) for j in wt.axes.collections]
+        [j.set_alpha(.75) for j in wt.axes.lines]
     plv8.save_figure(op.join(savefolder, 'allsizes ptplt.png'))
 
 # BOX PLOTS VERSION
@@ -280,9 +319,13 @@ with sns.plotting_context('talk', font_scale=1.25):
         set11 = dict(x='cell axis position', y=u'ΔΨ scaled',
                      hue='media_bud', hue_order=HUE_ODR,
                      title=(u'Average population ΔΨ along cell axis '
-                            '(only cells with medium sized buds)'),
+                            '(cells with {:2.0f}th percentile bud diameters and up)'
+                            ).format(lowerthresh*100),
                      notch=True, ylim=(0.0, 1.25))
         plv11 = plviol(**outkws3)
         plv11.plt(data=buddy_meds, **set11)
         plv11.ax.legend(loc=2, title='')
-        plt.savefig(op.join(savefolder, 'box medbuds onerow.png'))
+        plt.savefig(op.join(savefolder,
+                            ('box {:2.0f}th and up buds onerow.png')
+                            .format(lowerthresh*100)))
+

@@ -63,7 +63,6 @@ outputargs = munge.postprocess_df(**inp_args)
 outputargs2 = munge.postprocess_df(**inp_args2)
 df2 = outputargs['data']
 df = pd.concat([df, df2.loc[:, 'bud_dy_var']], axis=1, join='inner')
-#df = df[df.bud_dy_var<0.04]
 # =============================================================================
 # dfmom and dfbud Dataframes, filtered using keys from df
 # =============================================================================
@@ -130,10 +129,9 @@ outkws2 = dict(default_ylims=[0.1, 0.9],
 outkws3 = dict(default_ylims=[0.05, 0.95], plt_type='boxplot',
                labeller=labelNormal, hue_order=HUE_ODR)
 
-
-#==============================================================================
 # test of sizes
-#==============================================================================
+
+
 def vertical_mean_line(x, **kwargs):
     plt.axvline(x.quantile(0.1), color='r', linewidth=1),
     plt.axvline(x.quantile(0.15), linewidth=1),
@@ -208,25 +206,6 @@ allsizes = pd.melt(alls,
 # =============================================================================
 with sns.plotting_context('talk', font_scale=.95):
     plt.rcParams['figure.figsize'] = (16, 11)
-    set5 = dict(col_wrap=3, col='media', hue='media',
-                sharex=True, sharey=True, col_order=COL_ODR,
-                ylim=(0.0, 1.))
-    plv5 = plfacet(plt_type='pointplot', **outkws2)
-    plv5.plt(data=momdy,
-             mapargs=['mom axis position', u'ΔΨ scaled'],
-             **set5)
-    plv5.save_figure(op.join(savefolder, 'momDY.png'))
-
-    set6 = dict(col_wrap=3, col='media', hue='media',
-                sharex=True, sharey=True, col_order=COL_ODR,
-                ylim=(0.0, 1.0),
-                )
-
-    plv6 = plfacet(plt_type='pointplot', **outkws2)
-    plv6.plt(data=buddy,
-             mapargs=['bud axis position', u'ΔΨ scaled'],
-             **set6)
-    plv6.save_figure(op.join(savefolder, 'budDY.png'))
 
     set7 = dict(col_wrap=3, col='media_bud', hue='media_bud',
                 hue_order=HUE_ODR,
@@ -239,7 +218,7 @@ with sns.plotting_context('talk', font_scale=.95):
              **set7)
     for i in plv7.facet_obj.axes:
         wt = sns.pointplot('cell axis position', u'ΔΨ scaled',
-                           data=buddy_meds[buddy_meds.media_bud==u'WT_YPE'],
+                           data=buddy_meds[buddy_meds.media_bud == u'WT_YPE'],
                            ax=i, markers='x',)
         [j.set_alpha(.75) for j in wt.axes.collections]
         [j.set_alpha(.75) for j in wt.axes.lines]
@@ -258,7 +237,7 @@ with sns.plotting_context('talk', font_scale=.95):
              **set8)
     for i in plv8.facet_obj.axes:
         wt = sns.pointplot('cell axis position', u'ΔΨ scaled',
-                           data=allsizes[allsizes.media_bud==u'WT_YPE'],
+                           data=allsizes[allsizes.media_bud == u'WT_YPE'],
                            ax=i, markers='x')
         [j.set_alpha(.75) for j in wt.axes.collections]
         [j.set_alpha(.75) for j in wt.axes.lines]
@@ -266,23 +245,6 @@ with sns.plotting_context('talk', font_scale=.95):
 
 # BOX PLOTS VERSION
 with sns.plotting_context('talk', font_scale=1.1):
-    g0 = sns.factorplot('mom axis position',
-                        u'ΔΨ scaled',
-                        data=momdy,
-                        kind='box', col='media',
-                        col_order=COL_ODR, notch=True, col_wrap=3)
-    labelFacet(g0, mbfuncs.get_group_counts(g0.data))
-    g0.set(ylim=tuple([0, 1.25]))
-    plt.savefig(op.join(savefolder, 'box mom dy.png'))
-
-    g1 = sns.factorplot('bud axis position',
-                        u'ΔΨ scaled',
-                        data=buddy,
-                        kind='box', col='media',
-                        col_order=COL_ODR, notch=True, col_wrap=3)
-    labelFacet(g1, mbfuncs.get_group_counts(g1.data))
-    g1.set(ylim=tuple([0, 1.25]))
-    plt.savefig(op.join(savefolder, 'box bud dy.png'))
 
     g2 = sns.factorplot('cell axis position',
                         u'ΔΨ scaled',
@@ -319,7 +281,8 @@ with sns.plotting_context('talk', font_scale=1.25):
         set11 = dict(x='cell axis position', y=u'ΔΨ scaled',
                      hue='media_bud', hue_order=HUE_ODR,
                      title=(u'Average population ΔΨ along cell axis '
-                            '(cells with {:2.0f}th percentile bud diameters and up)'
+                            '(cells with {:2.0f}th percentile bud diameters '
+                            'and up)'
                             ).format(lowerthresh*100),
                      notch=True, ylim=(0.0, 1.25))
         plv11 = plviol(**outkws3)
@@ -328,4 +291,3 @@ with sns.plotting_context('talk', font_scale=1.25):
         plt.savefig(op.join(savefolder,
                             ('box {:2.0f}th and up buds onerow.png')
                             .format(lowerthresh*100)))
-

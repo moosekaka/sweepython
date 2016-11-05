@@ -14,8 +14,7 @@ from tvtk.api import tvtk
 # =============================================================================
 #           Data initialization
 # =============================================================================
-datadir = op.join(os.getcwd(), 'mutants')
-rawdir = op.join(os.getcwd(), 'mutants')
+rawdir = op.join(os.getcwd(), 'old_w_new')
 vtkF = wr.ddwalk(op.join(rawdir, 'normalizedVTK'),
                  '*skeleton.vtk', start=5, stop=-13)
 

@@ -205,43 +205,44 @@ allsizes = pd.melt(alls,
 # PLOTS FACETTED
 # =============================================================================
 with sns.plotting_context('talk', font_scale=.95):
-    plt.rcParams['figure.figsize'] = (16, 11)
+    with sns.color_palette('colorblind'):
+        plt.rcParams['figure.figsize'] = (16, 11)
 
-    set7 = dict(col_wrap=3, col='media_bud', hue='media_bud',
-                hue_order=HUE_ODR,
-                sharex=True, sharey=True, col_order=COL_ODR[:3],
-                ylim=(0.0, 1.0))
+        set7 = dict(col_wrap=3, col='media_bud', hue='media_bud',
+                    hue_order=HUE_ODR,
+                    sharex=True, sharey=True, col_order=COL_ODR[:3],
+                    ylim=(0.0, 1.0))
 
-    plv7 = plfacet(plt_type='pointplot', **outkws2)
-    plv7.plt(data=buddy_meds,
-             mapargs=['cell axis position', u'ΔΨ scaled'],
-             **set7)
-    for i in plv7.facet_obj.axes:
-        wt = sns.pointplot('cell axis position', u'ΔΨ scaled',
-                           data=buddy_meds[buddy_meds.media_bud == u'WT_YPE'],
-                           ax=i, markers='x',)
-        [j.set_alpha(.75) for j in wt.axes.collections]
-        [j.set_alpha(.75) for j in wt.axes.lines]
+        plv7 = plfacet(plt_type='pointplot', **outkws2)
+        plv7.plt(data=buddy_meds,
+                 mapargs=['cell axis position', u'ΔΨ scaled'],
+                 **set7)
+        for i in plv7.facet_obj.axes:
+            wt = sns.pointplot('cell axis position', u'ΔΨ scaled',
+                               data=buddy_meds[buddy_meds.media_bud == u'WT_YPE'],
+                               ax=i, markers='x',)
+            [j.set_alpha(.75) for j in wt.axes.collections]
+            [j.set_alpha(.75) for j in wt.axes.lines]
 
-    plv7.save_figure(op.join(savefolder, 'medbuds.png'))
+        plv7.save_figure(op.join(savefolder, 'medbuds.png'))
 
-    set8 = dict(col_wrap=3, col='media_bud', hue='media_bud',
-                hue_order=HUE_ODR,
-                sharex=True, sharey=True, col_order=COL_ODR[:3],
-                ylim=(0.0, 1.0),
-                )
+        set8 = dict(col_wrap=3, col='media_bud', hue='media_bud',
+                    hue_order=HUE_ODR,
+                    sharex=True, sharey=True, col_order=COL_ODR[:3],
+                    ylim=(0.0, 1.0),
+                    )
 
-    plv8 = plfacet(plt_type='pointplot', **outkws2)
-    plv8.plt(data=allsizes,
-             mapargs=['cell axis position', u'ΔΨ scaled'],
-             **set8)
-    for i in plv8.facet_obj.axes:
-        wt = sns.pointplot('cell axis position', u'ΔΨ scaled',
-                           data=allsizes[allsizes.media_bud == u'WT_YPE'],
-                           ax=i, markers='x')
-        [j.set_alpha(.75) for j in wt.axes.collections]
-        [j.set_alpha(.75) for j in wt.axes.lines]
-    plv8.save_figure(op.join(savefolder, 'allsizes ptplt.png'))
+        plv8 = plfacet(plt_type='pointplot', **outkws2)
+        plv8.plt(data=allsizes,
+                 mapargs=['cell axis position', u'ΔΨ scaled'],
+                 **set8)
+        for i in plv8.facet_obj.axes:
+            wt = sns.pointplot('cell axis position', u'ΔΨ scaled',
+                               data=allsizes[allsizes.media_bud == u'WT_YPE'],
+                               ax=i, markers='x')
+            [j.set_alpha(.75) for j in wt.axes.collections]
+            [j.set_alpha(.75) for j in wt.axes.lines]
+        plv8.save_figure(op.join(savefolder, 'allsizes ptplt.png'))
 
 # BOX PLOTS VERSION
 with sns.plotting_context('talk', font_scale=1.1):

@@ -15,6 +15,7 @@ from tubule_het.autoCor.AutoPopFunc import iterlagspd
 # import numpy as np
 # pylint: disable=C0103
 # pylint: disable=R0204
+HUE_ODR = [u'WT_YPE', u'ΔMFB1', u'ΔNUM1', u'ΔYPT11']
 sns.set_context("talk")
 sns.set(style="whitegrid")
 sns.set(rc={"legend.markerscale": 3})
@@ -233,6 +234,7 @@ with sns.plotting_context('talk', font_scale=1.):
                                col='type',
                                hue='cat',
                                data=A_MUTANTS,
+                               hue_order=HUE_ODR,
                                ci=99, size=5, aspect=1.25,
                                legend_out=True, col_wrap=2)
         for ax in FIG1b.axes.flat:
@@ -269,6 +271,7 @@ with sns.plotting_context('talk', font_scale=1.25):
                              y='F(k)',
                              hue='cat',
                              data=MUTANTS,
+                             hue_order=HUE_ODR,
                              ci=99,
                              ax=ax1)
         [j.set_alpha(.7) for j in FIG3.axes.collections]

@@ -1,6 +1,7 @@
 /deprecated
 /Examples
 /WorkingData
+*.png
 *.txt
 *.pyc
 *.pem

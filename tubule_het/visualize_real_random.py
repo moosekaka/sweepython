@@ -13,7 +13,7 @@ import seaborn as sns
 from mayavi import mlab
 from tvtk.api import tvtk
 from pipeline.make_networkx import makegraph as mg
-from mombud.vtk_viz import vtkvizfuncs as vf
+from mombud.functions import vtkvizfuncs as vf
 import wrappers as wr
 
 # pylint: disable=C0103
@@ -21,7 +21,8 @@ plt.close('all')
 mlab.close(all=True)
 datadir = op.join(os.getcwd(), 'data')
 inptdir = op.join(os.getcwd(), 'input')
-
+savefolder = op.expanduser(os.sep.join(['~', 'Dropbox', 'SusanneSweeShared',
+                                        'paper']))
 
 def create_vtk(pt, lns, scl):
     """
@@ -62,23 +63,14 @@ if __name__ == '__main__':
 
     figone = mlab.figure(figure=filekey,
                          size=(1200, 800),
-                         bgcolor=(.0, .0, .0))
-    dic = {'DY_minmax',
-           'WidthEq',
-           'DY_raw',
-           'rRFP',
-           'rGFP',
-           'bkstRFP',
-           'bkstGFP'}
+                         bgcolor=(.05, .05, .05))
 
-    for i in dic:
-        vtkobj, vtktube = vf.cellplot(figone,
-                                      vtkF[filekey],
-                                      scalartype=i,
-                                      rad=.08)
-        vtktube.actor.mapper.scalar_visibility = True  # False for no heatmap
-        vf.labellines(vtkobj)
-        mlab.savefig(op.join(datadir, 'tubule', i + '.png'))
+    vtkobj, vtktube = vf.cellplot(figone,
+                                  vtkF[filekey],
+                                  scalartype='DY_raw',
+                                  rad=.08)
+    vtktube.actor.mapper.scalar_visibility = True  # False for no heatmap
+    vf.labellines(vtkobj)
 
     # Edgeplots for real scalars
     data = tvtk.to_tvtk(vtkobj.outputs[0])
@@ -87,8 +79,8 @@ if __name__ == '__main__':
 
     fig2 = mlab.figure(figure=filekey + ' real',
                        size=(1200, 800),
-                       bgcolor=(.086, .086, .086))
-    real = vf.edgeplot(fig2, vtkobj.outputs[0], 14)
+                       bgcolor=(.05, .05, .05))
+    real, mmr = vf.edgeplot(fig2, vtkobj.outputs[0], 14, scalartype='DY_raw')
 
     # Edgeplot for shuffled scalars
     shufscals = np.random.permutation(scals)
@@ -96,8 +88,8 @@ if __name__ == '__main__':
     pshuf = create_vtk(pts, data.lines, shufarr)
     fig3 = mlab.figure(figure=filekey + ' shuf',
                        size=(1200, 800),
-                       bgcolor=(.0, .0, .0))
-    shuf = vf.edgeplot(fig3, pshuf, 14, scalartype='DY_raw')
+                       bgcolor=(.05, .05, .05))
+    shuf, mms = vf.edgeplot(fig3, pshuf, 14, scalartype='DY_raw')
 
     # Edgeplot for norm dist scalars
     nrmscals = sp.norm(np.mean(scals), np.std(scals))
@@ -105,8 +97,8 @@ if __name__ == '__main__':
     pnrm = create_vtk(pts, data.lines, nrmarr)
     fig4 = mlab.figure(figure=filekey + ' norm',
                        size=(1200, 800),
-                       bgcolor=(.086, .086, .086))
-    norm = vf.edgeplot(fig4, pnrm, 14, scalartype='DY_raw')
+                       bgcolor=(.05, .05, .05))
+    norm, mmn = vf.edgeplot(fig4, pnrm, 14, scalartype='DY_raw')
 
     # Edgeplot for norm dist scalars
     mn = np.mean(scals)
@@ -117,17 +109,42 @@ if __name__ == '__main__':
     purf = create_vtk(pts, data.lines, nrmarr)
     fig5 = mlab.figure(figure=filekey + ' uniform',
                        size=(1200, 800),
-                       bgcolor=(.086, .086, .086))
-    unif = vf.edgeplot(fig5, purf, 14, scalartype='DY_raw')
+                       bgcolor=(.05, .05, .05))
+    unif, mmu = vf.edgeplot(fig5, purf, 14, scalartype='DY_raw')
 
+    # dataframe long form of various scalars in simulation for ΔΨ
+    df = pd.DataFrame(data={'shuffled': shuf,
+                            'real': real,
+                            'normal': norm,
+                            'uniform': unif})
+    df = df.reset_index()
+    df2 = pd.melt(df, id_vars='index', var_name='type')
+
+    # reset scalebars to be the same for edgeplots
+    for i in [mmr, mms, mmn, mmu]:
+        i.lut.set(range=[1000, 4000])
+#==============================================================================
+# Plots
+#==============================================================================
     with sns.plotting_context('talk', 1.2):
         sns.set_style('whitegrid')
-        df = pd.DataFrame(data={'shuffled':shuf, 'real':real, 'normal': norm, 'uniform': unif})
-        df = df.reset_index()
-        df2 = pd.melt(df, id_vars='index', var_name='type')
         g = sns.FacetGrid(df2, col_wrap=2, col='type', hue='type',
                           col_order=['real', 'shuffled', 'normal', 'uniform'])
         g.map(plt.plot, 'index', 'value')
-        g.set(ylim=[0,4000], yticks=np.arange(0,4500,1000),
+        g.set(ylim=[0, 4000],
+              yticks=np.arange(0, 4500, 1000),
               ylabel='', xlabel='')
-        plt.savefig('panel_simul.svg')
+        plt.savefig(op.join(savefolder,
+                            'panel_simul.svg'))
+        plt.savefig(op.join(savefolder,
+                            'panel_simul.png'))
+
+    dic = {'real': fig2,
+           'shuf': fig3,
+           'norm': fig4,
+           'unif': fig5}
+
+    for key, val in dic.iteritems():
+        mlab.savefig(op.join(savefolder,
+                             ('{}.png').format(key)),
+                     figure=val)

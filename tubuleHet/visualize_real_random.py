@@ -7,7 +7,9 @@ import os
 import os.path as op
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import scipy.stats as sp
+import seaborn as sns
 from mayavi import mlab
 from tvtk.api import tvtk
 from pipeline.make_networkx import makegraph as mg
@@ -86,7 +88,7 @@ if __name__ == '__main__':
     fig2 = mlab.figure(figure=filekey + ' real',
                        size=(1200, 800),
                        bgcolor=(.086, .086, .086))
-    vf.edgeplot(fig2, vtkobj.outputs[0], 14)
+    real = vf.edgeplot(fig2, vtkobj.outputs[0], 14)
 
     # Edgeplot for shuffled scalars
     shufscals = np.random.permutation(scals)
@@ -95,7 +97,7 @@ if __name__ == '__main__':
     fig3 = mlab.figure(figure=filekey + ' shuf',
                        size=(1200, 800),
                        bgcolor=(.0, .0, .0))
-    vf.edgeplot(fig3, pshuf, 14, scalartype='DY_raw')
+    shuf = vf.edgeplot(fig3, pshuf, 14, scalartype='DY_raw')
 
     # Edgeplot for norm dist scalars
     nrmscals = sp.norm(np.mean(scals), np.std(scals))
@@ -104,7 +106,7 @@ if __name__ == '__main__':
     fig4 = mlab.figure(figure=filekey + ' norm',
                        size=(1200, 800),
                        bgcolor=(.086, .086, .086))
-    vf.edgeplot(fig4, pnrm, 14, scalartype='DY_raw')
+    norm = vf.edgeplot(fig4, pnrm, 14, scalartype='DY_raw')
 
     # Edgeplot for norm dist scalars
     mn = np.mean(scals)
@@ -116,4 +118,16 @@ if __name__ == '__main__':
     fig5 = mlab.figure(figure=filekey + ' uniform',
                        size=(1200, 800),
                        bgcolor=(.086, .086, .086))
-    vf.edgeplot(fig5, purf, 14, scalartype='DY_raw')
+    unif = vf.edgeplot(fig5, purf, 14, scalartype='DY_raw')
+
+    with sns.plotting_context('talk', 1.2):
+        sns.set_style('whitegrid')
+        df = pd.DataFrame(data={'shuffled':shuf, 'real':real, 'normal': norm, 'uniform': unif})
+        df = df.reset_index()
+        df2 = pd.melt(df, id_vars='index', var_name='type')
+        g = sns.FacetGrid(df2, col_wrap=2, col='type', hue='type',
+                          col_order=['real', 'shuffled', 'normal', 'uniform'])
+        g.map(plt.plot, 'index', 'value')
+        g.set(ylim=[0,4000], yticks=np.arange(0,4500,1000),
+              ylabel='', xlabel='')
+        plt.savefig('panel_simul.svg')

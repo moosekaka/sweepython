@@ -94,6 +94,7 @@ def edgeplot(fig, vtksrc, cellid, scalartype='DY_raw'):
     mmgr.scalar_bar_representation.position = [.85, .25]
     mmgr.scalar_bar_representation.position2 = [.1, .4]
     tube.filter.number_of_sides = 32
+    return scalvals
 
 
 def countFuncCall():

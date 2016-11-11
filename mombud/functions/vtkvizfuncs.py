@@ -127,7 +127,7 @@ def labellines(vtksrc):
             mlab.text3d(x, y, z, '%s' % line, scale=0.15)
 
 
-def edgeplot(fig, vtksrc, cellid, scalartype='DY_raw'):
+def edgeplot(fig, vtksrc, cellid, scalartype='DY_raw', **kwargs):
     """
     Draw one edge of the vtk cell. Uses tvtk functions, not VTK.
 
@@ -149,7 +149,7 @@ def edgeplot(fig, vtksrc, cellid, scalartype='DY_raw'):
     surfTube.actor.mapper.scalar_visibility = True
     mod_mngr = tube.children[0]
     mmgr = mod_mngr.scalar_lut_manager
-    mmgr.show_legend = True
+    mmgr.show_legend = kwargs.get('legend', True)
     mmgr.reverse_lut = True
     mmgr.use_default_range = False
     mmgr.lut.set(range=[dataset.scalar_range[0],
@@ -218,7 +218,7 @@ def cellplot(fig, filename, **kwargs):
     mmgr = surfTube.module_manager.scalar_lut_manager
     mmgr.scalar_bar.title = scalartype
     mmgr.data_name = scalartype
-    mmgr.show_legend = kwargs.pop('legend', True)
+    mmgr.show_legend = kwargs.get('legend', True)
     mmgr.reverse_lut = True
     mmgr.lut_mode = 'RdBu'
     mmgr.number_of_labels = 4

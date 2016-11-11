@@ -78,27 +78,30 @@ if __name__ == '__main__':
     scals = data.point_data.get_array('DY_raw')
 
     fig2 = mlab.figure(figure=filekey + ' real',
-                       size=(1200, 800),
+                       size=(800, 800),
                        bgcolor=(.05, .05, .05))
-    real, mmr = vf.edgeplot(fig2, vtkobj.outputs[0], 14, scalartype='DY_raw')
+    real, mmr = vf.edgeplot(fig2, vtkobj.outputs[0], 14,
+                            scalartype='DY_raw', legend=False)
 
     # Edgeplot for shuffled scalars
     shufscals = np.random.permutation(scals)
     shufarr = vtkarray(shufscals, 'DY_raw')
     pshuf = create_vtk(pts, data.lines, shufarr)
     fig3 = mlab.figure(figure=filekey + ' shuf',
-                       size=(1200, 800),
+                       size=(800, 800),
                        bgcolor=(.05, .05, .05))
-    shuf, mms = vf.edgeplot(fig3, pshuf, 14, scalartype='DY_raw')
+    shuf, mms = vf.edgeplot(fig3, pshuf, 14,
+                            scalartype='DY_raw', legend=False)
 
     # Edgeplot for norm dist scalars
     nrmscals = sp.norm(np.mean(scals), np.std(scals))
     nrmarr = vtkarray(nrmscals.rvs(size=len(data.points)), 'DY_raw')
     pnrm = create_vtk(pts, data.lines, nrmarr)
     fig4 = mlab.figure(figure=filekey + ' norm',
-                       size=(1200, 800),
+                       size=(800, 800),
                        bgcolor=(.05, .05, .05))
-    norm, mmn = vf.edgeplot(fig4, pnrm, 14, scalartype='DY_raw')
+    norm, mmn = vf.edgeplot(fig4, pnrm, 14,
+                            scalartype='DY_raw', legend=False)
 
     # Edgeplot for norm dist scalars
     mn = np.mean(scals)
@@ -108,9 +111,10 @@ if __name__ == '__main__':
     nrmarr = vtkarray(nrmscals.rvs(size=len(data.points)), 'DY_raw')
     purf = create_vtk(pts, data.lines, nrmarr)
     fig5 = mlab.figure(figure=filekey + ' uniform',
-                       size=(1200, 800),
+                       size=(800, 800),
                        bgcolor=(.05, .05, .05))
-    unif, mmu = vf.edgeplot(fig5, purf, 14, scalartype='DY_raw')
+    unif, mmu = vf.edgeplot(fig5, purf, 14,
+                            scalartype='DY_raw', legend=False)
 
     # dataframe long form of various scalars in simulation for ΔΨ
     df = pd.DataFrame(data={'shuffled': shuf,
@@ -121,23 +125,23 @@ if __name__ == '__main__':
     df2 = pd.melt(df, id_vars='index', var_name='type')
 
     # reset scalebars to be the same for edgeplots
-    for i in [mmr, mms, mmn, mmu]:
+    cell_lut = vtktube.module_manager.scalar_lut_manager
+    for i in [cell_lut, mmr, mms, mmn, mmu]:
         i.lut.set(range=[1000, 4000])
-#==============================================================================
+# =============================================================================
 # Plots
-#==============================================================================
-    with sns.plotting_context('talk', 1.2):
+# =============================================================================
+    with sns.plotting_context('talk', 1.):
         sns.set_style('whitegrid')
-        g = sns.FacetGrid(df2, col_wrap=2, col='type', hue='type',
-                          col_order=['real', 'shuffled', 'normal', 'uniform'])
+        g = sns.FacetGrid(df2, row='type', hue='type',
+                          size=3, aspect=1.25,
+                          row_order=['real', 'shuffled', 'normal', 'uniform'])
         g.map(plt.plot, 'index', 'value')
         g.set(ylim=[0, 4000],
               yticks=np.arange(0, 4500, 1000),
               ylabel='', xlabel='')
         plt.savefig(op.join(savefolder,
                             'panel_simul.svg'))
-        plt.savefig(op.join(savefolder,
-                            'panel_simul.png'))
 
     dic = {'real': fig2,
            'shuf': fig3,

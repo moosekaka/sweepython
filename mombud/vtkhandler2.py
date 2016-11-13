@@ -20,10 +20,10 @@ labelhandler, plviol, plbox, plfacet = (mbfuncs.labelhandler,
                                         mbfuncs.plbox,
                                         mbfuncs.plfacet)
 
-COL_ODR = [u'ΔMFB1', u'ΔNUM1', u'ΔYPT11', u'WT_YPE', u'WT_YPL', u'WT_YPR', ]
-HUE_ODR = [u'WT_YPE', u'ΔMFB1', u'ΔNUM1', u'ΔYPT11']
+COL_ODR = [u'ΔMFB1', u'ΔNUM1', u'ΔYPT11', u'WT_YPE', u'WT_YPL', u'WT_YPR']
+HUE_ODR = [u'ΔMFB1', u'ΔNUM1', u'ΔYPT11', u'WT_YPE', u'WT_YPL', u'WT_YPR']
 savefolder = op.expanduser(os.sep.join(['~', 'Dropbox', 'SusanneSweeShared',
-                                        'figures_for_mutants']))
+                                        'figures_for_mutants2']))
 mombud_dy_vars = ['DY_median_mom', 'DY_median_bud']
 
 plt.close('all')
@@ -77,23 +77,49 @@ dfbud.replace({'media': newlabels}, inplace=True)
 # ============================================================================
 # merge dfmom and dfbud, pick medium buds
 # =============================================================================
+cutoff = 1.5
+volr = df.loc[:, ['media_new', 'bud_diameter', 'budvolratio', 'bud_dy_var']]
+unbud = ((volr.budvolratio<0.025) &
+         ((volr.media_new == 'WT_YPE') | (volr.media_new == 'WT_YPL') |
+          (volr.media_new == 'WT_YPR')))  # lo budvolratio WT
+volr2 = volr.copy()
+volr2.loc[unbud, 'budvolratio'] = 0.0
+
+novar = (volr2.bud_dy_var.isnull()) & (volr2.bud_diameter < cutoff)
+ypt = (volr2.media_new==u'ΔYPT11') & (volr2.bud_diameter < cutoff)
+volr2.loc[novar, 'budvolratio'] = 0.0  # var == NAN
+volr2.loc[ypt, 'budvolratio'] = 0.0  # ypt11 small
+volr2 = volr2[volr2.budvolratio< 1.1] # restrict max budvolratio to q90
+volr3 = volr2[volr2.bud_diameter > cutoff] # df based on the cutoff
+num1 = (((volr3.bud_diameter < 2) | (volr3.bud_diameter > 4.3 )) &
+       (volr3.media_new==u'ΔNUM1'))
+volr3 = volr3.loc[~num1]
+
+
 dfmerge = dfmom.merge(dfbud, on='name', suffixes=['_mom', '_bud'])
 dfmerge.rename(columns={0.5: 1.5,
                         u'1.0_bud': 2.0,
                         u'1.0_mom': 1.0},
                inplace=True)
-medbud = dfmerge.groupby('media_bud').budvol.quantile([lowerthresh,
-                                                       0.5, 0.999])
-grp = dfmerge.groupby('media_bud')
-meds = pd.concat([grp
-                  .get_group(key)
-                  [(grp.get_group(key).budvol >= medbud[key, lowerthresh]) &
-                      (grp.get_group(key).budvol < medbud[key, 0.999])]
-                  for key in grp.groups.keys()])
-meds.reset_index(drop=True, inplace=True)
-meds = meds.loc[:,
-                meds.columns.isin([0.33, 0.67, 1.0, 1.5, 2.0,
-                                   u'media_bud', u'binvol_bud'])]
+dfmerge = dfmerge.loc[dfmerge.name.isin(volr3.index)]
+
+#medbud = dfmerge.groupby('media_bud').budvol.quantile([lowerthresh,
+#                                                       0.5, 0.999])
+#grp = dfmerge.groupby('media_bud')
+#meds = pd.concat([grp
+#                  .get_group(key)
+#                  [(grp.get_group(key).budvol >= medbud[key, lowerthresh]) &
+#                      (grp.get_group(key).budvol < medbud[key, 0.999])]
+#                  for key in grp.groups.keys()])
+#meds.reset_index(drop=True, inplace=True)
+#meds = meds.loc[:,
+#                meds.columns.isin([0.33, 0.67, 1.0, 1.5, 2.0,
+#                                   u'media_bud', u'binvol_bud'])]
+
+meds = dfmerge.loc[:,
+                   dfmerge.columns.isin([0.33, 0.67, 1.0, 1.5, 2.0,
+                                         u'media_bud', u'binvol_bud'])]
+
 alls = dfmerge.loc[:,
                    dfmerge.columns.isin([0.33, 0.67, 1.0, 1.5, 2.0,
                                         u'media_bud', u'binvol_bud'])]
@@ -110,15 +136,7 @@ mb_dy = pd.melt(df, id_vars=['media_new'],
                 value_vars=mombud_dy_vars)
 mb_dy.replace({'variable': relabels}, inplace=True)
 
-size = pd.melt(df, id_vars=['media_new', 'bud_dy_var'],
-               value_vars='bud_diameter')
-size.rename(columns={'value': 'bud_diameter',
-                     'bud_dy_var': u'ΔΨ Bud (var)'},
-            inplace=True)
-size = size[size['media_new'].isin([u'WT_YPE',
-                                    u'ΔMFB1',
-                                    u'ΔNUM1',
-                                    u'ΔYPT11'])]
+size = df.loc[:, ['media_new', 'bud_diameter', 'bud_dy_var']]
 
 outkws1 = dict(default_ylims=[0.05, 0.95], plt_type='boxplot',
                labeller=labelNormal, col_order=COL_ODR)
@@ -129,17 +147,28 @@ outkws2 = dict(default_ylims=[0.1, 0.9],
 outkws3 = dict(default_ylims=[0.05, 0.95], plt_type='boxplot',
                labeller=labelNormal, hue_order=HUE_ODR)
 
-# test of sizes
+# =============================================================================
+#  test of sizes
+# =============================================================================
+#def vertical_mean_line(x, **kwargs):
+#    plt.axvline(x.quantile(0.1), color='r', linewidth=1),
+#    plt.axvline(x.quantile(0.15), linewidth=1),
+#    plt.axvline(x.quantile(0.2), color='g', linewidth=1)
+#    plt.axvline(x.quantile(0.25), color='m', linewidth=1)
+#g = sns.FacetGrid(size, col='media_new',
+#                  col_wrap=2, col_order=HUE_ODR)
+#g.map(vertical_mean_line, 'bud_diameter')
+#g.map(plt.scatter, 'bud_diameter', 'bud_dy_var')
 
-
-def vertical_mean_line(x, **kwargs):
-    plt.axvline(x.quantile(0.1), color='r', linewidth=1),
-    plt.axvline(x.quantile(0.15), linewidth=1),
-    plt.axvline(x.quantile(0.2), color='g', linewidth=1)
-    plt.axvline(x.quantile(0.25), color='m', linewidth=1)
-g = sns.FacetGrid(size, col='media_new', col_wrap=2)
-g.map(vertical_mean_line, 'bud_diameter')
-g.map(plt.scatter, 'bud_diameter', u'ΔΨ Bud (var)')
+with sns.color_palette('colorblind'):
+    h = sns.FacetGrid(volr2, col='media_new',
+                      col_wrap=3, col_order=HUE_ODR[:], hue='media_new',
+                      size=3, aspect=1.5)
+    for i in h.axes.flat:
+        i.axvline(x=cutoff, linewidth=1, color='m')
+    h.map(plt.scatter, 'bud_diameter', 'budvolratio')
+    h.set(ylim=[0, 1.1])
+    plt.savefig(op.join(savefolder, 'budratio_bud_diam.png'))
 
 # =============================================================================
 # mombudDY plot
@@ -204,91 +233,91 @@ allsizes = pd.melt(alls,
 # =============================================================================
 # PLOTS FACETTED
 # =============================================================================
-with sns.plotting_context('talk', font_scale=.95):
+with sns.plotting_context('talk', font_scale=.9):
     with sns.color_palette('colorblind'):
         plt.rcParams['figure.figsize'] = (16, 11)
 
         set7 = dict(col_wrap=3, col='media_bud', hue='media_bud',
-                    hue_order=HUE_ODR,
-                    sharex=True, sharey=True, col_order=COL_ODR[:3],
+                    hue_order=HUE_ODR, size=4, aspect=1.2,
+                    sharex=True, sharey=True, col_order=COL_ODR[:],
                     ylim=(0.0, 1.0))
 
         plv7 = plfacet(plt_type='pointplot', **outkws2)
         plv7.plt(data=buddy_meds,
                  mapargs=['cell axis position', u'ΔΨ scaled'],
                  **set7)
-        for i in plv7.facet_obj.axes:
+        for ax in plv7.facet_obj.axes.flat:
             wt = sns.pointplot('cell axis position', u'ΔΨ scaled',
                                data=buddy_meds[buddy_meds.media_bud == u'WT_YPE'],
-                               ax=i, markers='x',)
-            [j.set_alpha(.75) for j in wt.axes.collections]
-            [j.set_alpha(.75) for j in wt.axes.lines]
+                               ax=ax, markers='x')
+            [j.set_alpha(.5) for j in ax.collections]
+            [j.set_alpha(.35) for j in ax.lines]
 
         plv7.save_figure(op.join(savefolder, 'medbuds.png'))
 
-        set8 = dict(col_wrap=3, col='media_bud', hue='media_bud',
-                    hue_order=HUE_ODR,
-                    sharex=True, sharey=True, col_order=COL_ODR[:3],
-                    ylim=(0.0, 1.0),
-                    )
-
-        plv8 = plfacet(plt_type='pointplot', **outkws2)
-        plv8.plt(data=allsizes,
-                 mapargs=['cell axis position', u'ΔΨ scaled'],
-                 **set8)
-        for i in plv8.facet_obj.axes:
-            wt = sns.pointplot('cell axis position', u'ΔΨ scaled',
-                               data=allsizes[allsizes.media_bud == u'WT_YPE'],
-                               ax=i, markers='x')
-            [j.set_alpha(.75) for j in wt.axes.collections]
-            [j.set_alpha(.75) for j in wt.axes.lines]
-        plv8.save_figure(op.join(savefolder, 'allsizes ptplt.png'))
+#        set8 = dict(col_wrap=3, col='media_bud', hue='media_bud',
+#                    hue_order=HUE_ODR,
+#                    sharex=True, sharey=True, col_order=COL_ODR[:3],
+#                    ylim=(0.0, 1.0),
+#                    )
+#
+#        plv8 = plfacet(plt_type='pointplot', **outkws2)
+#        plv8.plt(data=allsizes,
+#                 mapargs=['cell axis position', u'ΔΨ scaled'],
+#                 **set8)
+#        for i in plv8.facet_obj.axes:
+#            wt = sns.pointplot('cell axis position', u'ΔΨ scaled',
+#                               data=allsizes[allsizes.media_bud == u'WT_YPE'],
+#                               ax=i, markers='x')
+#            [j.set_alpha(.75) for j in wt.axes.collections]
+#            [j.set_alpha(.75) for j in wt.axes.lines]
+#        plv8.save_figure(op.join(savefolder, 'allsizes ptplt.png'))
 
 # BOX PLOTS VERSION
-with sns.plotting_context('talk', font_scale=1.1):
-
-    g2 = sns.factorplot('cell axis position',
-                        u'ΔΨ scaled',
-                        data=buddy_meds,
-                        kind='box', col='media_bud',
-                        col_order=COL_ODR, notch=True, col_wrap=3)
-    labelFacet(g2, mbfuncs.get_group_counts(g2.data))
-    g2.set(ylim=tuple([0, 1.25]))
-    plt.savefig(op.join(savefolder, 'box med sized buds.png'))
-
-    g3 = sns.factorplot('cell axis position',
-                        u'ΔΨ scaled',
-                        data=allsizes,
-                        kind='box', col='media_bud',
-                        col_order=COL_ODR, notch=True, col_wrap=3)
-    labelFacet(g3, mbfuncs.get_group_counts(g3.data))
-    g3.set(ylim=tuple([0, 1.25]))
-    plt.savefig(op.join(savefolder, 'box all bud sizes.png'))
-
-with sns.plotting_context('talk', font_scale=1.25):
-    with sns.color_palette('colorblind'):
-        plt.rcParams['figure.figsize'] = (16, 11)
-        set10 = dict(x='cell axis position', y=u'ΔΨ scaled',
-                     hue='media_bud', hue_order=HUE_ODR,
-                     title=(u'Average population ΔΨ along cell axis '
-                            '(cells with all sizes of buds)'),
-                     group_key='media_bud', notch=True, ylim=(0.0, 1.25))
-
-        plv10 = plviol(**outkws3)
-        plv10.plt(data=allsizes, **set10)
-        plv10.ax.legend(loc=2, title='')
-        plt.savefig(op.join(savefolder, 'box all onerow.png'))
-
-        set11 = dict(x='cell axis position', y=u'ΔΨ scaled',
-                     hue='media_bud', hue_order=HUE_ODR,
-                     title=(u'Average population ΔΨ along cell axis '
-                            '(cells with {:2.0f}th percentile bud diameters '
-                            'and up)'
-                            ).format(lowerthresh*100),
-                     notch=True, ylim=(0.0, 1.25))
-        plv11 = plviol(**outkws3)
-        plv11.plt(data=buddy_meds, **set11)
-        plv11.ax.legend(loc=2, title='')
-        plt.savefig(op.join(savefolder,
-                            ('box {:2.0f}th and up buds onerow.png')
-                            .format(lowerthresh*100)))
+#with sns.plotting_context('talk', font_scale=1.1):
+#
+#    g2 = sns.factorplot('cell axis position',
+#                        u'ΔΨ scaled',
+#                        data=buddy_meds,
+#                        kind='box', col='media_bud',
+#                        col_order=COL_ODR, notch=True, col_wrap=3)
+#    labelFacet(g2, mbfuncs.get_group_counts(g2.data))
+#    g2.set(ylim=tuple([0, 1.25]))
+#    plt.savefig(op.join(savefolder, 'box med sized buds.png'))
+#
+#    g3 = sns.factorplot('cell axis position',
+#                        u'ΔΨ scaled',
+#                        data=allsizes,
+#                        kind='box', col='media_bud',
+#                        col_order=COL_ODR, notch=True, col_wrap=3)
+#    labelFacet(g3, mbfuncs.get_group_counts(g3.data))
+#    g3.set(ylim=tuple([0, 1.25]))
+#    plt.savefig(op.join(savefolder, 'box all bud sizes.png'))
+#
+#with sns.plotting_context('talk', font_scale=1.25):
+#    with sns.color_palette('colorblind'):
+#        plt.rcParams['figure.figsize'] = (16, 11)
+#        set10 = dict(x='cell axis position', y=u'ΔΨ scaled',
+#                     hue='media_bud', hue_order=HUE_ODR,
+#                     title=(u'Average population ΔΨ along cell axis '
+#                            '(cells with all sizes of buds)'),
+#                     group_key='media_bud', notch=True, ylim=(0.0, 1.25))
+#
+#        plv10 = plviol(**outkws3)
+#        plv10.plt(data=allsizes, **set10)
+#        plv10.ax.legend(loc=2, title='')
+#        plt.savefig(op.join(savefolder, 'box all onerow.png'))
+#
+#        set11 = dict(x='cell axis position', y=u'ΔΨ scaled',
+#                     hue='media_bud', hue_order=HUE_ODR,
+#                     title=(u'Average population ΔΨ along cell axis '
+#                            '(cells with {:2.0f}th percentile bud diameters '
+#                            'and up)'
+#                            ).format(lowerthresh*100),
+#                     notch=True, ylim=(0.0, 1.25))
+#        plv11 = plviol(**outkws3)
+#        plv11.plt(data=buddy_meds, **set11)
+#        plv11.ax.legend(loc=2, title='')
+#        plt.savefig(op.join(savefolder,
+#                            ('box {:2.0f}th and up buds onerow.png')
+#                            .format(lowerthresh*100)))

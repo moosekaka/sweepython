@@ -25,7 +25,9 @@ plt.close('all')
 # =============================================================================
 # pylint: disable=C0103
 
-# pylint: disable=C0103
+# pylint: disable=C0103d
+savefolder = op.expanduser(os.sep.join(['~', 'Dropbox', 'SusanneSweeShared',
+                                        'network']))
 datadir = op.join(os.getcwd())
 
 # filelist and graph list
@@ -37,12 +39,13 @@ if __name__ == '__main__':
         print "Error: Make sure you have file metadatas in working directory"
 
     try:
-        vtkSkel = wr.ddwalk(op.join(datadir, 'input', 'SkelVTK'),
+        vtkSkel = wr.ddwalk(op.join(datadir, 'output', 'normalizedVTK'),
                             '*skeleton.vtk', stop=-13)
         vtkVolRfp = wr.ddwalk(op.join(datadir, 'input', 'resampledFiles'),
                               '*RF*resampled.vtk', stop=-14)
         vtkVolGfp = wr.ddwalk(op.join(datadir, 'input', 'resampledFiles'),
                               '*GF*resampled.vtk', stop=-14)
+        graph_pkl = wr.swalk(op.join(datadir, 'data'), '*_grph.pkl')
     except Exception:
         print "Error: check your filepaths"
         sys.exit()
@@ -55,39 +58,28 @@ if __name__ == '__main__':
             if exception.errno != errno.EEXIST:
                 raise
 
-
-
-
-
-vtkF = {}
 G = {}
 backgroundGFP = {}
 backgroundRFP = {}
 parDir = os.path.dirname(os.getcwd())
-for root, dirs, files in os.walk(os.getcwd()):
-    for i in files:
-        if fnmatch.fnmatch(i, 'N*vtk'):
-            vtkF.setdefault(root.rsplit('\\', 1)[1], []).append(
-                os.path.join(root, i))
-        if fnmatch.fnmatch(i, '*grph.pkl'):
-            G.setdefault(root.rsplit('\\', 1)[1], []).append(
-                os.path.join(root, i))
+for key, val in graph_pkl.iteritems():
+    with open(val, 'rb') as inpt:
+        temp = pickle.load(inpt)[2]
+        for grph in temp:
+            G[grph.graph['cell']] = grph
 
-media = sorted(vtkF.keys())
+
+media = sorted(vtkSkel.keys())
 # pylint: enable=C0103
 
 #    networkX graph objects of mitograph
-for i in G:
-    with open(G[i][0], 'rb') as inpt:
-        temp = pickle.load(inpt)[2]
-        G[i].append(temp)
+#for i in G:
+#    with open(G[i][0], 'rb') as inpt:
+#        temp = pickle.load(inpt)[2]
+#        G[i].append(temp)
 
-#    get metadatas
-with open(parDir+'\\'+'fileMetas.pkl', 'rb') as inpt:
-    METAS = pickle.load(inpt)
-for i in METAS:
-    backgroundRFP[i] = METAS[i][0]
-    backgroundGFP[i] = METAS[i][1]
+backgroundRFP = {i: filemetas[i][0] for i in filemetas.keys()}
+backgroundGFP = {i: filemetas[i][1] for i in filemetas.keys()}
 
 # =============================================================================
 #               begin pipeline
@@ -140,7 +132,8 @@ avg_nnd = nx.average_neighbor_degree
 # pylint: enable=C0103
 for mem in media:
     print'\nNow on %s\n' % mem + "=" * 79
-    for n, a in enumerate(vtkF[mem]):
+    for n, a  in enumerate(vtkSkel[mem]):
+        filekey = a.partition('_')[2]
         Norm = []
         NormRaw = []
         GFP = []
@@ -151,19 +144,19 @@ for mem in media:
         rGFP = []
         lineId = {}
 
-        curGrph = G[mem][1][n]
+        curGrph = G[filekey]
         reader = tvtk.PolyDataReader()
-        reader.set(file_name=a)
+        reader.set(file_name=vtkSkel[mem][a])
         reader.update()
         data = reader.output
-        scalarsNorm = data.point_data.scalars
         temp = data.point_data
+        scalarsNorm = np.ravel(temp.get_array('DY_minmax'))
         dyRaw = np.ravel(temp.get_array('DY_raw'))
         rawGFP = np.ravel(temp.get_array('rGFP'))
         rawRFP = np.ravel(temp.get_array('rRFP'))
         WidthEq = np.ravel(temp.get_array('WidthEq'))
-        tubeWidth = np.ravel(temp.get_array('tubeWidth'))
-        filekey = a.rsplit('\\', 1)[1][5:][:-13]
+        tubeWidth = np.ravel(temp.get_array('TubeWidth'))
+
 
         if backgroundRFP[filekey] > min(rawRFP):
             minA = backgroundRFP[filekey]-1
@@ -424,5 +417,5 @@ df['charpl_norm_numedge'] = df.mito_charpl_w / df.mito_edgenum
 df['cell_coefvar'] = df['mito_edge_avedy'].apply(sp.variation)
 df['cell_coefvar_r'] = df['mito_edge_avedyr'].apply(sp.variation)
 
-#with open('munged_dataframe.pkl', 'wb') as OUTPUT:
-#    pickle.dump(df, OUTPUT)
+with open('munged_dataframe_2016.pkl', 'wb') as OUTPUT:
+    pickle.dump(df, OUTPUT)

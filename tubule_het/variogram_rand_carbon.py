@@ -8,6 +8,7 @@ import os
 import os.path as op
 import cPickle as pickle
 import seaborn as sns
+import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import wrappers as wr
@@ -15,7 +16,8 @@ from tubule_het.autoCor.AutoPopFunc import iterlagspd
 # import numpy as np
 # pylint: disable=C0103
 # pylint: disable=R0204
-HUE_ODR = [u'WT_YPE', u'ΔMFB1', u'ΔNUM1', u'ΔYPT11']
+HUE_ODR_WT = ['WT_YPD',u'WT_YPE', u'WT_YPL', u'WT_YPR']
+HUE_ODR = [u'ΔMFB1', u'WT_YPE', u'ΔNUM1', u'ΔYPT11']
 sns.set_context("talk")
 sns.set(style="whitegrid")
 sns.set(rc={"legend.markerscale": 3})
@@ -152,45 +154,51 @@ DUL = pd.DataFrame()
 # Calculate the lags /variogram
 # ==============================================================================
 #L2 = []
-for mtype in sorted(vtkF.keys())[:]:
-    for cell in vtkF[mtype].keys():
-        if ((mtype == 'NUM1' and cell in normal_num1) or
-            (mtype != 'NUM1' and mtype != 'MFB1' and mtype != 'WT') or
-            (mtype == 'MFB1' and cell not in highvar) or
-                (mtype == 'WT' and cell in wt_norm)):
-            try:
-                with open(op.join(rawdir,
-                                  'fitted_data_scaled',
-                                  '%s.pkl' % cell), 'rb') as inpt:
-                    (lNorm, lNormP, randNDY,
-                     randUDY, llineId) = pickle.load(inpt)
-#                    temp =iterlagspd(lNorm, mtype)
-#                    temp['cellname'] = cell
-#                    DYL = DYL.append(temp, ignore_index=True)
-                    DYL = DYL.append(iterlagspd(lNorm, mtype),
-                                     ignore_index=True)
-                    SHL = SHL.append(iterlagspd(lNormP, mtype),
-                                     ignore_index=True)
-                    DNL = DNL.append(iterlagspd(randNDY, mtype),
-                                     ignore_index=True)
-                    DUL = DUL.append(iterlagspd(randUDY, mtype),
-                                     ignore_index=True)
-                    print "done {}".format(cell)
-#                    L2.append(cell)
-            except IOError:
-                pass
+try:
+    with open('tubule_hetero.pkl', 'rb') as inpt:
+        BIG = pickle.load(inpt)
 
-DYL['type'] = u'ΔΨ scaled'
-SHL['type'] = 'Shuffled'
-DNL['type'] = 'Normal Dist.'
-DUL['type'] = 'Uniform Dist.'
+except IOError:
+    for mtype in sorted(vtkF.keys())[:]:
+        for cell in vtkF[mtype].keys():
+            if ((mtype == 'NUM1' and cell in normal_num1) or
+                (mtype != 'NUM1' and mtype != 'MFB1' and mtype != 'WT') or
+                (mtype == 'MFB1' and cell not in highvar) or
+                    (mtype == 'WT' and cell in wt_norm)):
+                try:
+                    with open(op.join(rawdir,
+                                      'fitted_data_scaled',
+                                      '%s.pkl' % cell), 'rb') as inpt:
+                        (lNorm, lNormP, randNDY,
+                         randUDY, llineId) = pickle.load(inpt)
+    #                    temp =iterlagspd(lNorm, mtype)
+    #                    temp['cellname'] = cell
+    #                    DYL = DYL.append(temp, ignore_index=True)
+                        DYL = DYL.append(iterlagspd(lNorm, mtype),
+                                         ignore_index=True)
+                        SHL = SHL.append(iterlagspd(lNormP, mtype),
+                                         ignore_index=True)
+                        DNL = DNL.append(iterlagspd(randNDY, mtype),
+                                         ignore_index=True)
+                        DUL = DUL.append(iterlagspd(randUDY, mtype),
+                                         ignore_index=True)
+                        print "done {}".format(cell)
+    #                    L2.append(cell)
+                except IOError:
+                    pass
 
-newlabels = {'YPD': 'WT_YPD',
-             'YPR': u'WT_YPR', 'YPL': u'WT_YPL', 'YPE': u'WT_YPE',
-             'WT': u'WT_YPE', 'NUM1': u'ΔNUM1', 'MFB1': u'ΔMFB1',
-             'YPT11': u'ΔYPT11'}
+    DYL['type'] = u'ΔΨ scaled'
+    SHL['type'] = 'Shuffled'
+    DNL['type'] = 'Normal Dist.'
+    DUL['type'] = 'Uniform Dist.'
 
-BIG = pd.concat([DYL, SHL, DUL, DNL], ignore_index=True)
+    newlabels = {'YPD': 'WT_YPD',
+                 'YPR': u'WT_YPR', 'YPL': u'WT_YPL', 'YPE': u'WT_YPE',
+                 'WT': u'WT_YPE', 'NUM1': u'ΔNUM1', 'MFB1': u'ΔMFB1',
+                 'YPT11': u'ΔYPT11'}
+
+    BIG = pd.concat([DYL, SHL, DUL, DNL], ignore_index=True)
+
 A = pd.melt(BIG,
             id_vars=['cat', 'type'],
             var_name='lags/k',
@@ -204,45 +212,51 @@ B = A[MASK]
 C = B.replace({'cat': newlabels})
 WT = C[C.cat.isin([u'WT_YPR', u'WT_YPL', 'WT_YPE', 'WT_YPD'])]
 MUTANTS = C[C.cat.isin([u'ΔNUM1', u'ΔMFB1', 'WT_YPE', u'ΔYPT11'])]
+
 # =============================================================================
 # Plots
 # =============================================================================
 sns.set(style='white')
 # vs random
+typefilter = A_WT.type.isin(A_WT.type.unique()[1:])
 with sns.plotting_context('talk', font_scale=1.):
     sns.set_style({"legend.markerscale": "1."})
     FIG1a = sns.factorplot(x='lags/k',
                            y='F(k)',
-                           col='type',
+                           row='type',
                            hue='cat',
-                           data=A_WT,
+                           hue_order=HUE_ODR_WT,
+                           data=A_WT[typefilter],
                            ci=99, size=5, aspect=1.25,
-                           legend_out=True, col_wrap=2)
+                           legend=False)
     for ax in FIG1a.axes.flat:
         [j.set_alpha(.7) for j in ax.axes.collections]
         [j.set_alpha(.7) for j in ax.axes.lines]
-    FIG1a._legend.set(title='\n')
+    FIG1a.set(yticks=np.arange(0, 0.22, 0.05))
+    plt.legend(title='', loc=8)
     plt.show()
-    plt.savefig(op.join(savefolder, 'lags_random_wt.png'))
+    plt.savefig(op.join(savefolder, 'lags_random_wt.svg'))
 
 # vs random MUTANTS
+typefilter = A_MUTANTS.type.isin(A_MUTANTS.type.unique()[1:])
 with sns.plotting_context('talk', font_scale=1.):
     with sns.color_palette('colorblind'):
         sns.set_style({"legend.markerscale": "1."})
         FIG1b = sns.factorplot(x='lags/k',
                                y='F(k)',
-                               col='type',
+                               row='type',
                                hue='cat',
-                               data=A_MUTANTS,
+                               data=A_MUTANTS[typefilter],
                                hue_order=HUE_ODR,
                                ci=99, size=5, aspect=1.25,
-                               legend_out=True, col_wrap=2)
+                               legend=False)
         for ax in FIG1b.axes.flat:
             [j.set_alpha(.7) for j in ax.axes.collections]
             [j.set_alpha(.7) for j in ax.axes.lines]
-        FIG1b._legend.set(title='\n')
+        FIG1b.set(yticks=np.arange(0, 0.22, 0.05))
+        plt.legend(title='', loc=8)
         plt.show()
-        plt.savefig(op.join(savefolder, 'lags_random_mut.png'))
+        plt.savefig(op.join(savefolder, 'lags_random_mut.svg'))
 
 # vs carbon type WT
 with sns.plotting_context('talk', font_scale=1.25):
@@ -251,6 +265,7 @@ with sns.plotting_context('talk', font_scale=1.25):
     FIG2 = sns.pointplot(x='lags/k',
                          y='F(k)',
                          hue='cat',
+                         hue_order=HUE_ODR_WT,
                          data=WT,
                          ci=99,
                          ax=ax1)
@@ -258,9 +273,10 @@ with sns.plotting_context('talk', font_scale=1.25):
     [j.set_alpha(.7) for j in FIG2.axes.lines]
     sns.despine(top=True, right=True)
     FIG2.set_ylabel('F(k)')
-    FIG2.legend(title='', loc=4)
+    FIG2.legend(title='', loc=8)
+    FIG2.set(yticks=np.arange(0, 0.22, 0.05))
     plt.show()
-    plt.savefig(op.join(savefolder, 'lags_WT.png'))
+    plt.savefig(op.join(savefolder, 'lags_WT.svg'))
 
 # vs carbon type MUTANTS
 with sns.plotting_context('talk', font_scale=1.25):
@@ -278,6 +294,7 @@ with sns.plotting_context('talk', font_scale=1.25):
         [j.set_alpha(.7) for j in FIG3.axes.lines]
         sns.despine(top=True, right=True)
         FIG3.set_ylabel('F(k)')
-        FIG3.legend(title='', loc=4)
+        FIG3.legend(title='', loc=8)
+        FIG3.set(yticks=np.arange(0, 0.22, 0.05))
         plt.show()
-        plt.savefig(op.join(savefolder, 'lags_MUTANTS.png'))
+        plt.savefig(op.join(savefolder, 'lags_MUTANTS.svg'))

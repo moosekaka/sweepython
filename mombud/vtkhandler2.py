@@ -20,7 +20,7 @@ labelhandler, plviol, plbox, plfacet = (mbfuncs.labelhandler,
                                         mbfuncs.plbox,
                                         mbfuncs.plfacet)
 
-COL_ODR = [u'ΔMFB1', u'ΔNUM1', u'ΔYPT11', u'WT_YPE', u'WT_YPL', u'WT_YPR']
+COL_ODR = [u'WT_YPE', u'WT_YPL', u'WT_YPR', u'ΔMFB1', u'ΔNUM1', u'ΔYPT11']
 HUE_ODR = [u'ΔMFB1', u'ΔNUM1', u'ΔYPT11', u'WT_YPE', u'WT_YPL', u'WT_YPR']
 savefolder = op.expanduser(os.sep.join(['~', 'Dropbox', 'SusanneSweeShared',
                                         'figures_for_mutants2']))
@@ -150,16 +150,15 @@ outkws3 = dict(default_ylims=[0.05, 0.95], plt_type='boxplot',
 # =============================================================================
 #  test of sizes
 # =============================================================================
-#def vertical_mean_line(x, **kwargs):
-#    plt.axvline(x.quantile(0.1), color='r', linewidth=1),
-#    plt.axvline(x.quantile(0.15), linewidth=1),
-#    plt.axvline(x.quantile(0.2), color='g', linewidth=1)
-#    plt.axvline(x.quantile(0.25), color='m', linewidth=1)
-#g = sns.FacetGrid(size, col='media_new',
-#                  col_wrap=2, col_order=HUE_ODR)
-#g.map(vertical_mean_line, 'bud_diameter')
-#g.map(plt.scatter, 'bud_diameter', 'bud_dy_var')
-
+mark = ['YPL_052315_025_RFPstack_036',
+        'YPL_042515_021_RFPstack_029',
+        'YPE_042715_013_RFPstack_048',
+        'YPE_042715_007_RFPstack_033',
+        'YPT11_071016_025_RFPstack_147',
+        'YPT11_071016_005_RFPstack_127',
+        'YPT11_071016_029_RFPstack_150']
+volr2.loc[~volr2.index.isin(mark), ['mark']] = np.nan
+volr2.loc[~volr2.index.isin(mark), ['mark']] = volr2.budvolratio
 with sns.color_palette('colorblind'):
     h = sns.FacetGrid(volr2, col='media_new',
                       col_wrap=3, col_order=HUE_ODR[:], hue='media_new',
@@ -167,6 +166,7 @@ with sns.color_palette('colorblind'):
     for i in h.axes.flat:
         i.axvline(x=cutoff, linewidth=1, color='m')
     h.map(plt.scatter, 'bud_diameter', 'budvolratio')
+    h.map(plt.scatter, 'bud_diameter', 'mark', s=40, color='r', marker='v')
     h.set(ylim=[0, 1.1])
     plt.savefig(op.join(savefolder, 'budratio_bud_diam.png'))
 
@@ -184,7 +184,7 @@ with sns.plotting_context('talk', font_scale=1.5):
     plv1.plt(data=mb_dy, **set1)
     plv1.ax.xaxis.label.set_visible(False)
     plv1.ax.get_legend().set_title('')
-    plv1.save_figure(op.join(savefolder, 'boxplot mombud dy.png'))
+    plv1.save_figure(op.join(savefolder, 'boxplot mombud dy.svg'))
 
 # =============================================================================
 # fracDY plot
@@ -202,7 +202,7 @@ with sns.plotting_context('talk', font_scale=1.5):
     plv2.ax.axhline(1.0)
     plv2.ax.xaxis.label.set_visible(False)
     plv2.turn_off_legend()
-    plv2.save_figure(op.join(savefolder, 'boxplot frac dy.png'))
+    plv2.save_figure(op.join(savefolder, 'boxplot frac dy.svg'))
 
 # =============================================================================
 # mom, bud,  cell axis long form DF
@@ -233,7 +233,7 @@ allsizes = pd.melt(alls,
 # =============================================================================
 # PLOTS FACETTED
 # =============================================================================
-with sns.plotting_context('talk', font_scale=.9):
+with sns.plotting_context('talk', font_scale=1.25):
     with sns.color_palette('colorblind'):
         plt.rcParams['figure.figsize'] = (16, 11)
 
@@ -253,7 +253,8 @@ with sns.plotting_context('talk', font_scale=.9):
             [j.set_alpha(.5) for j in ax.collections]
             [j.set_alpha(.35) for j in ax.lines]
 
-        plv7.save_figure(op.join(savefolder, 'medbuds.png'))
+        plv7.facet_obj.set(ylabel='', xlabel='')
+        plv7.save_figure(op.join(savefolder, 'medbuds.svg'))
 
 #        set8 = dict(col_wrap=3, col='media_bud', hue='media_bud',
 #                    hue_order=HUE_ODR,

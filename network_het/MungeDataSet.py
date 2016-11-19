@@ -16,6 +16,7 @@ from collections import defaultdict
 from network_het.mungedata import MungeDataFuncs as md
 import pandas as pd
 import cPickle as pickle
+from pipeline.make_networkx import makegraph as mg
 from numpy.random import choice as samp_no_rep
 import wrappers as wr
 plt.close('all')
@@ -29,18 +30,22 @@ plt.close('all')
 savefolder = op.expanduser(os.sep.join(['~', 'Dropbox', 'SusanneSweeShared',
                                         'network']))
 datadir = op.join(os.getcwd())
+rawdir = op.join(os.getcwd(), 'old_w_new')
 
 # filelist and graph list
 if __name__ == '__main__':
     try:
-        with open(op.join(datadir, 'input', 'fileMetas.pkl'), 'rb') as inpt:
+        with open(op.join(rawdir, 'fileMetas.pkl'), 'rb') as inpt:
             filemetas = pickle.load(inpt)
     except IOError:
         print "Error: Make sure you have file metadatas in working directory"
 
     try:
-        vtkSkel = wr.ddwalk(op.join(datadir, 'output', 'normalizedVTK'),
-                            '*skeleton.vtk', stop=-13)
+
+        vtkF = wr.ddwalk(op.join(rawdir, 'normalizedVTK'),
+                 '*skeleton.vtk', start=5, stop=-13)
+#        vtkSkel = wr.ddwalk(op.join(datadir, 'output', 'normalizedVTK'),
+#                            '*skeleton.vtk', stop=-13)
         vtkVolRfp = wr.ddwalk(op.join(datadir, 'input', 'resampledFiles'),
                               '*RF*resampled.vtk', stop=-14)
         vtkVolGfp = wr.ddwalk(op.join(datadir, 'input', 'resampledFiles'),
@@ -50,13 +55,13 @@ if __name__ == '__main__':
         print "Error: check your filepaths"
         sys.exit()
 
-    for lab in sorted(vtkSkel.keys())[:]:
-        try:
-            folder = op.join(datadir, 'output', 'normalizedVTK', lab)
-            os.makedirs(folder)
-        except OSError as exception:
-            if exception.errno != errno.EEXIST:
-                raise
+#    for lab in sorted(vtkSkel.keys())[:]:
+#        try:
+#            folder = op.join(datadir, 'output', 'normalizedVTK', lab)
+#            os.makedirs(folder)
+#        except OSError as exception:
+#            if exception.errno != errno.EEXIST:
+#                raise
 
 G = {}
 backgroundGFP = {}
@@ -69,7 +74,7 @@ for key, val in graph_pkl.iteritems():
             G[grph.graph['cell']] = grph
 
 
-media = sorted(vtkSkel.keys())
+media = sorted(vtkF.keys())
 # pylint: enable=C0103
 
 #    networkX graph objects of mitograph
@@ -132,8 +137,8 @@ avg_nnd = nx.average_neighbor_degree
 # pylint: enable=C0103
 for mem in media:
     print'\nNow on %s\n' % mem + "=" * 79
-    for n, a  in enumerate(vtkSkel[mem]):
-        filekey = a.partition('_')[2]
+    for n, filekey  in enumerate(vtkF[mem]):
+#        filekey = f.partition('_')[2]
         Norm = []
         NormRaw = []
         GFP = []
@@ -144,9 +149,8 @@ for mem in media:
         rGFP = []
         lineId = {}
 
-        curGrph = G[filekey]
         reader = tvtk.PolyDataReader()
-        reader.set(file_name=vtkSkel[mem][a])
+        reader.set(file_name=vtkF[mem][filekey])
         reader.update()
         data = reader.output
         temp = data.point_data
@@ -157,12 +161,21 @@ for mem in media:
         WidthEq = np.ravel(temp.get_array('WidthEq'))
         tubeWidth = np.ravel(temp.get_array('TubeWidth'))
 
+        try:
+            curGrph = G[filekey]
+        except KeyError:
+            curGrph = mg(tvtk.to_vtk(data), filekey)[2]
 
-        if backgroundRFP[filekey] > min(rawRFP):
+        fk = filekey.rsplit('_', 1)[0]  # mutant type short key
+        try:
             minA = backgroundRFP[filekey]-1
-        else:
-            minA = backgroundRFP[filekey]-1
-        minB = min(backgroundGFP[filekey], min(rawGFP))
+        except KeyError:  # for mutants type
+            minA = backgroundRFP[fk]-1
+
+        try:
+            minB = min(backgroundGFP[filekey], min(rawGFP))
+        except KeyError:  # for mutants type
+            minB = min(backgroundGFP[fk], min(rawGFP))
 
 #    Convert multigraph to graph for clustering coef calc (choose long edges)
         GG = nx.Graph()

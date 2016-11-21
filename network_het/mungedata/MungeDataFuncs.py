@@ -52,7 +52,7 @@ def bpts_inten(vtkdata, bptscoord, radinf=.3):
 def boxviol(datf, vals, group, **kwargs):
     """plot violin with boxplot bounds and stripplots
     """
-    with sns.plotting_context('talk', font_scale=1.6):
+    with sns.plotting_context('talk', font_scale=1.25):
         _, ax1 = plt.subplots(1, 1)
 
         #  VIOLINPLOT
@@ -61,27 +61,27 @@ def boxviol(datf, vals, group, **kwargs):
                        y=vals,
                        data=datf)
 
-        xpos = [tic for tic in ax1.get_xticks()]
+#        xpos = [tic for tic in ax1.get_xticks()]
+#
+#        #  BOXPLOT
+#        dic = datf.boxplot(vals,
+#                           by=group,
+#                           ax=ax1,
+#                           showbox=False,
+#                           showmeans=True,
+#                           showfliers=False,
+#                           whiskerprops={'linewidth': 0},
+##                           medianprops={'linewidth': 3},
+#                           capprops={'linewidth': 2,
+#                                     'markersize': 1,
+#                                     'color': '#555555'},
+#                           positions=xpos,
+#                           return_type='dict')
 
-        #  BOXPLOT
-        dic = datf.boxplot(vals,
-                           by=group,
-                           ax=ax1,
-                           showbox=False,
-                           showmeans=False,
-                           showfliers=False,
-                           whiskerprops={'linewidth': 0},
-                           medianprops={'linewidth': 3},
-                           capprops={'linewidth': 2,
-                                     'markersize': 1,
-                                     'color': '#555555'},
-                           positions=xpos,
-                           return_type='dict')
-
-        for dline in dic[dic.keys()[0]]['medians']:
-            dline.set_color('#FFFFFF')
-            x1, x2 = dline.get_xdata()
-            dline.set_xdata([x1 + .1, x2 - .1])
+#        for dline in dic[dic.keys()[0]]['medians']:
+#            dline.set_color('#FFFFFF')
+#            x1, x2 = dline.get_xdata()
+#            dline.set_xdata([x1 + .1, x2 - .1])
 
         ax1.set_title('')
         plt.suptitle('')
@@ -95,12 +95,12 @@ def boxviol(datf, vals, group, **kwargs):
                       alpha=.4)
 
         #  LABELS AND LIMS
-        pltlims = []
-        for cap in dic[dic.keys()[0]]['caps']:
-            pltlims.append(cap.get_ydata()[0])
-        lowerb = min(pltlims)
-        upperb = max(pltlims)
-        plt.ylim(max(0, (lowerb - .05 * lowerb)), 1.05 * upperb)
+#        pltlims = []
+#        for cap in dic[dic.keys()[0]]['caps']:
+#            pltlims.append(cap.get_ydata()[0])
+#        lowerb = min(pltlims)
+#        upperb = max(pltlims)
+#        plt.ylim(max(0, (lowerb - .05 * lowerb)), 1.05 * upperb)
 #        pltlims = kwargs.pop('pltLims', None)  # for customizing ylims
 #        if pltlims is not None:
 #            plt.ylim(pltlims)
@@ -167,8 +167,8 @@ def result_to_excel(res, sheetname, writer):
 #                            'reject',
 #                            'stat params.'])
     with open('output.txt','a') as f:
-        f.write('\\multicolumn{6}{c}{'+sheetname+'}\n')
-        f.write(res[0].as_latex_tabular())
+        f.write(u'\\multicolumn{6}{c}{'+sheetname+'}\n')
+        f.write(res[0].as_latex_tabular().encode('utf8'))
 #    print(gtemp.to_string(columns=['group1',
 #                            'group2',
 #                            'pval',

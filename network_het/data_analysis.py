@@ -27,49 +27,53 @@ with open(op.join('cellVolume.pkl'), 'rb') as INPT:
     dfsize.index = dfsize.cell
 with open(op.join(olddir, 'dic_names.pkl'), 'rb') as inpt:
     dic = pickle.load(inpt)
+with open('list_wtmb.pkl', 'rb') as inpt:
+    wt = pickle.load(inpt)
 
+wtall = df[df.media == 'WT'].index
+wtfilt = df.index.intersection(wt)
+exclude = wtall.difference(wtfilt)
+df = df.loc[df.index.difference(exclude)]
+dfsize = dfsize.loc[df.index.difference(exclude)]
 newlabels = {'YPR': u'WT_YPR', 'YPL': u'WT_YPL', 'YPE': u'WT_YPE',
              'WT': u'WT_YPE', 'NUM1': u'ΔNUM1', 'MFB1': u'ΔMFB1',
              'YPT11': u'ΔYPT11', 'YPD': 'WT_YPD'}
+wtypes = ['WT_YPD', 'WT_YPE', 'WT_YPL', 'WT_YPR']
+
 df['media_new'] = df.media.map(newlabels)
 
-dflists = df.loc[:, ['mito_bpts_dy',
-                     'mito_bpts_dyraw',
-                     'mito_btwcntr_uw',
-                     'mito_btwcntr_w',
-                     'mito_clscntr_uw',
-                     'mito_clscntr_w',
-                     'mito_clstcf_uw',
-                     'mito_clstcf_w',
-                     'mito_edge_avedy',
-                     'mito_edge_avedyr',
-                     'mito_edge_coefvar',
-                     'mito_edge_coefvarr',
-                     'mito_edge_stddy',
-                     'mito_edge_stddyr',
-                     'mito_edgelen',
-                     'mito_knn_uw',
-                     'mito_knn_w',
-                     'media']]
+newcollabels = {'mito_avgdeg': 'Avg. Degree',
+                'mito_beta_geo': u'β geo.',
+                'mito_beta_top': u'β top.',
+                'mito_pk3': u'pk₃',
+                'mito_phi': u'ϕ',
+                'mito_bpts_dyraw': u'branchpoints ΔΨ',
+                'mito_knn_uw': 'Nearest Neighbor Degree',
+                'mito_cell_avedyr': u'ΔΨ Unscaled',
+                'mito_btwcntr_uw': 'Betweeness Centr.',
+                'mito_clscntr_uw': 'Closeness Centr.',
+                'mito_clstcf_uw': 'Clustering Coeff.'}
+df.rename(columns=newcollabels, inplace=True)
 
-dfscals = df.loc[:, ['mito_avgdeg',
-                     'mito_cell_avedy',
-                     'mito_cell_avedyr',
-                     'mito_cell_stddy',
-                     'mito_cell_stddyr',
-                     'mito_charpl_uw',
-                     'mito_charpl_w',
-                     'mito_edgenum',
-                     'mito_beta_geo',
-                     'mito_beta_top',
-                     'mito_phi',
-                     'mito_pk3',
-                     'mito_totlen',
-                     'charpl_norm_len',
-                     'charpl_norm_numedge',
-                     'cell_coefvar',
-                     'cell_coefvar_r',
-                     'mito_cell_ave_gfp']]
+# =============================================================================
+# Labels  for global and connectivity measures filters
+# =============================================================================
+globcon = [u'ΔΨ Unscaled',
+           'Quasik',
+           u'β geo.',
+           u'β top.',
+           u'ϕ',
+           u'pk₃',
+           'Avg. Degree',
+           'mito_edgenum',
+           'mito_tubew']
+
+localcon = ['Quasik',
+            u'branchpoints ΔΨ',
+            'Betweeness Centr.',
+            'Nearest Neighbor Degree',
+            'Closeness Centr.',
+            'Clustering Coeff.']
 
 dfvol = pd.DataFrame({'Vol': dfsize.loc[:, 'Vol'],
                       'Surf': dfsize.loc[:, 'Surf'],
@@ -83,24 +87,17 @@ dfvol['Quasik'] = dfvol.mitolen / dfvol.Surf
 g = md.boxviol(dfvol, 'Quasik', 'media_new')
 g.set_title('Quasi Density', fontsize=24)
 g.set_ylabel('Quasi Density')
-plt.ylim([0, dfvol.Quasik.quantile([0.05, 0.995]).tolist()[1]])
+plt.ylim([0, dfvol.Quasik.quantile(0.995)])
 h = md.boxviol(dfvol, 'Surf', 'media_new')
 h.set_title(u'Cell Surface Area /µm²', fontsize=24)
 h.set_ylabel('')
-plt.ylim([0, dfvol.Surf.quantile([0.05, 0.995]).tolist()[1]])
+plt.ylim([0, dfvol.Surf.quantile(0.9995)])
 
-dfscals = pd.concat([dfscals,
-                     dfvol.loc[:, 'Vol Ratio'],
-                     df.loc[:, 'media']], axis=1)
 # =============================================================================
 #   Subdatasets
 # =============================================================================
 #   Network Connectivity (by branchpoints)
-dfconn = df.ix[:, ['mito_bpts_dyraw',
-                   'mito_btwcntr_uw',
-                   'mito_knn_uw',
-                   'mito_clscntr_uw',
-                   'mito_clstcf_uw']]
+dfconn = df.ix[:, localcon[1:]]
 frames = []
 for i in dfconn.columns:
     temp = md.convert_longform(dfconn, i)
@@ -111,25 +108,16 @@ BIG = pd.concat(frames, axis=1)
 BIG = BIG.groupby(BIG.index).mean()
 
 dfconn = pd.concat([BIG,
-                    df.loc[:, 'charpl_norm_len'],
                     dfvol.loc[:, ['Vol Ratio', 'Quasik']],
                     df.loc[:, 'media_new']], axis=1)
 
-cols = ['mito_bpts_dyraw',
-        'mito_btwcntr_uw',
-        'mito_knn_uw',
-        'mito_clscntr_uw',
-        'mito_clstcf_uw',
-        'charpl_norm_len']
-
-print("\nstat test for local connectivity vs quasidensity\n" + 79 * '=')
-dfl = pd.DataFrame()
+print "stat test for local connectivity vs quasidensity\n{}".format('*' * 79)
 
 data = []
-for mem in sorted(pd.unique(dfconn.media_new)):
+for mem in wtypes:
     mask = dfconn.media_new == mem
     dftest = dfconn.loc[mask]
-    for mea in cols:
+    for mea in localcon:
         res = sp.pearsonr(dftest.loc[mask, 'Quasik'],
                           dftest.loc[mask, mea])
         data.append((mem, mea, res[0], res[1]))
@@ -137,9 +125,21 @@ dfl = pd.DataFrame(data)
 dfl.columns = ['media_new', 'type', 'r', 'p']
 dfl = dfl.pivot(index='type', columns='media_new', values='r')
 dfl.to_clipboard(float_format='%6.4f')
-#        print '%-4s:%-15s:%6.3f:%15.13f' % (mem, mea, res[0], res[1])
 
-dfconn['Nearest Neighbor Degree'] = dfconn.mito_knn_uw
+data = []
+print u"stat test for local connectivity vs ΔΨ branchpoints\n{}".format('*' * 79)
+for mem in wtypes:
+    mask = dfconn.media_new == mem
+    dftest = dfconn.loc[mask]
+    for mea in localcon:
+        res = sp.pearsonr(dftest.loc[mask, u'branchpoints ΔΨ'],
+                          dftest.loc[mask, mea])
+        data.append((mem, mea, res[0], res[1]))
+dfl2 = pd.DataFrame(data)
+dfl2.columns = ['media_new', 'type', 'r', 'p']
+dfl2 = dfl2.pivot(index='type', columns='media_new', values='r')
+dfl2.to_clipboard(float_format='%6.4f')
+
 with sns.plotting_context('talk', font_scale=1.25):
     g = sns.lmplot(x="Quasik",
                    y='Nearest Neighbor Degree',
@@ -150,23 +150,13 @@ with sns.plotting_context('talk', font_scale=1.25):
     g.set(ylim=(0, 4.5))
 
 #   Topology  (by cell)
-dfcellcon = df.ix[:, ['mito_cell_avedyr',
-                      'cell_coefvar_r',
-                      'mito_beta_geo',
-                      'mito_beta_top',
-                      'mito_phi',
-                      'mito_pk3',
-                      'mito_avgdeg',
-                      'mito_edgenum',
-                      'mito_tubew']]
+dfcellcon = df.ix[:, [i for i in globcon if i != 'Quasik']]
 dfcellcon = pd.concat([dfcellcon,
                        dfvol.loc[:, ['Vol Ratio', 'Quasik']],
                        df.loc[:, 'media_new']], axis=1)
 #==============================================================================
 #         OLS fits of conn with surface density with the interaction term test
 #==============================================================================
-
-
 # def ferment(t):
 #    if t == 'YPD':
 #        return 'ferment'
@@ -179,15 +169,12 @@ dfcellcon = pd.concat([dfcellcon,
 # print(result.summary())
 
 
-dfcellcon = dfcellcon[dfcellcon.mito_cell_avedyr <= 2000]  # exclude hi YPE's
-dfcellcon[u'ΔΨ Unscaled'] = dfcellcon["mito_cell_avedyr"]
-
+dfcellcon = dfcellcon[dfcellcon[u'ΔΨ Unscaled'] <= 2000]  # exclude hi YPE's
 with sns.plotting_context('talk', font_scale=1.25):
     g = sns.lmplot(x="Quasik",
-                   y='mito_avgdeg',
+                   y='Avg. Degree',
                    hue='media_new',
                    data=dfcellcon,
-                   #                   col_wrap=2,
                    size=5,
                    scatter_kws={"s": 25, "alpha": 1})
     g.set(ylim=(0, 3.5))
@@ -220,37 +207,42 @@ with sns.plotting_context('talk', font_scale=1.25):
     for i in g.axes:
         i.get_lines()[0].set_visible(False)
 
-cols = [u'ΔΨ Unscaled',
-        'Quasik',
-        'mito_beta_geo',
-        'mito_beta_top',
-        'mito_phi',
-        'mito_pk3',
-        'mito_avgdeg',
-        'mito_edgenum',
-        'mito_tubew']
 
-print("\nstat test for global connectivity vs quasidensity\n" + 79 * '=')
+print "stat test for global connectivity vs quasidensity\n{}".format('*' * 79)
 data1 = []
-for mem in sorted(pd.unique(dfcellcon.media_new)):
+for mem in wtypes:
     mask = dfcellcon.media_new == mem
     dftest = dfcellcon.loc[mask]
-    for mea in cols:
+    for mea in globcon:
         res = sp.pearsonr(dftest.loc[mask, 'Quasik'],
                           dftest.loc[mask, mea])
         data1.append((mem, mea, res[0], res[1]))
-#        print '%-4s:%-15s:%6.3f:%15.13f' % (mem, mea, res[0], res[1])
 
 dfg = pd.DataFrame(data1)
 dfg.columns = ['media_new', 'type', 'r', 'p']
 dfg = dfg.pivot(index='type', columns='media_new', values='r')
 dfg.to_clipboard(float_format='%6.4f')
 
-#==============================================================================
+print u"stat test for global connectivity vs ΔΨ Unscaled\n{}".format('*' * 79)
+data1 = []
+for mem in wtypes:
+    mask = dfcellcon.media_new == mem
+    dftest = dfcellcon.loc[mask]
+    for mea in globcon:
+        res = sp.pearsonr(dftest.loc[mask, u'ΔΨ Unscaled'],
+                          dftest.loc[mask, mea])
+        data1.append((mem, mea, res[0], res[1]))
+
+dfg2 = pd.DataFrame(data1)
+dfg2.columns = ['media_new', 'type', 'r', 'p']
+dfg2 = dfg2.pivot(index='type', columns='media_new', values='r')
+dfg2.to_clipboard(float_format='%6.4f')
+
+# =============================================================================
 # subset of volume ratios
-#==============================================================================
-dfsubset = dfcellcon.ix[(dfcellcon['Quasik'] > .5) &
-                        (dfcellcon['Quasik'] < .9)]
+# =============================================================================
+subset = (dfcellcon['Quasik'] > .5) & (dfcellcon['Quasik'] < .9)
+dfsubset = dfcellcon[subset]
 a = dfsubset.groupby('media_new').count()
 b = dfcellcon.groupby('media_new').count()
 c = 1. * a['Quasik'] / b['Quasik']
@@ -260,7 +252,7 @@ print "{}".format(c)
 
 with sns.plotting_context('talk', font_scale=1.25):
     g = sns.lmplot(x="Quasik",
-                   y='mito_avgdeg',
+                   y='Avg. Degree',
                    col='media_new',
                    data=dfsubset,
                    hue='media_new',
@@ -280,45 +272,41 @@ with sns.plotting_context('talk', font_scale=1.25):
     for ax in f.axes:
         ax.get_lines()[0].set_visible(False)
 
-cols = dfsubset.columns[:8]
 print ("\nstat test for subset [{:4.2f}-{:4.2f}] of volume ratios:"
        .format(dfsubset.Quasik.min(), dfsubset.Quasik.max()))
 data2 = []
-for mea in cols:
-    for mem in sorted(pd.unique(dfsubset.media_new)):
+for mea in globcon:
+    for mem in wtypes[1:]:
         mask = dfcellcon.media_new == mem
         res = sp.pearsonr(dfsubset.loc[mask, 'Quasik'],
                           dfsubset.loc[mask, mea])
         data2.append((mem, mea, res[0], res[1]))
-#        print '%-4s: %-15s:%6.3f:%15.13f' % (mem, mea, res[0], res[1])
 dfs = pd.DataFrame(data2)
 dfs.columns = ['media_new', 'type', 'r', 'p']
 dfs = dfs.pivot_table(index='type', columns='media_new', values='r')
 dfs.to_clipboard(float_format='%6.4f')
 
 
-dfsubset2 = dfconn.ix[(dfconn['Quasik'] > .5) &
-                      (dfconn['Quasik'] < .9)]
-cols = dfsubset2.columns[:7]
+subset2 = (dfconn['Quasik'] > .5) & (dfconn['Quasik'] < .9)
+dfsubset2 = dfconn[subset2]
 data3 = []
-for mea in cols:
-    for mem in sorted(pd.unique(dfsubset2.media_new)):
+for mea in localcon:
+    for mem in wtypes[1:]:
         mask = dfconn.media_new == mem
         res = sp.pearsonr(dfsubset2.loc[mask, 'Quasik'],
                           dfsubset2.loc[mask, mea])
         data3.append((mem, mea, res[0], res[1]))
-#        print '%-4s: %-15s:%6.3f:%15.13f' % (mem, mea, res[0], res[1])
 dfs2 = pd.DataFrame(data3)
 dfs2.columns = ['media_new', 'type', 'r', 'p']
 dfs2 = dfs2.pivot_table(index='type', columns='media_new', values='r')
 dfs2.to_clipboard(float_format='%6.4f')
 
-#==============================================================================
+# =============================================================================
 #  Vol ratio, RFP and DY vs tube width
-#==============================================================================
+# =============================================================================
 with sns.plotting_context('talk', font_scale=1.25):
     g = sns.lmplot(x="Quasik",
-                   y='mito_avgdeg',
+                   y='Avg. Degree',
                    col='media_new',
                    data=dfcellcon,
                    hue='media_new',
@@ -376,9 +364,7 @@ with sns.plotting_context('talk', font_scale=1.25):
 # O2 data
 # =============================================================================
 dfcellcon['Number of Edges'] = dfcellcon.mito_edgenum
-dfcellcon['Average Degree'] = dfcellcon.mito_avgdeg
-dfcellcon['O2 per mito vol'] = np.nan
-dfcellcon['OCR per cell'] = np.nan
+dfcellcon['Average Degree'] = dfcellcon['Avg. Degree']
 
 o2mito = {'YPR': .0180,
           'YPL': 0.0176,
@@ -437,7 +423,7 @@ with sns.plotting_context('talk', font_scale=1.25):
     plt.setp(ax1.get_xticklabels(), visible=False)
 
     sns.violinplot('media_new',
-                   'mito_cell_avedyr',
+                   u'ΔΨ Unscaled',
                    data=dfcellcon[~(dfcellcon['OCR per cell'].isnull())],
                    ax=ax2)
     ax2.set_ylabel(u'ΔΨ Unscaled')

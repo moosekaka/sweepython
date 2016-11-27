@@ -86,6 +86,9 @@ dfvol['mitovol'] = np.pi * (.15)**2 * dfvol.mitolen
 dfvol['Vol Ratio'] = dfvol.mitovol / dfvol.Vol
 dfvol['Amount density'] = dfvol.mitolen / dfvol.Surf
 
+with open('cellVolume_complete.pkl', 'wb') as out:
+    pickle.dump(dfvol, out)
+
 # Network Connectivity Dataframe (by branchpoints)
 dfconn = df.ix[:, localcon[1:]]
 frames = []

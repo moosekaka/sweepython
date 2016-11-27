@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from scipy import stats as ss
 import mombud.mungedf as munge
 import mombud.functions.vtk_mbplots as mbfuncs
 # pylint: disable=C0103
@@ -20,6 +21,7 @@ labelhandler, plviol, plbox, plfacet = (mbfuncs.labelhandler,
                                         mbfuncs.plbox,
                                         mbfuncs.plfacet)
 
+COL_ODRfra = [u'ΔMFB1', u'ΔNUM1', u'ΔYPT11', u'WT_YPE', u'WT_YPL', u'WT_YPR']
 COL_ODR = [u'WT_YPE', u'WT_YPL', u'WT_YPR', u'ΔMFB1', u'ΔNUM1', u'ΔYPT11']
 HUE_ODR = [u'ΔMFB1', u'ΔNUM1', u'ΔYPT11', u'WT_YPE', u'WT_YPL', u'WT_YPR']
 savefolder = op.expanduser(os.sep.join(['~', 'Dropbox', 'SusanneSweeShared',
@@ -30,6 +32,11 @@ plt.close('all')
 labelFacet = labelhandler('facet')
 labelNormal = labelhandler()
 labelRowFacet = labelhandler('rowfacet')
+
+
+with open(op.join('cellVolume_complete.pkl'), 'rb') as INPT:
+    dfsize = pickle.load(INPT)
+
 
 with open('df_mombud_filtered.pkl', 'rb') as inpt:
     df = pickle.load(inpt)
@@ -124,7 +131,7 @@ mb_dy.rename({'variable': relabels}, inplace=True)
 size = df.loc[:, ['media_new', 'bud_diameter', 'bud_dy_var']]
 
 outkws1 = dict(default_ylims=[0.05, 0.95], plt_type='boxplot',
-               labeller=labelNormal, col_order=COL_ODR)
+               labeller=labelNormal, col_order=COL_ODRfra)
 
 outkws2 = dict(default_ylims=[0.1, 0.9],
                labeller=labelFacet, col_order=COL_ODR)
@@ -155,7 +162,7 @@ with sns.color_palette('colorblind'):
     plt.savefig(op.join(savefolder, 'budratio_bud_diam.png'))
 
 # =============================================================================
-# mombudDY plot
+# mombud ΔΨ plot
 # =============================================================================
 with sns.plotting_context('talk', font_scale=1.5):
     plt.rcParams['figure.figsize'] = (16, 11)
@@ -171,7 +178,7 @@ with sns.plotting_context('talk', font_scale=1.5):
     plv1.save_figure(op.join(savefolder, 'boxplot mombud dy.svg'))
 
 # =============================================================================
-# fracDY plot
+# frac ΔΨ plot
 # =============================================================================
 with sns.plotting_context('talk', font_scale=1.5):
     plt.rcParams['figure.figsize'] = (16, 11)
@@ -213,6 +220,31 @@ allsizes = pd.melt(alls,
                    var_name='cell axis position',
                    value_name=u'ΔΨ scaled',
                    value_vars=meds.columns[:5].values.tolist())
+
+# =============================================================================
+# ranksum test for frac ΔΨ and ΔΨ along cell axis
+# =============================================================================
+# frac ΔΨ
+t1 = (frac.groupby('media_new').get_group(u'WT_YPE')[u'ΔΨ scaled'].dropna())
+print u'frac ΔΨ YPE ranksum tests'
+print '{}'.format('*'*79)
+for t in sorted(COL_ODR[1:]):
+    t2 = (frac.groupby('media_new').get_group(t)[u'ΔΨ scaled'].dropna())
+    _, p = ss.ranksums(t1, t2)
+    print u'p-val vs {:6s} {:6.4f}'.format(t, p)
+
+# ΔΨ along cell axis
+for t in sorted(COL_ODR[1:]):
+    print u'\nΔΨ WT_YPE against {} along cell axis'.format(t)
+    print '{}'.format('*'*79)
+    for i in [0.33, 0.67, 1.0, 1.5, 2.0]:
+        t1 = (buddy_meds.groupby(['media_new_bud', 'cell axis position'])
+              .get_group((u'WT_YPE', i))[u'ΔΨ scaled'].dropna())
+        t2 = (buddy_meds.groupby(['media_new_bud', 'cell axis position'])
+              .get_group((t, i))[u'ΔΨ scaled'].dropna())
+        _, p = ss.ranksums(t1, t2)
+        print 'p-val at pos {:4.2f} : {:6.4f}'.format(i, p)
+
 # =============================================================================
 # PLOTS FACETTED
 # =============================================================================
@@ -240,4 +272,3 @@ with sns.plotting_context('talk', font_scale=1.25):
 
         plv7.facet_obj.set(ylabel='', xlabel='')
         plv7.save_figure(op.join(savefolder, 'medbuds.svg'))
-

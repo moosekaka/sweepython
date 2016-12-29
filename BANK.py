@@ -6,6 +6,7 @@ Created on Tue Sep 22 12:29:53 2015
 """
 
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from seaborn import xkcd_palette as scolor
@@ -47,6 +48,9 @@ pattern = 'Payment.*Chase|^CHASE|ALLY|PAYMENT.*CHASE|\
 BILL.*LATER|UC IRVINE|SO CAL EDISON|CARDMEMBER'
 debit = debit[~debit.Desc.str.contains(pattern)]
 spend = pd.concat([sales, returns, debit]).reset_index(drop=True)
+returned_headset = (spend.Desc.str.contains("FRY'S ELECTRONICS #7") &
+                    (spend.Amount.apply(lambda x: np.abs(x)) == 107.99))
+spend = spend[~returned_headset]
 spend = spend.drop('Type', axis=1)
 df1 = pd.pivot_table(spend,
                      values='Amount',
@@ -59,7 +63,7 @@ MthlySpd = df1.resample('M').sum()
 # =============================================================================
 spend['Category'] = ''
 
-spend.loc[spend.Desc.str.contains('ATM'), ['Category']] = 'ATMcash'
+spend.loc[spend.Desc.str.contains('ATM|WITHDRAWAL'), ['Category']] = 'ATMcash'
 
 pattern = r'COF|PEE|STARBU|ARAMARK UCI|BED'
 spend.loc[spend.Desc.str.contains(pattern), ['Category']] = 'Coffee'
@@ -68,23 +72,26 @@ pattern = 'JACK|^CHICK|MCD|DEL TACO|IN-N-OUT|DAPHNE|RAISING\
 |TACO BELL|SUBWAY|PANERA|EL POLLO LOCO|CHIPOTLE|BLAZE|HABIT|IKEA R\
 |SEAFOOD C|DENNY|IHOP|POPEY|SLAPFISH|Flame|FLAME|KFC|Pizza 90\
 |CHRONIC|PHO.*1|BRUXIE|MENDOCINO|TLT FOOD|YOGURT|MEET FRESH|MITSUWA-BEER\
-|VEGGIE GRILL|CREAMISTRY|CAPITAL NOODLE|MOD PIZZA'
+|VEGGIE GRILL|CREAMISTRY|CAPITAL NOODLE|MOD PIZZA|JOHNNYSREALNEWYORKPIZZA\
+|COWGIRL CREAMERY|SQ \*ADYA|IN \*YAZFOODS|TBIT INK|BLUSH ICE|85C BAKERY'
 spend.loc[spend.Desc.str.contains(pattern), ['Category']] = 'FastFood'
 
 pattern = 'J J BAKE|NORM|TENDER GR|URBAN SEOUL|KAISEN|KULA|BLAKES\
 |NANA SAN|TAPS|ORIGINAL FISH|DODDY|FOGO|RUTH|URBAN|BAJA|Baja|CA FISH\
 |WOKCANO|BLACK BEAR DINER|CURRY.*AMERICA|I HEART PANCAKES|LUNA GRILL\
-|DICKIE\'S|PHO.*PEARL|BCD|BOIL|Boil'
+|DICKIE\'S|PHO.*PEARL|BCD|BOIL|Boil|YARD HOUSE|TACOS AND COMPANY\
+|JIMMY JOHNS|SEAFOOD PEDDLER|HOG ISLAND OYS|RED ROBIN|GHIRARDELLI\
+|The Hidden Vine|Monk\'s Kettle|SANRAKU METREON|VINO VOLO'
 spend.loc[spend.Desc.str.contains(pattern), ['Category']] = 'Restaurants'
 
 spend.loc[spend.Desc.str.contains('LAZY'), ['Category']] = 'Lazy'
 
-spend.loc[spend.Desc.str.contains('USA|A[Rr][Cc]|76 - UNION\
-|UNITED OIL'), ['Category']] = 'Gas'
+spend.loc[spend.Desc.str.contains('^USA|^A[Rr][Cc]|76 - UNION\
+|UNITED OIL|SHELL'), ['Category']] = 'Gas'
 
 pattern = '99 RAN|PAVILIONS|VONS|ALBERT\
 |RALP|TARG|^WAL|WM|^TRADER|MITSUWA MAR|WHOLESOME|H MART|SPROUTS\
-|MITSUWA MRKTPLACE|WHOLEFDS'
+|MITSUWA MRKTPLACE|WHOLEFDS|SAFEWAY'
 spend.loc[spend.Desc.str.contains(pattern), ['Category']] = 'Market'
 
 pattern = 'Kindle|MICRO CENTER|FRY\'S\
@@ -95,23 +102,25 @@ pattern = 'UCI CAMPUS RECREATION|AMC|FANDANGO|CINEMA|EDWARD'
 spend.loc[spend.Desc.str.contains(pattern), ['Category']] = '_Gym, movies'
 
 pattern = 'FARMERS IN|AM SOC|ASCB|U-HAUL|CA DMV\
-|UCI TRANSPO|VISTA DEL|IMAGE D|COINBASE|EVA|UMI|PRIME TIME|VR|HARBOR J \
-|BIOMEDICAL ENGINEERING|AUTOZONE|PERFORMANCE BIKE SHOP\
-|STATE OF CALIF DMV|OPTOMETRIC|TOWING|AAA|CAPGOWN\
-|H AND J AUTO REPAIR|COMFORT INN|CASA LOMA|PALA CHOICES\
+|UCI TRANSPO|VISTA DEL|IMAGE D|COINBASE|EVA|UMI|PRIME TIME|VR|HARBOR JUSTICE\
+|BIOMEDICAL ENGINEERING|AUTOZONE|PERFORMANCE BIKE SHOP|OC TOLL ROADS\
+|STATE OF CALIF DMV|OPTOMETRIC|TOWING|AAA|CAPGOWN|ZIPCAR|HARRY\'S\
+|H AND J AUTO REPAIR|COMFORT INN|CASA LOMA|PALA CHOICES|GOOGLE \*Devices\
 |BIOPSYCHOSOCIAL|ENTERPRISE RENT|INSURE.*RENTAL|SEQUOIA KINGS|VILLAGE MARKET\
 |PRINCE FOOD|DNPSKINGSCANYONGROCERY|SEQUOIA- LODGEPOLE|HADLEY TOW\
-|Chase QuickPay'
+|Chase QuickPay|SOUTHWES|HERTZ RENT|MUIR WOODS|EXPEDIA|FERRY|BAY AREA BRIDGE\
+|CLIPPER|CHECK OR SUPPLY|USPS|SPORTS AUTHOR|LIFETECH'
 spend.loc[spend.Desc.str.contains(pattern), ['Category']] = '_One-offs, Fees'
 spend.loc[spend.Desc.str.contains('IKEA') &
          (spend.Amount < -12), ['Category']] = '_One-offs, Fees'
 spend.loc[spend.Desc.str.contains('TARGET') &
          (spend.Date=='2016-07-08'), ['Category']] = '_One-offs, Fees'
 
-pattern = 'UCI PARK|GOOGLE.*PRO|UCI TRANS'
-spend.loc[spend.Desc.str.contains(pattern), ['Category']] = 'Phone, Parking'
+pattern = 'UCI PARK|GOOGLE.*PRO|UCI TRANS|GOOGLE \*Rapidgator|WASH LAUNDRY\
+|LOS ANGELESTIMES'
+spend.loc[spend.Desc.str.contains(pattern), ['Category']] = 'Phone, misc.'
 
-pattern = 'AMZ  STORECARD|PAYPAL|AMAZON'
+pattern = 'AMZ.*STORECARD|PAYPAL|AMAZON'
 spend.loc[spend.Desc.str.contains(pattern), ['Category']] = '_Installments'
 
 
@@ -145,7 +154,7 @@ total = total.set_value(uncat.index, 'Category', 'Uncat')
 #    Pivot to group by cat and months and plot
 # =============================================================================
 date_range = '2016-01'
-dollar_lim = 2200
+dollar_lim = 2000
 mth_lim = 350
 MthlySpd = - MthlySpd.ix[date_range:]
 df = pd.pivot_table(total,
@@ -185,7 +194,7 @@ plt.xticks(rotation=0)
 # =============================================================================
 # Pivot table
 # =============================================================================
-x = total[(total.Date > '2016-08-31')].reset_index(drop=True)
+x = total[(total.Date > '2015-2-28')].reset_index(drop=True)
 y = x.groupby(['Date', 'Category']).sum()
 y1 = y.reset_index()
 ycount = x.groupby(['Date', 'Category']).count()
@@ -203,7 +212,7 @@ z['Total'] = z.sum(axis=1)
 print z_count
 # ============================================================================
 # Category spending
-# ============================================================================
+# =========================================================https://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=1&ved=0ahUKEwjbyJ_sgfDQAhXCORoKHdG8B2gQFggcMAA&url=http%3A%2F%2Fstackoverflow.com%2Fquestions%2F15998188%2Fhow-can-i-obtain-the-element-wise-logical-not-of-a-pandas-series&usg=AFQjCNGcS6pNPD0sLraQu0BSjRjZyEA0bQ&sig2=UBOwO5dI6bA-13XXBWPrVw===================
 #print '\n{}\nSpending by category to \n{}\n{}\n'.format('='*79, '='*79, z)
 print z
 # =============================================================================

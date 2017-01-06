@@ -11,11 +11,11 @@ Developing a set of open-source computational tools in Python to perform multi-s
 - We modulated the metabolic state of the cell by altering the carbon source used during cell growth. This [notebook](https://github.com/moosekaka/sweepython/blob/master/o2_vr_dy_panel.ipynb) shows an example of how carbon source growth conditions alters oxygen consumption and mitochondrial membrane potential (Δψ), which is a key parameter of cell bioenergetics.
 
 ## Investigating the link between structure of mitochondria and heterogeneity of mitochondrial membrane potential (Δψ)
-- We showed the non-random heterogeneous distribution of Δψ within a single mitochondrial tubule [example here](https://github.com/moosekaka/sweepython/tree/master/tubuleHet).
-- We also detail our investigation into the relationship between heterogeneity of mitochondrial function and network topology [example here](https://github.com/moosekaka/sweepython/tree/master/networkHet).
+- We showed the non-random heterogeneous distribution of Δψ within a single mitochondrial tubule [example here](https://github.com/moosekaka/sweepython/tree/master/tubule_het).
+- We also detail our investigation into the relationship between heterogeneity of mitochondrial function and network topology [example here](https://github.com/moosekaka/sweepython/tree/master/network_het).
 
 ## Analysis of mitochondrial functional asymmetry in mother and daughter yeast cells
-- A [set of tools](https://github.com/moosekaka/sweepython/tree/master/mombud/vtk_viz) to interactively visualize the 3D mitochondrial skeleton and pick points to classify the cell as a mother or daughter region. This [Ipython notebook](https://github.com/moosekaka/sweepython/blob/master/mother%20bud%20analysis.ipynb) demonstrates an application of these tools to study how mitochondrial membrane potential (Δψ) is distributed differently between the mother and daughter cell.  
+- A [set of tools](https://github.com/moosekaka/sweepython/tree/master/mombud) to interactively visualize the 3D mitochondrial skeleton and pick points to classify the cell as a mother or daughter region. This [Ipython notebook](https://github.com/moosekaka/sweepython/blob/master/mother%20bud%20analysis.ipynb) demonstrates an application of these tools to study how mitochondrial membrane potential (Δψ) is distributed differently between the mother and daughter cell.  
 
 ### Requirements
 If you wish to download the source code for the pipeline, you need to have these dependencies installed:

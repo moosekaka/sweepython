@@ -73,4 +73,4 @@ def main(*args, **kwargs):
 
 # filelist and graph list
 if __name__ == '__main__':
-    main(None, None, save=True, offscreen=False)
+    main(None,None, save=True, offscreen=True)

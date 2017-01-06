@@ -1,8 +1,10 @@
 /_python_learning_examples
+/deprecated
+/Examples
 /WorkingData
+*.png
 *.txt
 *.pyc
 *.pem
 *.key
-BANK.py
 

@@ -2,6 +2,7 @@
 /deprecated
 /Examples
 /WorkingData
+BANK.py
 *.png
 *.txt
 *.pyc

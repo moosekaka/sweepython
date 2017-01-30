@@ -5,8 +5,6 @@ Module for plots of analysis of mother bud function in budding yeast
 """
 import os
 import os.path as op
-import operator
-from collections import OrderedDict
 import cPickle as pickle
 import matplotlib.pyplot as plt
 import numpy as np

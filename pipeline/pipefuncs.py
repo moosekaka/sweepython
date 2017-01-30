@@ -6,6 +6,7 @@ Module for functions for mito network normalization
 import os
 import os.path as op
 import vtk
+import vtk.util.numpy_support as vnpy
 import numpy as np
 from tvtk.api import tvtk
 # pylint: disable=C0103
@@ -134,18 +135,28 @@ def normSkel(polydata, backgrnd):
     return normDY, DY, rfp_bk, gfp_bk, W
 
 
-def writevtk(dat, fname, **kwargs):
+def writevtk(data, fname, **kwargs):
     """
-    Output as "fname", with labels for scalar values as a dictionary
+    Write out a vtk file using VTK polydata object *dat* and a filename *fname*
+    with optional labels dictionary *kwargs* for the outputs
+
+    kwargs
+    ------
+    Default dictionary keys are:
+
+    * normalized_dy
+    * unscaled_dy
+    * ch1_bckgrnd
+    * ch2_bckgrnd
+    * width_eqv'
     """
-    polydata = tvtk.to_tvtk(dat)
-    for k in kwargs.keys():
-        temp = tvtk.DoubleArray()
-        temp.from_array(kwargs[k])
-        temp.set(name=k)
-        polydata.point_data.add_array(temp)
-        polydata.point_data.update()
-    writer = tvtk.PolyDataWriter()
-    writer.set(file_name=fname)
-    writer.set_input(polydata)
-    writer.update()
+
+    for k in sorted(kwargs):
+        temp = vnpy.numpy_to_vtk(kwargs[k])
+        temp.SetName(k)
+        data.GetPointData().AddArray(temp)
+
+    writer = vtk.vtkPolyDataWriter()
+    writer.SetFileName(fname)
+    writer.SetInputData(data)
+    writer.Update()

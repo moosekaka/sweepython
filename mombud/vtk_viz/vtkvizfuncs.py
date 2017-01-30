@@ -8,7 +8,6 @@ import numpy as np
 from mayavi import mlab
 from mayavi.sources.api import ParametricSurface
 from tvtk.api import tvtk
-import config
 import networkx as nx
 # pylint: disable=C0103
 
@@ -94,13 +93,6 @@ def edgeplot(fig, vtksrc, cellid, scalartype='DY_raw'):
     mmgr.scalar_bar_representation.position = [.85, .25]
     mmgr.scalar_bar_representation.position2 = [.1, .4]
     tube.filter.number_of_sides = 32
-
-
-def countFuncCall():
-    """counter function
-    """
-    config.counter += 1
-    return config.counter
 
 
 def adjustlut(vtksurface):

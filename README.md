@@ -18,16 +18,27 @@ Developing a set of open-source computational tools in Python to perform multi-s
 - A [set of tools](https://github.com/moosekaka/sweepython/tree/master/mombud) to interactively visualize the 3D mitochondrial skeleton and pick points to classify the cell as a mother or daughter region. This [Ipython notebook](https://github.com/moosekaka/sweepython/blob/master/mother%20bud%20analysis.ipynb) demonstrates an application of these tools to study how mitochondrial membrane potential (Δψ) is distributed differently between the mother and daughter cell.  
 
 ### Requirements
-If you wish to download the source code for the pipeline, you need to have these dependencies installed:
+If you wish to run the source code for the pipeline, you need to have these dependencies installed:
 
 * Pandas
 * Matplotlib
-* Mayavi \**
+* Mayavi
 * NetworkX
 * Numpy
 * Seaborn
 * Scipy
 * VTK
 
-\**MayaVi has a known conflict when run under IPython and Python 2.7, specifically incompatible API versions. To fix, set QT_API=pyqt under your enviroment variables, either in BASH or Windows advanced settings.
-The best way to ensure all dependencies are fulfilled is by installing the [Anaconda](https://www.continuum.io/downloads) Python package.
+You can have these dependencies installed in one step using the
+[Miniconda](https://conda.io/miniconda.html) package manager. Copy the `minimal.yml`
+file into the current directory of your shell.
+Then type the following (this will install all the above dependencies into an
+enviromenment called `minimal`.):
+
+`conda env create -f minimal.yml`
+
+You must activate the minimal environment after this:
+
+Linux, OS X: `source activate minimal`
+
+Windows: `activate minimal`

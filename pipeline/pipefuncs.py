@@ -7,135 +7,161 @@ import os
 import os.path as op
 import vtk
 import vtk.util.numpy_support as vnpy
-import numpy as np
-from tvtk.api import tvtk
+from numpy import ceil, mean, percentile
 # pylint: disable=C0103
 datadir = op.join(os.getcwd())
 
 
-def add_scalars(fskel, fvr, fvg, radius=2.5):
+def vtk_read(fpath, readertype='vtkPolyDataReader'):
     """
-    Add scalar values from voxels data (eg. resampledVTK)
+    Reads vtk files and returns the VTK object
+    """
+    reader = getattr(vtk, readertype)()
+    reader.SetFileName(fpath)
+    reader.Update()
+    data = reader.GetOutput()
+    return data
+
+
+def point_cloud_scalars(skelpath, ch1path, ch2path, **kwargs):
+    """
+    Returns scalar values from voxels data (eg. *resampledVTK*) lying within
+    a point cloud of a specified radius for each point
 
     Parameters
     ----------
-    fskel : VTK file
-        VTK file from MitoGraph
-    fvr, fvg : vtk resampled file
-        Obtained from MitoGraph by specifying -export_resampled_image option
-    radius : float
-        radius of point cloud sphere to average with
+    skelpath, ch1path, ch2path : str
+        filepaths to skeleton and volume/voxels VTK output of respective
+        channels to be normalized
+    kwargs :
+        radius value argument (float) for _pointcloud()
 
+        *will default use a value of 2.5 pixels*
     Returns
     -------
     polydata : VTK poly
         polydata object with raw scalar values and width
+    np_voxel1, np_voxel2 : Numpy Array
+        numpy array conversion of VTK voxel intensities
     """
-    reader = vtk.vtkPolyDataReader()
-    reader.SetFileName(fskel)
-    reader.Update()
-    reader2 = vtk.vtkStructuredPointsReader()
-    reader2.SetFileName(fvg)
-    reader2.Update()
-    reader3 = vtk.vtkStructuredPointsReader()
-    reader3.SetFileName(fvr)
-    reader3.Update()
+    dataSkel = vtk_read(skelpath)
+    voxels_ch1 = vtk_read(ch1path,
+                          readertype='vtkStructuredPointsReader')
+    voxels_ch2 = vtk_read(ch2path,
+                          readertype='vtkStructuredPointsReader')
 
-    dataSkel = reader.GetOutput()  # Skel coords value from skel file
-    dataGFPV = reader2.GetOutput()  # voxels GFP
-    dataRFPV = reader3.GetOutput()
-    ptsOld = dataSkel.GetPoints()
-    Cell = vtk.vtkCellArray()
+    ptcld_ch1, ptcld_ch2 = _pointcloud(dataSkel, voxels_ch1, voxels_ch2,
+                                       **kwargs)
+    polydata = vtk.vtkPolyData()
+    polydata.SetPoints(dataSkel.GetPoints())
+    polydata.SetLines(dataSkel.GetLines())
+    polydata.GetPointData().AddArray(ptcld_ch1)
+    polydata.GetPointData().AddArray(ptcld_ch2)
+    np_voxel1 = vnpy.vtk_to_numpy(voxels_ch1.GetPointData().GetScalars())
+    np_voxel2 = vnpy.vtk_to_numpy(voxels_ch2.GetPointData().GetScalars())
+    polydata.GetPointData().AddArray(dataSkel.
+                                     GetPointData().GetScalars('Width'))
+    polydata.GetPointData().GetArray(2).SetName("tubewidth")
+    return polydata, np_voxel1, np_voxel2
 
-    intenGFP = dataGFPV.GetPointData().GetScalars().GetTuple1
-    intenRFP = dataRFPV.GetPointData().GetScalars().GetTuple1
-    skelWidth = dataSkel.GetPointData().GetScalars('Width')
+
+def _pointcloud(skel, ch1, ch2, radius=2.5):
+    vox_ch2 = vtk.vtkDoubleArray()
+    vox_ch2.SetName("vox_ch2")
+    vox_ch1 = vtk.vtkDoubleArray()
+    vox_ch1.SetName("vox_ch1")
+
+    # vtk.pointlocator() used to to find the set of points lying within the
+    # radius of the point of interest, returns results in a list called
+    # result
     loc = vtk.vtkPointLocator()
-    loc.SetDataSet(dataGFPV)
+    loc.SetDataSet(ch2)
     loc.BuildLocator()
-    result = vtk.vtkIdList()
-    rawRFP = vtk.vtkDoubleArray()
-    rawRFP.SetName("rRFP")
-    rawGFP = vtk.vtkDoubleArray()
-    rawGFP.SetName("rGFP")
 
-#   add the lines/ cells  for connectivity of skel info
-    for i in range(dataSkel.GetNumberOfLines()):
-        ptID = dataSkel.GetCell(i).GetPointIds()
-        oldId = [
-            ptID.GetId(pid) for pid in range(ptID.GetNumberOfIds())]
-        Cell.InsertNextCell(len(oldId))
-        for j in oldId:
-            Cell.InsertCellPoint(j)
+    inten_ch1 = ch1.GetPointData().GetScalars().GetTuple1
+    inten_ch2 = ch2.GetPointData().GetScalars().GetTuple1
+    result = vtk.vtkIdList()
 
 #   averaging of pts intensity value surrounding each point in skel
-    for n in range(dataSkel.GetNumberOfPoints()):
+    for n in range(skel.GetNumberOfPoints()):
 
-        ptOI = tuple(np.ceil(i/.055) for i in dataSkel.GetPoint(n))
+        pt_of_int = tuple(ceil(i/.055) for i in skel.GetPoint(n))
+        loc.FindPointsWithinRadius(radius, pt_of_int, result)
+        vox_id = [result.GetId(i) for i in range(result.GetNumberOfIds())]
 
-        loc.FindPointsWithinRadius(radius, ptOI, result)
+        vox_ch1.InsertNextValue(mean([inten_ch1(m) for m in vox_id]))
 
-        voxID = [
-            result.GetId(i) for i in range(result.GetNumberOfIds())]
-
-        g = np.mean([intenGFP(m) for m in voxID])
-        rawGFP.InsertNextValue(g)
-
-        r = np.mean([intenRFP(m) for m in voxID])
-        rawRFP.InsertNextValue(r)
-    polydata = vtk.vtkPolyData()
-    polydata.SetPoints(ptsOld)
-    polydata.SetLines(Cell)
-    polydata.GetPointData().AddArray(rawRFP)
-    polydata.GetPointData().AddArray(rawGFP)
-    polydata.GetPointData().AddArray(skelWidth)
-    polydata.GetPointData().GetArray(2).SetName("TubeWidth")
-    return polydata
+        vox_ch2.InsertNextValue(mean([inten_ch2(m) for m in vox_id]))
+    return vox_ch1, vox_ch2
 
 
-def normSkel(polydata, backgrnd):
+def normalize_skel(polydata, raw_vox_ch1, raw_vox_ch2,
+                   background_thresh=5., **kwargs):
     """
     Normalize channels to correct for focal plane intensity variations
 
     Parameters
     ----------
     polydata : vtkPolyData
-        Must be a VTK PolyData object (not tVTK)
-    backgrnd : tuple
-        tuple containing background values for each channel
+        vtk object returned from pt_cld_sclrs()
+    raw_vox_ch1, raw_vox_ch2 : Numpy array
+        Voxel intensity values in numpy array format
+    backgrnd_thresh : float
+        The default threshold of a background value is the 5th percentile of
+        voxel intensities in the respective channel. This might have to be
+        changed depending on the experimental conditions
+
+    kwargs
+    ------
+    background: Str
+        path to background file provided by user, should be a dictionary with
+        channel labels as keys
     """
-    polydata = tvtk.to_tvtk(polydata)  # convert to tvtk to have traits
-    temp = polydata.point_data
-    rawGFP = np.ravel(temp.get_array('rGFP'))
-    rawRFP = np.ravel(temp.get_array('rRFP'))
-    if backgrnd[0] > min(rawRFP):  # background has higher min than skel rfp
-        min_rfp = min(rawRFP)-1.  # minus one to ensure no zero divisions
+    temp = polydata.GetPointData()
+    vox_ch1 = vnpy.vtk_to_numpy(temp.GetArray('vox_ch1'))
+    vox_ch2 = vnpy.vtk_to_numpy(temp.GetArray('vox_ch2'))
+
+    # Check to see if background file provided by user
+    background = kwargs.pop('backgroundfile')
+    if background:
+        if background['ch2'] > min(vox_ch2):
+            min_ch2 = min(vox_ch2)-1.  # ensure no zero divisions
+        else:
+            min_ch2 = background['ch2']-1.  # USUAL CASE
+
+        min_ch1 = min(background['ch1'], min(vox_ch1))
+        print ("Background value of gfp={:4.0f} & rfp={:4.0f} was used".
+               format(background['ch1'], background['ch2']))
+
     else:
-        min_rfp = backgrnd[0]-1.  # normally, min should be background RFP val
+        min_ch1 = percentile(raw_vox_ch1, background_thresh)
+        min_ch2 = percentile(raw_vox_ch2, background_thresh)
 
-    min_gfp = min(backgrnd[1], min(rawGFP))
-    lines = []
+    # background Substracted rfp and gfps
+    ch2_bckgrnd = vox_ch2 - min_ch2
+    ch1_bckgrnd = vox_ch1 - min_ch1
 
-#   method for getting pointIds as unique list
-    for el in range(polydata.number_of_lines):
-        temp = np.ravel(polydata.get_cell(el).point_ids)
-        lines.append(temp)
-    pointIds = np.unique([el for ln in lines for el in ln])
+    # width equivalent
+    width_eqv = ch2_bckgrnd / min(ch2_bckgrnd)
+    unscaled_dy = ch1_bckgrnd / width_eqv  # raw DY/W normalized values
 
-#   background Substracted rfp and gfps
-    rfp_bk = rawRFP-min_rfp
-    gfp_bk = rawGFP-min_gfp
-#   width equivalent
-    W = rfp_bk / np.min(rfp_bk)
-    DY = gfp_bk / W  # raw DY/W normalized values
-#   rescale DY to minmax
-    minDY = min([DY[i] for i in pointIds])
-    maxDY = max([DY[i] for i in pointIds])
-    normDY = ((DY-minDY)/(maxDY-minDY))
-    return normDY, DY, rfp_bk, gfp_bk, W
+    # rescale DY to minmax
+    _min = min(unscaled_dy)
+    _max = max(unscaled_dy)
+    normalized_dy = ((unscaled_dy - _min)/(_max - _min))
+    tubewidth = temp.GetArray('tubewidth')
+
+    # Output results as a labelled dictionary
+    results = {'normalized_dy': normalized_dy,
+               'unscaled_dy': unscaled_dy,
+               'ch1_bckgrnd': ch1_bckgrnd,
+               'ch2_bckgrnd': ch2_bckgrnd,
+               'width_eqv': width_eqv,
+               'tubewidth': tubewidth}
+    return results
 
 
-def writevtk(data, fname, **kwargs):
+def write_vtk(dat, fname, **kwargs):
     """
     Write out a vtk file using VTK polydata object *dat* and a filename *fname*
     with optional labels dictionary *kwargs* for the outputs
@@ -149,14 +175,17 @@ def writevtk(data, fname, **kwargs):
     * ch1_bckgrnd
     * ch2_bckgrnd
     * width_eqv'
-    """
 
+    """
     for k in sorted(kwargs):
-        temp = vnpy.numpy_to_vtk(kwargs[k])
+        try:
+            temp = vnpy.numpy_to_vtk(kwargs[k])
+        except TypeError:  # already a VTK type
+            temp = kwargs[k]
         temp.SetName(k)
-        data.GetPointData().AddArray(temp)
+        dat.GetPointData().AddArray(temp)
 
     writer = vtk.vtkPolyDataWriter()
     writer.SetFileName(fname)
-    writer.SetInputData(data)
+    writer.SetInputData(dat)
     writer.Update()

@@ -113,9 +113,11 @@ def normalize_skel(polydata, raw_vox_ch1, raw_vox_ch2,
 
     kwargs
     ------
-    background: Str
-        path to background file provided by user, should be a dictionary with
-        channel labels as keys
+    background : Dict
+        Background values provided by user, should be a dictionary with
+        cell ID as keys and channel labels as subkeys
+
+        eg. {`Cell_1`: {`ch1`: 3000.2, `ch2`: 2500.5} ...}
     """
     temp = polydata.GetPointData()
     vox_ch1 = vnpy.vtk_to_numpy(temp.GetArray('vox_ch1'))

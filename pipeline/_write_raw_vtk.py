@@ -1,3 +1,8 @@
+# -*- coding: utf-8 -*-
+"""
+Main module for mito network normalization
+@author: sweel_rafelski
+"""
 import os
 import os.path as op
 import cPickle as pickle
@@ -5,7 +10,6 @@ import re
 from collections import defaultdict
 from post_mitograph import mkdir_exist
 from pipeline import pipefuncs as pf
-from pipeline import make_networkx as mn
 # pylint: disable=C0103
 
 # data folder should contain subfolders of cell conditions, each condition
@@ -25,6 +29,9 @@ vtks = defaultdict(dict)
 
 
 def readfolder(folder):
+    """
+    Helper function to return a defaultdict of VTK file paths and labels
+    """
     for subfolder in os.listdir(folder):
         if op.isdir(op.join(folder, subfolder)):
             for files in os.listdir(op.join(folder, subfolder)):
@@ -70,14 +77,14 @@ def main():
         savename = op.join(savefolder,
                            'Normalized_{}_mitoskel.vtk'.format(key))
 
-        data, v1, v2 = pf.point_cloud_scalars(paths['skel'][key],
-								paths['ch1'][key.replace('RFP', 'GFP')],
-                                              paths['ch2'][key])
+        data, v1, v2 = pf.point_cloud_scalars(
+            paths['skel'][key],
+            paths['ch1'][key.replace('RFP', 'GFP')],
+            paths['ch2'][key])
         dict_output = pf.normalize_skel(data, v1, v2,
                                         backgroundfile=filemetas[key[:-4]])
         pf.write_vtk(data, savename, **dict_output)
         print "{} normalized!".format(key)
-##            nl, el, nxgrph = mn.makegraph(data, "_".join((lab, key)))
 
 if __name__ == '__main__':
     main()

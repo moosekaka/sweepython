@@ -33,5 +33,5 @@ if __name__ == '__main__':
     scrloc2 = op.join(scrloc, os.pardir, 'traits')
 
 
-    searchfunc('_write_raw_vtk', scrloc)
+    searchfunc('make_networkx', scrloc)
 

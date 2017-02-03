@@ -62,8 +62,8 @@ def main():
     """
 
     try:
-        with open(op.join('.', 'mutants', 'filemetas_new.pkl'), 'rb') as inpt:
-            filemetas = pickle.load(inpt)
+        with open(op.join('.', 'mutants', 'background_all.pkl'), 'rb') as inpt:
+            bck = pickle.load(inpt)
     except WindowsError:
         print "Error: Make sure you have file metadatas in working directory"
 
@@ -82,7 +82,7 @@ def main():
             paths['ch1'][key.replace('RFP', 'GFP')],
             paths['ch2'][key])
         dict_output = pf.normalize_skel(data, v1, v2,
-                                        backgroundfile=filemetas[key[:-4]])
+                                        backgroundfile=bck[key[:-4]])
         pf.write_vtk(data, savename, **dict_output)
         print "{} normalized!".format(key)
 

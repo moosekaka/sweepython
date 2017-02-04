@@ -17,7 +17,7 @@ Developing a set of open-source computational tools in Python to perform multi-s
 ## Analysis of mitochondrial functional asymmetry in mother and daughter yeast cells
 - A [set of tools](https://github.com/moosekaka/sweepython/tree/master/mombud) to interactively visualize the 3D mitochondrial skeleton and pick points to classify the cell as a mother or daughter region. This [Ipython notebook](https://github.com/moosekaka/sweepython/blob/master/mother%20bud%20analysis.ipynb) demonstrates an application of these tools to study how mitochondrial membrane potential (Δψ) is distributed differently between the mother and daughter cell.  
 
-### Requirements
+## Requirements
 If you wish to run the source code for the pipeline, you need to have these dependencies installed:
 
 * Pandas

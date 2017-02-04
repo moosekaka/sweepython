@@ -10,6 +10,8 @@ import re
 from collections import defaultdict
 from post_mitograph import mkdir_exist
 from pipeline import pipefuncs as pf
+import Tkinter
+import TkClas
 # pylint: disable=C0103
 
 # data folder should contain subfolders of cell conditions, each condition
@@ -17,7 +19,7 @@ from pipeline import pipefuncs as pf
 # quick check is the number of files in each subfolder is divisible by 3
 datafolder = op.join('.', 'mutants', 'pre_normalized')
 # output will be saved here
-savefolder = op.join('.', 'mutants', 'normalized_vtk')
+#savefolder = op.join('.', 'mutants', 'normalized_vtk')
 # modify the 'RFP' and 'GFP' keys to suit
 SEARCHDICT = defaultdict(dict,
                          {'resampled': {'RFP': 'ch2',
@@ -60,20 +62,28 @@ def main():
     """
     Pipeline to normalize'raw' vtk files and make mito network graph
     """
+    root = Tkinter.Tk()
+    gui = TkClas.SelectDirClient(root,
+                                 initialdir='./mutants/pre_normalized')
+    basedir = gui.askdirectory()
+    root.destroy()
+    savefolder = op.join(basedir, 'Normalized')
+    print "files will be saved in {}!".format(savefolder)
+    mkdir_exist(savefolder)
 
     try:
-        with open(op.join('.', 'mutants', 'background_all.pkl'), 'rb') as inpt:
+        with open(op.join(basedir, 'background_all.pkl'), 'rb') as inpt:
             bck = pickle.load(inpt)
-    except WindowsError:
-        print "Error: Make sure you have file metadatas in working directory"
+    except IOError:
+        print ("File not found: Make sure you have file 'background_all.pkl' "
+               "in working directory")
 
-    paths = readfolder(datafolder)
-
+    paths = readfolder(basedir)
     cells = paths['skel']
-    keys = sorted(cells.keys(), reverse=True)
-    while keys:
-        key = keys.pop()
-        mkdir_exist(savefolder)
+    keys = sorted(cells.keys())
+    # use for loop here instaed of while becuase we know we will iterate
+    # fully everytime over list (i.e. no STOP flag)
+    for key in keys:
         savename = op.join(savefolder,
                            'Normalized_{}_mitoskel.vtk'.format(key))
 

@@ -4,21 +4,34 @@ Created on Thu Jul 23 10:55:07 2015
 
 @author: sweel
 """
+import os
 import os.path as op
 import pandas as pd
 import cPickle as pickle
+import Tkinter
 import scipy.stats as sp
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 from network_het.mungedata import MungeDataFuncs as md
 import statsmodels.formula.api as sm
+import TkClas
 
 sns.plotting_context('talk', font_scale=1.4)
 sns.set(style="whitegrid")
 # pylint: disable=C0103b
 plt.close('all')
 olddir = op.join('deprecated', 'OLD_NormFiles_021416')
+
+root = Tkinter.Tk()
+gui = TkClas.SelectDirClient(root, initialdir='./mutants')
+basedir = gui.askdirectory()
+root.destroy()
+os.chdir(basedir)
+print "Working Dir set to {}".format(basedir)
+
+
+
 
 with open('munged_dataframe_2016.pkl', 'rb') as INPUT:
     df = pickle.load(INPUT)

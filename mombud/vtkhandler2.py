@@ -6,6 +6,7 @@ Module for plots of analysis of mother bud function in budding yeast
 import os
 import os.path as op
 import cPickle as pickle
+import Tkinter
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -13,7 +14,15 @@ import seaborn as sns
 from scipy import stats as ss
 import mombud.mungedf as munge
 import mombud.functions.vtk_mbplots as mbfuncs
+import TkClas
 # pylint: disable=C0103
+root = Tkinter.Tk()
+gui = TkClas.SelectDirClient(root, initialdir='./mutants')
+basedir = gui.askdirectory()
+root.destroy()
+os.chdir(basedir)
+print "Working Dir set to {}".format(basedir)
+
 sns.set_style('whitegrid')
 plt.rcParams['font.family'] = 'DejaVu Sans'
 labelhandler, plviol, plbox, plfacet = (mbfuncs.labelhandler,
@@ -21,7 +30,7 @@ labelhandler, plviol, plbox, plfacet = (mbfuncs.labelhandler,
                                         mbfuncs.plbox,
                                         mbfuncs.plfacet)
 
-plt_labs = [u'Eth. + Glyc.', u'Lactate',  u'Raffinose',
+plt_labs = [u'Eth. + Glyc.', u'Lactate', u'Raffinose',
             u'ΔMFB1', u'ΔNUM1', u'ΔYPT11']
 colorblind = ["#0072B2", "#009E73", "#D55E00", "#CC79A7", "#F0E442", "#56B4E9"]
 savefolder = op.expanduser(os.sep.join(['~', 'Dropbox', 'SusanneSweeShared',
@@ -55,15 +64,13 @@ inp_args = {'inpdatpath': 'celldata.pkl',
             'mbax': [round(i, 2) for i in np.linspace(0, 1, 4)],
             'cellax': np.linspace(0, 1., 11),  # whole cell pos.
             'binsvolbud': np.linspace(0, 40, 5),  # vol bins for bud
-            'binsvolmom': np.array([0, 30, 40, 80.]),
-            }
+            'binsvolmom': np.array([0, 30, 40, 80.])}
 # BUD segment into two parts (mbax)
 inp_args2 = {'inpdatpath': 'celldata.pkl',
              'mbax': np.linspace(0., 1., 3),  # pos. mom/bud cell
              'cellax': np.linspace(0, 1., 11),  # whole cell pos.
              'binsvolbud': np.linspace(0, 40, 5),  # vol bins for bud
-             'binsvolmom': np.array([0, 30, 40, 80.]),
-             }
+             'binsvolmom': np.array([0, 30, 40, 80.])}
 # Run postprocess using two different binnings for mom and buds
 outputargs = munge.postprocess_df(**inp_args)
 outputargs2 = munge.postprocess_df(**inp_args2)

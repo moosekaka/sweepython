@@ -76,12 +76,12 @@ def main():
             bck = pickle.load(inpt)
     except IOError:
         print ("File not found: Make sure you have file 'background_all.pkl' "
-               "in working directory")
+               "in selected directory")
 
     paths = readfolder(basedir)
     cells = paths['skel']
     keys = sorted(cells.keys())
-    # use for loop here instaed of while becuase we know we will iterate
+    # use for loop here instead of while.. because we know we will iterate
     # fully everytime over list (i.e. no STOP flag)
     for key in keys:
         savename = op.join(savefolder,

@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
 Created on Thu Jul 23 10:55:07 2015
-
+Module for network analysis of mitochondrial networks
 @author: sweel
 """
 import os
-import os.path as op
 import pandas as pd
+import os.path as op
 import cPickle as pickle
 import Tkinter
 import scipy.stats as sp
@@ -14,35 +14,32 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 from network_het.mungedata import MungeDataFuncs as md
-import statsmodels.formula.api as sm
 import TkClas
 
 sns.plotting_context('talk', font_scale=1.4)
 sns.set(style="whitegrid")
-# pylint: disable=C0103b
 plt.close('all')
-olddir = op.join('deprecated', 'OLD_NormFiles_021416')
-
+# pylint: disable=C0103
+# __________________  GUI PROMPT  _____________________________
 root = Tkinter.Tk()
-gui = TkClas.SelectDirClient(root, initialdir='./mutants')
+root.withdraw()
+gui = TkClas.SelectDirClient(root, initialdir='.')
 basedir = gui.askdirectory()
-root.destroy()
 os.chdir(basedir)
 print "Working Dir set to {}".format(basedir)
 
-
-
-
+# __________________  LOAD DATA  _____________________________
 with open('munged_dataframe_2016.pkl', 'rb') as INPUT:
     df = pickle.load(INPUT)
 with open(op.join('cellVolume.pkl'), 'rb') as INPT:
     dfsize = pickle.load(INPT)
     dfsize.index = dfsize.cell
-with open(op.join(olddir, 'dic_names.pkl'), 'rb') as inpt:
+with open('network_analysis_labels.pkl', 'rb') as inpt:
     dic = pickle.load(inpt)
 with open('list_wtmb.pkl', 'rb') as inpt:
     wt = pickle.load(inpt)
 
+# __________________  PRELIM. DATA MUNGE  _____________________________
 wtall = df[df.media == 'WT'].index
 wtfilt = df.index.intersection(wt)
 exclude = wtall.difference(wtfilt)

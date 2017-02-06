@@ -12,17 +12,19 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from scipy import stats as ss
-import mombud.mungedf as munge
+import mombud.mb_analysis_client as munge
 import mombud.functions.vtk_mbplots as mbfuncs
 import TkClas
 # pylint: disable=C0103
+# __________________  GUI PROMPT  _____________________________
 root = Tkinter.Tk()
+root.withdraw()
 gui = TkClas.SelectDirClient(root, initialdir='./mutants')
 basedir = gui.askdirectory()
-root.destroy()
 os.chdir(basedir)
 print "Working Dir set to {}".format(basedir)
 
+# __________________  SET UP ENV VARS  _____________________________
 sns.set_style('whitegrid')
 plt.rcParams['font.family'] = 'DejaVu Sans'
 labelhandler, plviol, plbox, plfacet = (mbfuncs.labelhandler,
@@ -42,7 +44,7 @@ labelFacet = labelhandler('facet')
 labelNormal = labelhandler()
 labelRowFacet = labelhandler('rowfacet')
 
-
+# __________________  LOAD DATA  _____________________________
 with open(op.join('cellVolume_complete.pkl'), 'rb') as INPT:
     dfsize = pickle.load(INPT)
 
@@ -143,47 +145,6 @@ outkws1 = dict(default_ylims=[0.05, 0.95], plt_type='boxplot',
 outkws2 = dict(default_ylims=[0.1, 0.9],
                labeller=labelFacet)
 # =============================================================================
-## OPTIONAL PLOTS
-#
-##  test of sizes
-#callout = ['YPL_052315_025_RFPstack_036',
-#           'YPL_042515_021_RFPstack_029',
-#           'YPE_042715_013_RFPstack_048',
-#           'YPE_042715_007_RFPstack_033',
-#           'YPT11_071016_025_RFPstack_147',
-#           'YPT11_071016_005_RFPstack_127',
-#           'YPT11_071016_029_RFPstack_150']
-#volr2['mark'] = volr2.loc[volr2.index.intersection(callout)].budvolratio
-#vlabels = dict(zip(sorted(df['media_new'].unique()), plt_labs))
-#volr2['media'] = volr2.media_new.map(vlabels)
-#with sns.color_palette('colorblind'):
-#    h = sns.FacetGrid(volr2, col='media_new',
-#                      col_wrap=3, col_order=sorted(vlabels.keys()),
-#                      hue='media',
-#                      size=3, aspect=1.5)
-#    for i in h.axes.flat:
-#        i.axvline(x=cutoff, linewidth=1, color='m')
-#    h.map(plt.scatter, 'bud_diameter', 'budvolratio')
-#    h.map(plt.scatter, 'bud_diameter', 'mark', s=40, color='r', marker='v')
-#    h.set(ylim=[0, 1.1])
-#    plt.savefig(op.join(savefolder, 'budratio_bud_diam.png'))
-#
-#mb_dy['media'] = mb_dy.media_new.map(vlabels)
-#
-## mombud ΔΨ plot
-#with sns.plotting_context('talk', font_scale=1.5):
-#    plt.rcParams['figure.figsize'] = (16, 11)
-#    set1 = dict(x='media', y=u'ΔΨ scaled',
-#                hue='variable', group_key='media',
-#                title=u'ΔΨ mother vs bud', ylim=(0, 1.), notch=True,
-#                )
-#
-#    plv1 = plviol(**outkws1)
-#    plv1.plt(data=mb_dy, **set1)
-#    plv1.ax.xaxis.label.set_visible(False)
-#    plv1.ax.get_legend().set_title('')
-#    plv1.save_figure(op.join(savefolder, 'boxplot mombud dy.svg'))
-# =============================================================================
 # frac ΔΨ plot
 # =============================================================================
 # give new labels for plotting
@@ -203,7 +164,6 @@ with sns.plotting_context('talk', font_scale=1.5):
         plv2.ax.xaxis.label.set_visible(False)
         plv2.turn_off_legend()
         plv2.save_figure(op.join(savefolder, 'boxplot frac dy.svg'))
-
 # =============================================================================
 # mom, bud,  cell axis long form DF
 # =============================================================================

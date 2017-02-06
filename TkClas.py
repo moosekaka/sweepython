@@ -11,7 +11,6 @@ class SelectDirClient(Tkinter.Frame):
   def __init__(self, root, **kwargs):
     Tkinter.Frame.__init__(self, root)
     self.root = root
-    self.path = None
     # defining options for opening a directory
     self.dir_opt = options = {}
     options['initialdir'] = kwargs.pop('initialdir', '.')
@@ -21,9 +20,9 @@ class SelectDirClient(Tkinter.Frame):
   def askdirectory(self):
 
     """Returns a selected directoryname."""
-    self.path = tkFileDialog.askdirectory(**self.dir_opt)
+    path = tkFileDialog.askdirectory(**self.dir_opt)
     self.root.destroy()
-#    return path
+    return path
 
 if __name__=='__main__':
   root = Tkinter.Tk()

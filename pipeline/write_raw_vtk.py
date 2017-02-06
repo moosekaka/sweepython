@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Main module for mito network normalization
-@author: sweel_rafelski
+@author: sweel_lim
 """
 import os
 import os.path as op
@@ -64,14 +64,10 @@ def main():
     """
 
     root = Tkinter.Tk()
-    print hex(id(root))
-#    root.withdraw()
+    root.withdraw()
     gui = TkClas.SelectDirClient(root,
-                                 initialdir='./mutants/pre_normalized').pack()
-#    gui.askdirectory()
-    basedir = gui.path
-    print hex(id(root))
-    print hex(id(gui))
+                                 initialdir='./mutants/pre_normalized')
+    basedir = gui.askdirectory()
     savefolder = op.join(basedir, 'Normalized')
     print "files will be saved in {}!".format(savefolder)
     mkdir_exist(savefolder)

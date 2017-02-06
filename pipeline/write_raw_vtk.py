@@ -62,11 +62,16 @@ def main():
     """
     Pipeline to normalize'raw' vtk files and make mito network graph
     """
+
     root = Tkinter.Tk()
+    print hex(id(root))
+#    root.withdraw()
     gui = TkClas.SelectDirClient(root,
-                                 initialdir='./mutants/pre_normalized')
-    basedir = gui.askdirectory()
-    root.destroy()
+                                 initialdir='./mutants/pre_normalized').pack()
+#    gui.askdirectory()
+    basedir = gui.path
+    print hex(id(root))
+    print hex(id(gui))
     savefolder = op.join(basedir, 'Normalized')
     print "files will be saved in {}!".format(savefolder)
     mkdir_exist(savefolder)
